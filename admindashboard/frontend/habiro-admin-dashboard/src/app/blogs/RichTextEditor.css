@@ -1,0 +1,21 @@
+/* Adjust the editor height, border width, and styling */
+.custom-editor .ql-container {
+    min-height: 250px; /* Adjust height as needed */
+    max-height: 400px; /* Prevent excessive growth */
+    border: 2px solid #ccc; /* Change border width */
+    border-radius: 8px; /* Rounded corners */
+    padding: 12px; /* Spacing inside editor */
+  }
+  
+  /* Toolbar Styling */
+  .custom-editor .ql-toolbar {
+    border: 2px solid #ccc; /* Same border as content */
+    border-radius: 8px 8px 0 0; /* Match top corners */
+  }
+  
+  /* Adjust Placeholder Text */
+  .custom-editor .ql-editor.ql-blank::before {
+    color: #aaa;
+    font-style: italic;
+  }
+  
