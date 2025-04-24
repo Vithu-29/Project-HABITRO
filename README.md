@@ -38,9 +38,6 @@
 | Backend API      | Django REST Framework |
 | Database         | MySQL              |
 | Admin Dashboard  | Next.js (React)    |
-| Authentication   | JWT / Django Auth |
-| Game Logic       | Flutter Flame Engine |
-| Deployment       | Docker / Railway / Vercel (optional) |
 
 ## 🧩 Gamification Components
 - **Streak Counter**: Track consecutive days of habit completion
