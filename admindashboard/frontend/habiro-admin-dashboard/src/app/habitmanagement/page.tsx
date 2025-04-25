@@ -2,7 +2,7 @@ import React from "react";
 import { HabitsOverview } from "@/components/Charts/habits-overview";
 import { extractTimeFrame } from "@/lib/utils";
 import { HabitTypeOverview } from "@/components/Charts/habittype/HabitTypeOverview";
-import HabitTable  from "@/components/Tables/habittable/HabitTable";
+import HabitTable  from "@/components/Tables/habit-table/HabitTable";
 
 export default function HabitManagement() {
 

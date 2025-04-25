@@ -11,7 +11,7 @@ const data = [
 
 const AppUsage = () => {
   return (
-    <div className="p-4 bg-white shadow rounded-xl ">
+    <div className="p-4 bg-white shadow rounded-xl  dark:bg-gray-dark dark:shadow-card">
       <h2 className="text-xl font-bold mb-4">App Usage</h2>
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={data}>

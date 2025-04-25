@@ -8,7 +8,7 @@ const usersData = [
     email: "example@gmail.com",
     joined: "19 Jan, 2024",
     completionRate: "82%",
-    profilePicture: "https://via.placeholder.com/100",
+    profilePicture: "/images/user/user-03.png",
     isActive: true,  
     goodHabits: [
       "Exercises daily for 30 minutes",
@@ -29,7 +29,7 @@ const usersData = [
     email: "john@example.com",
     joined: "22 Feb, 2024",
     completionRate: "90%",
-    profilePicture: "https://via.placeholder.com/100",
+    profilePicture: "/images/user/user-03.png",
     isActive: false,  
     goodHabits: ["Meditates every morning", "Reads at least one book per month", "Maintains a healthy diet"],
     badHabits: ["Overworks without breaks", "Forgets to stay hydrated", "Sleeps late at night"],

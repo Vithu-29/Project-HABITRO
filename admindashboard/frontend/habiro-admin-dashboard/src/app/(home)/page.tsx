@@ -1,6 +1,5 @@
 import { UsedDevices } from "@/components/Charts/used-devices";
-import { TopChannels } from "@/components/Tables/top-channels";
-import { TopChannelsSkeleton } from "@/components/Tables/top-channels/skeleton";
+import { RecentUsers } from "@/components/Tables/recent-user";
 import { createTimeFrameExtractor } from "@/utils/timeframe-extractor";
 import { Suspense } from "react";
 import { OverviewCardsGroup } from "./_components/overview-cards";
@@ -35,10 +34,8 @@ export default async function Home({ searchParams }: PropsType) {
           key={extractTimeFrame("used_devices")}
           timeFrame={extractTimeFrame("used_devices")?.split(":")[1]}
         />
-        <div className=" col-span-12 grid xl:col-span-8">
-          <Suspense fallback={<TopChannelsSkeleton />}>
-            <TopChannels />
-          </Suspense>
+        <div className=" col-span-12 grid xl:col-span-12">         
+            <RecentUsers />          
         </div>
 
        

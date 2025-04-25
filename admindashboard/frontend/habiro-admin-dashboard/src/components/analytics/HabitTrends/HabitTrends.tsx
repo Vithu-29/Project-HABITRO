@@ -10,7 +10,7 @@ const data = [
 
 const HabitTrends = () => {
   return (
-    <div className="p-4 bg-white shadow rounded-xl">
+    <div className="p-4 bg-white shadow rounded-xl  dark:bg-gray-dark dark:shadow-card">
       <h2 className="text-xl font-bold mb-4">Habit Trends</h2>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={data}>

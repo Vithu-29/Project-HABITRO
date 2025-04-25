@@ -1,3 +1,4 @@
+import { url } from "inspector";
 import * as Icons from "../icons";
 
 export const NAV_DATA = [
@@ -13,7 +14,7 @@ export const NAV_DATA = [
       },
       {
         title: "User management",
-        url: "/profile",
+        url: "/user-management",
         icon: Icons.User,
         items: [],
       },
@@ -41,6 +42,7 @@ export const NAV_DATA = [
         title: "Settings",
         icon: Icons.Settingsicons,
         items: [],
+        url: "/settings",
       },
 
     ],

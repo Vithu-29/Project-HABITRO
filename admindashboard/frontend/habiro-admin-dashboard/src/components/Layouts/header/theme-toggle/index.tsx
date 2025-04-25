@@ -54,3 +54,4 @@ export function ThemeToggleSwitch() {
     </button>
   );
 }
+export default ThemeToggleSwitch;

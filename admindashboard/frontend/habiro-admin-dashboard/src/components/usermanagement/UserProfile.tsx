@@ -10,7 +10,7 @@ interface Props {
 
 const UserProfile: React.FC<Props> = ({ user, onSendEmail }) => {
   return (
-    <div className="bg-white p-6 rounded shadow">
+    <div className="bg-white p-6 rounded shadow  dark:bg-gray-dark dark:shadow-card">
       {/* Profile Info */}
       <div className="flex items-center">
         <img 

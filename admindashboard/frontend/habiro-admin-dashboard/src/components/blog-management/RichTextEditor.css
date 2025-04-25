@@ -1,0 +1,41 @@
+/* Adjust the editor height, border width, and styling */
+.custom-editor .ql-container {
+  min-height: 250px; /* Adjust height as needed */
+  max-height: 400px; /* Prevent excessive growth */
+  border: 2px solid #ccc; /* Default border width */
+  border-radius: 8px; /* Rounded corners */
+  padding: 12px; /* Spacing inside editor */
+  background-color: white; /* Default background */
+  color: black; /* Default text color */
+}
+
+/* Dark mode support */
+.dark .custom-editor .ql-container {
+  background-color: #1a1a1a; /* Dark background */
+  color: #e0e0e0; /* Light text for readability */
+  border-color: #444; /* Darker border */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3); /* Dark shadow */
+}
+
+/* Toolbar Styling */
+.custom-editor .ql-toolbar {
+  border: 2px solid #ccc; /* Same border as content */
+  border-radius: 8px 8px 0 0; /* Match top corners */
+}
+
+/* Dark mode toolbar */
+.dark .custom-editor .ql-toolbar {
+  border-color: #444; /* Darker border */
+  background-color: #222; /* Darker toolbar */
+}
+
+/* Adjust Placeholder Text */
+.custom-editor .ql-editor.ql-blank::before {
+  color: #aaa;
+  font-style: italic;
+}
+
+/* Dark mode placeholder */
+.dark .custom-editor .ql-editor.ql-blank::before {
+  color: #777; /* Slightly dimmer in dark mode */
+}
