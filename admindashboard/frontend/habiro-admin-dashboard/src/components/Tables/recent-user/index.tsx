@@ -62,7 +62,7 @@ export async function RecentUsers({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "w-full max-w-8xl min-h-[450px] rounded-lg bg-white px-5 pb-3 pt-5 shadow-md dark:bg-gray-dark dark:shadow-lg",
+        "w-full max-w-9xl min-h-[450px] rounded-lg bg-white px-5 pb-3 pt-5 shadow-md dark:bg-gray-dark dark:shadow-lg",
         className
       )}
     >
