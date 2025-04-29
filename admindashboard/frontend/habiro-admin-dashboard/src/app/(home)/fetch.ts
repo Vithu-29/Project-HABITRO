@@ -1,25 +1,17 @@
-export async function getOverviewData() {
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+// src/app/(home)/fetch.ts
+import axios from "@/lib/axios"; // ← import your axios instance
 
-  return {
-    views: {
-      value: 40684,
-      growthRate: 8.5,
-    },
-    profit: {
-      value: 57,
-      growthRate: 1.35,
-    },
-    products: {
-      value: 10000,
-      growthRate: -4.3,
-    },
-    users: {
-      value: 200,
-      growthRate: 1.95,
-    },
-  };
+export async function getOverviewData() {
+  try {
+    const response = await axios.get('dashboard-overview/'); // no need full URL
+    return response.data; // Axios returns {data, status, ...}
+  } catch (error) {
+    console.error('Error fetching overview data:', error);
+    throw new Error('Failed to fetch overview data');
+  }
 }
+
+
 
 // Simulates a delay and returns mock chat data
 export async function getChatsData() {

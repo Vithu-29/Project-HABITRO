@@ -33,8 +33,8 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "src/app/charts/analytics",
-    "src/app/charts/analytics/",
+    "src/app/analytics/analytics",
+    "src/app/analytics/analytics",
     "src/components/analytics/UserEngagement",
     "src/components/analytics/HabitTrends",
     "src/components/analytics/AppUsage"

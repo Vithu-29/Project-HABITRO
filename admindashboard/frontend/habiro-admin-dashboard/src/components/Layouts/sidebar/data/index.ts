@@ -28,7 +28,7 @@ export const NAV_DATA = [
       {
         title: "Analytics",
         icon: Icons.PieChart,
-        url: "/charts/analytics",
+        url: "/analytics",
         items: [],
 
       },

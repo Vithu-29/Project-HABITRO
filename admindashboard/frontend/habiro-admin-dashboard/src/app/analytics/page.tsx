@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
-import AppUsage from "../../../components/analytics/AppUsage/AppUsage";
-import HabitTrends from "../../../components/analytics/HabitTrends/HabitTrends";
-import UserEngagement from "../../../components/analytics/UserEngagement/UserEngagement";
+import AppUsage from "../../components/analytics/AppUsage/AppUsage";
+import HabitTrends from "../../components/analytics/HabitTrends/HabitTrends";
+import UserEngagement from "../../components/analytics/UserEngagement/UserEngagement";
 
 const AnalyticsPage = () => {
   const [selectedTab, setSelectedTab] = useState("AppUsage");

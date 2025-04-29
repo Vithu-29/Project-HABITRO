@@ -1,4 +1,3 @@
-// File: components/userManagement/index.ts
 export { default as UserTable } from "./UserTable";
 export { default as UserActions } from "./UserActions";
 export { default as UserProfile } from "./UserProfile";

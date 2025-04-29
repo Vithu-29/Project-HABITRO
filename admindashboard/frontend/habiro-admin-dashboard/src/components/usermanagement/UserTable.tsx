@@ -16,7 +16,6 @@ const UserTable: React.FC<UserTableProps> = ({ users, onSelectUser }) => {
 
   return (
     <div>
-      {/* Search Input */}
       <input
         type="text"
         placeholder="Search users..."
@@ -25,7 +24,6 @@ const UserTable: React.FC<UserTableProps> = ({ users, onSelectUser }) => {
         onChange={(e) => setSearchTerm(e.target.value)}
       />
 
-      {/* User Table */}
       <table className="w-full border-collapse border text-dark dark:text-white dark:bg-gray-dark">
         <thead>
           <tr className="bg-gray-200 text-dark dark:text-white dark:bg-gray-dark">

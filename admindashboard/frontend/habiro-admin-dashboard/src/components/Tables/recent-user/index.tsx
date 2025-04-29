@@ -8,56 +8,10 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-
-// TEMP: Default static data until backend is connected
-const dummyUsers = [
-  {
-    name: "Alice Johnson",
-    email: "alice.johnson@example.com",
-    joined: "2025-04-21 10:45 AM",
-    habit: "Quit Smoking",
-    avatar: "https://randomuser.me/api/portraits/women/1.jpg",
-  },
-  {
-    name: "Bob Smith",
-    email: "bob.smith@example.com",
-    joined: "2025-04-20 02:15 PM",
-    habit: "Reduce Sugar",
-    avatar: "https://randomuser.me/api/portraits/men/2.jpg",
-  },
-  {
-    name: "Catherine Lee",
-    email: "catherine.lee@example.com",
-    joined: "2025-04-19 09:30 AM",
-    habit: "Daily Meditation",
-    avatar: "https://randomuser.me/api/portraits/women/3.jpg",
-  },
-  {
-    name: "David Brown",
-    email: "david.brown@example.com",
-    joined: "2025-04-18 04:20 PM",
-    habit: "Sleep Early",
-    avatar: "https://randomuser.me/api/portraits/men/4.jpg",
-  },
-  {
-    name: "Emily Davis",
-    email: "emily.davis@example.com",
-    joined: "2025-04-17 11:10 AM",
-    habit: "Limit Social Media",
-    avatar: "https://randomuser.me/api/portraits/women/5.jpg",
-  },
-  {
-    name: "Frank Miller",
-    email: "frank.miller@example.com",
-    joined: "2025-04-16 06:00 PM",
-    habit: "Morning Walk",
-    avatar: "https://randomuser.me/api/portraits/men/6.jpg",
-  },
-];
+import { getRecentUsersData } from "@/services/table.services"; 
 
 export async function RecentUsers({ className }: { className?: string }) {
-  // Replace dummyUsers with: const users = await getRecentUsers();
-  const users = dummyUsers;
+  const users = await getRecentUsersData(); 
 
   return (
     <div
@@ -82,7 +36,7 @@ export async function RecentUsers({ className }: { className?: string }) {
           </TableHeader>
 
           <TableBody>
-            {users.map((user, i) => (
+            {users.map((user: any, i: number) => (
               <TableRow
                 className="h-10 text-center text-sm font-medium text-dark dark:text-white"
                 key={user.email + i}

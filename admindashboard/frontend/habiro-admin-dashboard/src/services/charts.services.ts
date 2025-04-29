@@ -1,41 +1,15 @@
-export async function getDevicesUsedData(
-  timeFrame?: "monthly" | "yearly" | (string & {}),
-) {
-  // Fake delay
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+import axios from "@/lib/axios"; 
 
-  const data = [
-    {
-      name: "Desktop",
-      percentage: 0.65,
-      amount: 1625,
-    },
-    {
-      name: "Tablet",
-      percentage: 0.1,
-      amount: 250,
-    },
-    {
-      name: "Mobile",
-      percentage: 0.2,
-      amount: 500,
-    },
-    {
-      name: "Unknown",
-      percentage: 0.05,
-      amount: 125,
-    },
-  ];
-
-  if (timeFrame === "yearly") {
-    data[0].amount = 19500;
-    data[1].amount = 3000;
-    data[2].amount = 6000;
-    data[3].amount = 1500;
+export async function getDevicesUsedData(timeFrame?: "monthly" | "yearly" | (string & {})) {
+  try {
+    const response = await axios.get('used-devices-data/'); // <-- hit Django backend
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching devices used data:', error);
+    throw new Error('Failed to fetch devices used data');
   }
-
-  return data;
 }
+
 
 export async function getPaymentsOverviewData(
   timeFrame?: "monthly" | "yearly" | (string & {}),
@@ -93,7 +67,7 @@ export async function getPaymentsOverviewData(
     ],
   };
 }
-
+// 
 export async function getWeeksProfitData(timeFrame?: string) {
   // Fake delay
   await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -120,8 +94,7 @@ export async function getWeeksProfitData(timeFrame?: string) {
       ],
     };
   }
-
-  return {
+return {
     sales: [
       { x: "Sat", y: 44 },
       { x: "Sun", y: 55 },
@@ -142,25 +115,17 @@ export async function getWeeksProfitData(timeFrame?: string) {
     ],
   };
 }
-
+//Active Users Chart
 export async function getCampaignVisitorsData() {
-  // Fake delay
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-
-  return {
-    total_visitors: 784_000,
-    performance: -1.5,
-    chart: [
-      { x: "S", y: 168 },
-      { x: "S", y: 385 },
-      { x: "M", y: 201 },
-      { x: "T", y: 298 },
-      { x: "W", y: 187 },
-      { x: "T", y: 195 },
-      { x: "F", y: 291 },
-    ],
-  };
+  try {
+    const response = await axios.get('active-users-chart/'); 
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching active users chart:', error);
+    throw new Error('Failed to fetch active users chart');
+  }
 }
+
 
 export async function getVisitorsAnalyticsData() {
   // Fake delay
@@ -172,45 +137,3 @@ export async function getVisitorsAnalyticsData() {
   ].map((value, index) => ({ x: index + 1 + "", y: value }));
 }
 
-export async function getCostsPerInteractionData() {
-  return {
-    avg_cost: 560.93,
-    growth: 2.5,
-    chart: [
-      {
-        name: "Google Ads",
-        data: [
-          { x: "Sep", y: 15 },
-          { x: "Oct", y: 12 },
-          { x: "Nov", y: 61 },
-          { x: "Dec", y: 118 },
-          { x: "Jan", y: 78 },
-          { x: "Feb", y: 125 },
-          { x: "Mar", y: 165 },
-          { x: "Apr", y: 61 },
-          { x: "May", y: 183 },
-          { x: "Jun", y: 238 },
-          { x: "Jul", y: 237 },
-          { x: "Aug", y: 235 },
-        ],
-      },
-      {
-        name: "Facebook Ads",
-        data: [
-          { x: "Sep", y: 75 },
-          { x: "Oct", y: 77 },
-          { x: "Nov", y: 151 },
-          { x: "Dec", y: 72 },
-          { x: "Jan", y: 7 },
-          { x: "Feb", y: 58 },
-          { x: "Mar", y: 60 },
-          { x: "Apr", y: 185 },
-          { x: "May", y: 239 },
-          { x: "Jun", y: 135 },
-          { x: "Jul", y: 119 },
-          { x: "Aug", y: 124 },
-        ],
-      },
-    ],
-  };
-}
