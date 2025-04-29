@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/home%20screen/home_app_bar.dart';
+import 'package:frontend/home_screen/home_app_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,7 +30,7 @@ class HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Image.asset(
-              'lib/assets/images/home_img.png',
+              'assets/images/home_img.png',
               width: screenWidth * 0.9,
             ),
             Text(

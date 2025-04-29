@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/home_page.dart';
+import 'package:frontend/welcome_screen/splash_screen.dart';
 import 'theme.dart';
 
 void main() {
@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
-      home: HomePage(),
+      home: SplashScreen(),
     );
   }
 }
