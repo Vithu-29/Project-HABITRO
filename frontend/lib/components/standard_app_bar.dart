@@ -4,7 +4,8 @@ class StandardAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String appBarTitle;
   final bool showBackButton;
   final List<Widget>? actions;
-
+  
+  //should pass title to use appbar
   const StandardAppBar({
     super.key,
     required this.appBarTitle,
@@ -13,7 +14,7 @@ class StandardAppBar extends StatelessWidget implements PreferredSizeWidget {
   });
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => const Size.fromHeight(60);
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +28,6 @@ class StandardAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
       elevation: 0,
-      toolbarHeight: 80,
       centerTitle: true,
       leading: showBackButton
           ? IconButton(
