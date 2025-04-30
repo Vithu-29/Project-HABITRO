@@ -237,7 +237,7 @@ def send_email_to_user(request):
         send_mail(
             subject,
             message,
-            'vasanththajee2002@gmail.com',  # Replace with your backend email address (Django settings)
+            'thajeevanv.22@uom.lk',  # Replace with your backend email address (Django settings)
             [email],
             fail_silently=False,
         )
@@ -268,3 +268,59 @@ def suspend_user(request):
         return Response({'error': 'User not found'}, status=404)
     except Exception as e:
         return Response({'error': str(e)}, status=500)
+
+
+# analysis page
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from django.utils import timezone
+from .models import ScreenTime
+from django.db.models import Sum
+from datetime import timedelta
+
+@api_view(['GET'])
+def app_usage_data(request):
+    today = timezone.now().date()
+    past_5_days = [today - timedelta(days=i) for i in range(4, -1, -1)]
+    
+    data = []
+    for date in past_5_days:
+        total_minutes = ScreenTime.objects.filter(date=date).aggregate(Sum('active_minutes'))['active_minutes__sum'] or 0
+        data.append({
+            "date": date.strftime("%a"),  # "Mon", "Tue", ...
+            "usage": total_minutes
+        })
+
+    return Response(data)
+
+@api_view(['GET'])
+def habit_trends(request):
+    from django.db.models import Count
+    from .models import Habit, UserHabit
+
+    bad_habits = Habit.objects.filter(type="bad")
+    data = []
+
+    for habit in bad_habits:
+        count = UserHabit.objects.filter(habit=habit).count()
+        data.append({
+            "habit": habit.habit_name,
+            "users": count
+        })
+
+    return Response(data)
+@api_view(['GET'])
+def user_engagement_data(request):
+    from .models import UserAnalytics
+
+    data = UserAnalytics.objects.values('engagement_level').annotate(count=Count('id'))
+
+    result = []
+    for row in data:
+        label = row['engagement_level'].replace("_", " ").title()
+        result.append({
+            "name": label,
+            "value": row['count']
+        })
+
+    return Response(result)

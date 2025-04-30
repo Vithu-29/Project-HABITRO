@@ -20,6 +20,12 @@ urlpatterns = [
     path('user-management/', user_management_list, name='user-management'),
     path('send-email/', send_email_to_user),  
     path('suspend-user/', suspend_user),
+    path("analytics/app-usage/", views.app_usage_data),
+    path("analytics/habit-trends/", views.habit_trends),
+    path("analytics/user-engagement/", views.user_engagement_data),
+
+
+    
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
