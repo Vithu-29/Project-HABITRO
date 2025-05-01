@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:frontend/api_config.dart';
 
 class SignUpScreen extends StatefulWidget {
   @override
@@ -12,8 +15,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isPasswordVisible = false; // State for password visibility
+  bool _isConfirmPasswordVisible = false; // State for confirm password visibility
 
-  void _register() {
+  // Function to handle user registration
+  Future<void> _register() async {
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Passwords do not match')),
@@ -21,12 +27,50 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
-    
     setState(() => _isLoading = true);
-    Future.delayed(const Duration(seconds: 2), () {
+
+    // Determine if the input is an email or phone number
+    final emailOrPhone = _emailController.text.trim();
+    final isEmail = emailOrPhone.contains('@');
+    final body = isEmail
+        ? {
+            "email": emailOrPhone,
+            "full_name": _fullNameController.text.trim(),
+            "password": _passwordController.text.trim(),
+            "confirm_password": _confirmPasswordController.text.trim(),
+          }
+        : {
+            "phone_number": emailOrPhone,
+            "full_name": _fullNameController.text.trim(),
+            "password": _passwordController.text.trim(),
+            "confirm_password": _confirmPasswordController.text.trim(),
+          };
+
+    try {
+      final response = await http.post(
+        Uri.parse(ApiConfig.baseUrl), // Use the base URL from ApiConfig
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User created successfully')),
+        );
+        Navigator.pushReplacementNamed(context, '/signin');
+      } else {
+        final error = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An error occurred: $e')),
+      );
+    } finally {
       setState(() => _isLoading = false);
-      Navigator.pushReplacementNamed(context, '/signin');
-    });
+    }
   }
 
   Widget _socialIcon(String path, VoidCallback onTap) {
@@ -45,6 +89,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
     String placeholder, {
     bool isPassword = false,
     required TextEditingController controller,
+    bool isPasswordVisible = false,
+    VoidCallback? toggleVisibility,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,13 +102,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
         const SizedBox(height: 6),
         TextField(
           controller: controller,
-          obscureText: isPassword,
+          obscureText: isPassword ? !isPasswordVisible : false, // Toggle visibility
           decoration: InputDecoration(
             hintText: placeholder,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             filled: true,
             fillColor: const Color(0xFFE8EFFF),
-            suffixIcon: isPassword ? const Icon(Icons.visibility) : null,
+            suffixIcon: isPassword
+                ? IconButton(
+                    icon: Icon(
+                      isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: toggleVisibility, // Toggle visibility on tap
+                  )
+                : null,
           ),
         ),
       ],
@@ -111,6 +164,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         'Enter your password',
                         isPassword: true,
                         controller: _passwordController,
+                        isPasswordVisible: _isPasswordVisible,
+                        toggleVisibility: () {
+                          setState(() {
+                            _isPasswordVisible = !_isPasswordVisible;
+                          });
+                        },
                       ),
                       const SizedBox(height: 12),
                       _buildLabeledField(
@@ -118,6 +177,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         'Re-enter your password',
                         isPassword: true,
                         controller: _confirmPasswordController,
+                        isPasswordVisible: _isConfirmPasswordVisible,
+                        toggleVisibility: () {
+                          setState(() {
+                            _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                          });
+                        },
                       ),
                       const SizedBox(height: 20),
                       SizedBox(
