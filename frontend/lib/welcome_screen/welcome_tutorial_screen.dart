@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
+
 class WelcomeTutorialScreen extends StatefulWidget {
+  const WelcomeTutorialScreen({super.key});
+
   @override
-  _WelcomeTutorialScreenState createState() => _WelcomeTutorialScreenState();
+  WelcomeTutorialScreenState createState() => WelcomeTutorialScreenState();
 }
 
-class _WelcomeTutorialScreenState extends State<WelcomeTutorialScreen> {
+class WelcomeTutorialScreenState extends State<WelcomeTutorialScreen> {
   final PageController _pageController = PageController();
-  int _currentPage = 0;
+  
   bool _isLastPage = false;
 
   final List<Map<String, String>> _tutorialData = [
@@ -53,7 +56,6 @@ class _WelcomeTutorialScreenState extends State<WelcomeTutorialScreen> {
 
   void _onPageChanged(int index) {
     setState(() {
-      _currentPage = index;
       _isLastPage = index == _tutorialData.length - 1;
     });
   }
