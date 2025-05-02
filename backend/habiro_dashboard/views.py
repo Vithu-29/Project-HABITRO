@@ -324,3 +324,79 @@ def user_engagement_data(request):
         })
 
     return Response(result)
+
+# habit_management
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from django.db.models import Count
+from django.utils import timezone
+from .models import Habit, UserHabit
+
+from collections import defaultdict
+
+@api_view(['GET'])
+def habit_overview_chart(request):
+    today = timezone.now().date()
+    last_7_days = [today - timezone.timedelta(days=i) for i in range(6, -1, -1)]
+
+    # Group by date
+    created_data = defaultdict(int)
+    completed_data = defaultdict(int)
+
+    habits_created = Habit.objects.filter(created_at__date__in=last_7_days)
+    for habit in habits_created:
+        created_data[habit.created_at.date()] += 1
+
+    habits_completed = UserHabit.objects.filter(completed_date__date__in=last_7_days)
+    for habit in habits_completed:
+        completed_data[habit.completed_date.date()] += 1
+
+    response = {
+        "habitsCreated": [{"x": str(date), "y": created_data[date]} for date in last_7_days],
+        "habitsCompleted": [{"x": str(date), "y": completed_data[date]} for date in last_7_days],
+    }
+    return Response(response)
+
+
+@api_view(['GET'])
+def habit_type_overview(request):
+    good_count = Habit.objects.filter(type="good").count()
+    bad_count = Habit.objects.filter(type="bad").count()
+
+    return Response({
+        "goodHabits": good_count,
+        "badHabits": bad_count
+    })
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from .models import Habit, UserHabit
+
+@api_view(['GET'])
+def good_habit_analytics(request):
+    good_habits = Habit.objects.filter(type="good")
+    response = []
+
+    for habit in good_habits:
+        total_users = UserHabit.objects.filter(habit=habit).count()
+        completed_users = UserHabit.objects.filter(habit=habit, status='completed').count()
+
+        response.append({
+            "habitName": habit.habit_name,
+            "habitId": habit.id,
+            "totalUsers": total_users,
+            "completedUsers": completed_users,
+        })
+
+    return Response(response)
+# view to get users who have completed a specific habit
+@api_view(['GET'])
+def habit_completed_users(request, habit_id):
+    userhabits = UserHabit.objects.filter(habit_id=habit_id, status='completed')
+    users = [{
+        "id": uh.user.id,
+        "name": uh.user.full_name,
+        "email": uh.user.email
+    } for uh in userhabits]
+
+    return Response(users)

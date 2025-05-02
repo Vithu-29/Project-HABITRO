@@ -23,9 +23,11 @@ urlpatterns = [
     path("analytics/app-usage/", views.app_usage_data),
     path("analytics/habit-trends/", views.habit_trends),
     path("analytics/user-engagement/", views.user_engagement_data),
+    path('habit-overview/', views.habit_overview_chart),
+    path('habit-type-overview/', views.habit_type_overview),
+    path('good-habit-analytics/', views.good_habit_analytics),
+    path('good-habit-analytics/<int:habit_id>/users/', views.habit_completed_users),
 
-
-    
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
