@@ -1,13 +1,30 @@
 from rest_framework import serializers
+from django.core.validators import MinLengthValidator
 from .models import CustomUser
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
-    confirm_password = serializers.CharField(write_only=True)
+    password = serializers.CharField(
+        write_only=True,
+        required=True,
+        style={'input_type': 'password'},
+        min_length=8,
+        error_messages={
+            'min_length': 'Password must be at least 8 characters long.'
+        }
+    )
+    confirm_password = serializers.CharField(
+        write_only=True,
+        required=True,
+        style={'input_type': 'password'}
+    )
 
     class Meta:
         model = CustomUser
         fields = ['email', 'phone_number', 'full_name', 'password', 'confirm_password']
+        extra_kwargs = {
+            'email': {'required': False},
+            'phone_number': {'required': False}
+        }
 
     def validate(self, data):
         email = data.get('email')
@@ -15,18 +32,27 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         # Ensure either email or phone_number is provided, but not both
         if not email and not phone_number:
-            raise serializers.ValidationError("You must provide either an email or a phone number.")
+            raise serializers.ValidationError({
+                'error': 'You must provide either an email or a phone number.'
+            })
+        
         if email and phone_number:
-            raise serializers.ValidationError("You can only provide either an email or a phone number, not both.")
+            raise serializers.ValidationError({
+                'error': 'You can only provide either an email or a phone number, not both.'
+            })
 
         # Ensure passwords match
         if data['password'] != data['confirm_password']:
-            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+            raise serializers.ValidationError({
+                'confirm_password': 'Passwords do not match.'
+            })
 
         return data
 
     def create(self, validated_data):
         validated_data.pop('confirm_password')  # Remove confirm_password before saving
+        
+        # Create user based on provided credentials
         user = CustomUser.objects.create_user(
             email=validated_data.get('email'),
             phone_number=validated_data.get('phone_number'),
@@ -34,3 +60,30 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=validated_data['password']
         )
         return user
+
+
+class VerifyOTPSerializer(serializers.Serializer):
+    otp = serializers.CharField(
+        max_length=6,
+        min_length=6,
+        required=True,
+        validators=[MinLengthValidator(6)],
+        error_messages={
+            'required': 'OTP is required.',
+            'min_length': 'OTP must be exactly 6 characters.',
+            'max_length': 'OTP must be exactly 6 characters.'
+        }
+    )
+    email = serializers.EmailField(
+        required=True,
+        error_messages={
+            'required': 'Email is required for OTP verification.',
+            'invalid': 'Enter a valid email address.'
+        }
+    )
+
+    def validate_otp(self, value):
+        """Additional validation for OTP format"""
+        if not value.isdigit():
+            raise serializers.ValidationError("OTP must contain only digits.")
+        return value

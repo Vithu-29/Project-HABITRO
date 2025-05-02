@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:frontend/welcome_screen/splash_screen.dart';
 import 'package:frontend/welcome_screen/welcome_tutorial_screen.dart';
 import 'package:frontend/welcome_screen/signup_screen.dart';
+import 'package:frontend/welcome_screen/otp_verification_screen.dart';
 import 'package:frontend/home_page.dart'; 
+
 import 'theme.dart';
 
 void main() {
@@ -20,8 +22,9 @@ class MyApp extends StatelessWidget {
       home: SplashScreen(),
       routes: {
         '/welcome': (context) => WelcomeTutorialScreen(),
-        '/home': (context) => HomePage(),
         '/signup': (context) => SignUpScreen(),
+        '/otp-verification': (context) => OTPVerificationScreen( email:''),
+        '/home': (context) => HomePage(),
       },
     );
   }
