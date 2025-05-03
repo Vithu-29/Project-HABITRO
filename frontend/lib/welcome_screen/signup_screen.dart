@@ -367,7 +367,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                         Center(
                           child: TextButton(
                             onPressed: () {
-                              Navigator.pushNamed(context, '/otp-verification');
+                              Navigator.pushNamed(context, '/signin');
                             },
                             child: const Text.rich(
                               TextSpan(
