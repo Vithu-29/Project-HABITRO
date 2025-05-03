@@ -5,29 +5,27 @@ from django.core.validators import MinLengthValidator
 from datetime import timedelta
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, email=None, phone_number=None, full_name=None, password=None):
+    def create_user(self, email, full_name=None, password=None):
         """
-        Creates and saves a User with the given email, phone_number, full_name and password.
+        Creates and saves a User with the given email, full_name and password.
         """
-        if not email and not phone_number:
-            raise ValueError("Users must provide either an email or a phone number")
+        if not email:
+            raise ValueError("Users must provide an email")
         
         user = self.model(
-            email=self.normalize_email(email) if email else None,
-            phone_number=phone_number,
+            email=self.normalize_email(email),
             full_name=full_name
         )
         user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, phone_number, full_name, password=None):
+    def create_superuser(self, email, full_name, password=None):
         """
-        Creates and saves a superuser with the given email, phone_number, full_name and password.
+        Creates and saves a superuser with the given email, full_name and password.
         """
         user = self.create_user(
             email=email,
-            phone_number=phone_number,
             full_name=full_name,
             password=password
         )
@@ -40,16 +38,8 @@ class CustomUser(AbstractBaseUser):
         verbose_name='email address',
         max_length=255,
         unique=True,
-        null=True,
-        blank=True
     )
-    phone_number = models.CharField(
-        verbose_name='phone number',
-        max_length=15,
-        unique=True,
-        null=True,
-        blank=True
-    )
+    
     full_name = models.CharField(
         verbose_name='full name',
         max_length=255
@@ -64,7 +54,7 @@ class CustomUser(AbstractBaseUser):
     REQUIRED_FIELDS = ['full_name']
 
     def __str__(self):
-        return self.email if self.email else self.phone_number
+        return self.email
 
     def has_perm(self, perm, obj=None):
         "Does the user have a specific permission?"
@@ -90,14 +80,8 @@ class OTPVerification(models.Model):
         verbose_name='full name',
         max_length=255,
         default="Unknown User"
-        
     )
-    phone_number = models.CharField(
-        verbose_name='phone number',
-        max_length=20,
-        blank=True,
-        null=True
-    )
+    
     password = models.CharField(
         verbose_name='password hash',
         max_length=128,
