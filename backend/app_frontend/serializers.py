@@ -20,25 +20,16 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['email', 'phone_number', 'full_name', 'password', 'confirm_password']
+        fields = ['email', 'full_name', 'password', 'confirm_password']
         extra_kwargs = {
-            'email': {'required': False},
-            'phone_number': {'required': False}
+            'email': {'required': True}
         }
 
     def validate(self, data):
-        email = data.get('email')
-        phone_number = data.get('phone_number')
-
-        # Ensure either email or phone_number is provided, but not both
-        if not email and not phone_number:
+        # Ensure email is provided
+        if not data.get('email'):
             raise serializers.ValidationError({
-                'error': 'You must provide either an email or a phone number.'
-            })
-        
-        if email and phone_number:
-            raise serializers.ValidationError({
-                'error': 'You can only provide either an email or a phone number, not both.'
+                'email': 'Email is required.'
             })
 
         # Ensure passwords match
@@ -54,8 +45,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         
         # Create user based on provided credentials
         user = CustomUser.objects.create_user(
-            email=validated_data.get('email'),
-            phone_number=validated_data.get('phone_number'),
+            email=validated_data['email'],
             full_name=validated_data['full_name'],
             password=validated_data['password']
         )

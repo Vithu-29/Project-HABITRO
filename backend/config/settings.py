@@ -81,11 +81,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('DB_NAME', default='app_frontend'),  # Your database name
-        'USER': config('DB_USER', default='root'),  # Your MySQL username
-        'PASSWORD': config('DB_PASSWORD', default='Anu+242001'),  # Your MySQL password
-        'HOST': config('DB_HOST', default='localhost'),  # Keep 'localhost' if MySQL runs locally
-        'PORT': config('DB_PORT', default='3306'),  # Default MySQL port
+        'NAME': config('DB_NAME'),  # Your database name
+        'USER': config('DB_USER'),  # Your MySQL username
+        'PASSWORD': config('DB_PASSWORD'),  # Your MySQL password
+        'HOST': config('DB_HOST', ),  # Keep 'localhost' if MySQL runs locally
+        'PORT': config('DB_PORT', ),  # Default MySQL port
     }
 }
 
@@ -109,12 +109,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8000",  # Backend URL
-    "http://192.168.8.101:8000",  # Frontend URL
+    "http://192.168.8.100:8000",  # Frontend URL
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000",
-    "http://192.168.8.101:8000",
+    "http://192.168.8.100:8000",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
