@@ -1,13 +1,17 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.utils import timezone
+from django.contrib.auth import authenticate
 from datetime import timedelta
 from .models import CustomUser, OTPVerification
 from .serializers import RegisterSerializer, VerifyOTPSerializer
 
 # Registration Step 1: Send OTP and Temporarily Store Data
+
+
 class RegisterView(generics.GenericAPIView):
     serializer_class = RegisterSerializer
 
@@ -45,6 +49,8 @@ class RegisterView(generics.GenericAPIView):
         return Response({"message": "OTP sent to your email"}, status=status.HTTP_200_OK)
 
 # Registration Step 2: Verify OTP and Create Account
+
+
 class VerifyOTPView(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
         email = request.data.get('email', '').strip().lower()
@@ -59,7 +65,8 @@ class VerifyOTPView(generics.GenericAPIView):
         print("Current OTP records in DB:", list(all_records))
 
         try:
-            otp_record = OTPVerification.objects.get(email=email, otp=otp_input)
+            otp_record = OTPVerification.objects.get(
+                email=email, otp=otp_input)
         except OTPVerification.DoesNotExist:
             return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -71,7 +78,7 @@ class VerifyOTPView(generics.GenericAPIView):
             print("Expired: True")
             otp_record.delete()
             return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         # Debug: OTP is valid
         print("OTP Expiration Check:")
         print("Created At:", otp_record.created_at)
@@ -89,3 +96,20 @@ class VerifyOTPView(generics.GenericAPIView):
         otp_record.delete()
 
         return Response({"message": "User created successfully"}, status=status.HTTP_201_CREATED)
+
+# Login View
+
+
+class LoginView(APIView):
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        password = request.data.get('password')
+
+
+        # Authenticate the user
+        user = authenticate(request, username=email, password=password)
+
+        if user is not None:
+            return Response({"message": "Login successful"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "Invalid email or password"}, status=status.HTTP_400_BAD_REQUEST)
