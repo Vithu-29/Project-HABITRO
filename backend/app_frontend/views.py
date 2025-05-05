@@ -9,7 +9,7 @@ from datetime import timedelta
 from .models import CustomUser, OTPVerification
 from .serializers import RegisterSerializer, VerifyOTPSerializer
 
-# Registration Step 1: Send OTP and Temporarily Store Data
+#  Register View
 
 
 class RegisterView(generics.GenericAPIView):
@@ -48,21 +48,12 @@ class RegisterView(generics.GenericAPIView):
 
         return Response({"message": "OTP sent to your email"}, status=status.HTTP_200_OK)
 
-# Registration Step 2: Verify OTP and Create Account
-
+# Verify OTP View
 
 class VerifyOTPView(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
         email = request.data.get('email', '').strip().lower()
         otp_input = request.data.get('otp', '').strip()
-
-        print("Incoming verify request:")
-        print("Email:", email)
-        print("OTP:", otp_input)
-
-        # Debug: Print all OTP records (optional)
-        all_records = OTPVerification.objects.all().values()
-        print("Current OTP records in DB:", list(all_records))
 
         try:
             otp_record = OTPVerification.objects.get(
@@ -70,20 +61,9 @@ class VerifyOTPView(generics.GenericAPIView):
         except OTPVerification.DoesNotExist:
             return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check if OTP has expired
         if timezone.now() > otp_record.created_at + timedelta(minutes=5):
-            print("OTP Expiration Check:")
-            print("Created At:", otp_record.created_at)
-            print("Current Time:", timezone.now())
-            print("Expired: True")
             otp_record.delete()
             return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Debug: OTP is valid
-        print("OTP Expiration Check:")
-        print("Created At:", otp_record.created_at)
-        print("Current Time:", timezone.now())
-        print("Expired: False")
 
         # Create user
         CustomUser.objects.create_user(
@@ -92,12 +72,11 @@ class VerifyOTPView(generics.GenericAPIView):
             full_name=otp_record.full_name
         )
 
-        # Delete OTP record after success
         otp_record.delete()
 
         return Response({"message": "User created successfully"}, status=status.HTTP_201_CREATED)
 
-# Login View
+#  Login View
 
 
 class LoginView(APIView):
@@ -105,11 +84,99 @@ class LoginView(APIView):
         email = request.data.get('email')
         password = request.data.get('password')
 
-
-        # Authenticate the user
         user = authenticate(request, username=email, password=password)
 
         if user is not None:
             return Response({"message": "Login successful"}, status=status.HTTP_200_OK)
         else:
             return Response({"error": "Invalid email or password"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# Forgot Password View
+class ForgotPasswordView(APIView):
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email', '').strip().lower()
+
+        # Check if the email exists in the database
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "Email does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate a 6-digit OTP
+        otp = get_random_string(length=6, allowed_chars='0123456789')
+
+        # Save or update the OTP in the database
+        OTPVerification.objects.update_or_create(
+            email=email,
+            defaults={
+                "otp": otp,
+                "created_at": timezone.now(),
+            }
+        )
+
+        # Send the OTP to the user's email
+        try:
+            send_mail(
+                'Password Reset OTP',
+                f'Your OTP for password reset is {otp}',
+                'noreply@yourapp.com',  # Replace with your sender email
+                [email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            return Response({"error": f"Failed to send email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({"message": "OTP sent to your email"}, status=status.HTTP_200_OK)
+
+# Verify Forgot Password OTP View
+
+
+class VerifyForgotPasswordOTPView(APIView):
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email', '').strip().lower()
+        otp_input = request.data.get('otp', '').strip()
+
+        # Check if the OTP is valid
+        try:
+            otp_record = OTPVerification.objects.get(
+                email=email, otp=otp_input)
+        except OTPVerification.DoesNotExist:
+            return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if OTP has expired
+        if timezone.now() > otp_record.created_at + timedelta(minutes=5):
+            otp_record.delete()
+            return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
+
+#  Reset Password View
+
+
+class ResetPasswordView(APIView):
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email', '').strip().lower()
+        new_password = request.data.get('new_password', '').strip()
+        confirm_password = request.data.get('confirm_password', '').strip()
+
+        # Check if passwords match
+        if new_password != confirm_password:
+            return Response({"error": "Passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate password strength
+        if len(new_password) < 8 or not any(char.isupper() for char in new_password) or not any(char.islower() for char in new_password) or not any(char.isdigit() for char in new_password):
+            return Response({"error": "Password does not meet the required conditions"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update password
+        try:
+            user = CustomUser.objects.get(email=email)
+            user.set_password(new_password)
+            user.save()
+
+            # Optionally clean up OTP record after reset
+            OTPVerification.objects.filter(email=email).delete()
+
+            return Response({"message": "Password reset successfully"}, status=status.HTTP_200_OK)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User does not exist"}, status=status.HTTP_400_BAD_REQUEST)

@@ -1,4 +1,4 @@
-// ignore_for_file: sort_child_properties_last, use_key_in_widget_constructors, library_private_types_in_public_api, prefer_final_fields, use_build_context_synchronously
+// ignore_for_file: sort_child_properties_last, use_key_in_widget_constructors, library_private_types_in_public_api, use_build_context_synchronously
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -16,7 +16,7 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _rememberMe = false;
   bool _isLoading = false;
   bool _isPasswordVisible = false;
-
+  
   Future<void> _signIn() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
