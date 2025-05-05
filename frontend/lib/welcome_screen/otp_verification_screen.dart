@@ -4,12 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:frontend/api_config.dart';
-
+import 'package:frontend/welcome_screen/resetpassword_screen.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
-  final String email; // Used for UI only
+  final String email; // Email of the user
+  final bool isForgotPassword; // Determines the flow (signup or forgot password)
 
-  const OTPVerificationScreen({super.key, required this.email});
+  const OTPVerificationScreen({
+    super.key,
+    required this.email,
+    required this.isForgotPassword,
+  });
 
   @override
   OTPVerificationScreenState createState() => OTPVerificationScreenState();
@@ -23,17 +28,21 @@ class OTPVerificationScreenState extends State<OTPVerificationScreen> {
     setState(() => _isLoading = true);
 
     final body = {
-      "email": widget.email.trim().toLowerCase(), 
-      "otp": _otpController.text.trim(),  // only send OTP now
+      "email": widget.email.trim().toLowerCase(),
+      "otp": _otpController.text.trim(),
     };
 
-    print('Sending OTP verification for: ${widget.email}, Code: ${_otpController.text.trim()}');
-
-
+    print(
+        'Sending OTP verification for: ${widget.email}, Code: ${_otpController.text.trim()}, Forgot Password: ${widget.isForgotPassword}');
 
     try {
+      // Determine the endpoint based on the flow
+      final endpoint = widget.isForgotPassword
+          ? "${ApiConfig.baseUrl}verify-forgot-password-otp/"
+          : "${ApiConfig.baseUrl}verify-otp/";
+
       final response = await http.post(
-        Uri.parse("${ApiConfig.baseUrl}verify-otp/"),
+        Uri.parse(endpoint),
         headers: {
           "Content-Type": "application/json",
         },
@@ -44,7 +53,22 @@ class OTPVerificationScreenState extends State<OTPVerificationScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Verification successful!')),
         );
-        Navigator.pushReplacementNamed(context, '/home');
+
+        // Navigate based on the flow
+        if (widget.isForgotPassword) {
+          // Navigate to ResetPasswordScreen for forgot password flow
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ResetPasswordScreen(
+                email: widget.email, // Pass the user's email
+              ),
+            ),
+          );
+        } else {
+          // Navigate to SignInScreen for signup flow
+          Navigator.pushReplacementNamed(context, '/signin');
+        }
       } else {
         final error = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -108,7 +132,8 @@ class OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 ),
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Continue', style: TextStyle(color: Colors.white)),
+                    : const Text('Continue',
+                        style: TextStyle(color: Colors.white)),
               ),
             ),
             const SizedBox(height: 16),
@@ -116,7 +141,9 @@ class OTPVerificationScreenState extends State<OTPVerificationScreen> {
               onPressed: () {
                 // OPTIONAL: implement resend OTP later if needed
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Resend code functionality not implemented')),
+                  const SnackBar(
+                      content:
+                          Text('Resend code functionality not implemented')),
                 );
               },
               child: const Text(
@@ -128,5 +155,11 @@ class OTPVerificationScreenState extends State<OTPVerificationScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _otpController.dispose();
+    super.dispose();
   }
 }

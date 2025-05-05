@@ -26,7 +26,7 @@ SECRET_KEY = config('SECRET_KEY', default='your-default-secret-key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost, 192.168.8.101').split(',')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost,192.168.8.101').split(',')
 
 
 # Application definition
@@ -111,12 +111,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8000",  # Backend URL
-    "http://192.168.8.100:8000",  # Frontend URL
+    "http://192.168.8.101:8000",  # Frontend URL
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000",
-    "http://192.168.8.100:8000",
+    "http://192.168.8.101:8000",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
