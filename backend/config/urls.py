@@ -19,5 +19,11 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('app_frontend/', include('app_frontend.urls')),  
+
+    # Include URLs from app_frontend
+    path('app_frontend/', include('app_frontend.urls')),
+
+    # Include admin_auth URLs under /api/
+    path('admin_auth/', include('admin_auth.urls')),
 ]
+
