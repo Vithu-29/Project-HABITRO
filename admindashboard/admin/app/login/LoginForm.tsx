@@ -78,7 +78,7 @@ export default function RegisterForm() {
 
   return (
     <form onSubmit={handleRegister} className="flex-1 max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
-      <h1 className="text-3xl font-bold mb-6 text-blue-800 text-center">Welcome Back!</h1>
+      <h1 className="text-3xl font-bold mb-6 text-[#2853AF] text-center">Welcome Back!</h1>
 
       {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">{error}</div>}
       {success && <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg">{success}</div>}
@@ -89,7 +89,7 @@ export default function RegisterForm() {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="example@gmail.com"
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 bg-gray-50 text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 bg-gray-50 text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2853AF] focus:border-transparent"
         required
       />
 
@@ -100,13 +100,13 @@ export default function RegisterForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Enter a strong password"
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2853AF] focus:border-transparent"
           required
         />
         <button
           type="button"
           onClick={() => setShowPassword(!showPassword)}
-          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600"
+          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-[#2853AF]"
           aria-label="Toggle password visibility"
         >
           {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
@@ -116,7 +116,7 @@ export default function RegisterForm() {
       <button
         type="submit"
         disabled={isLoading}
-        className={`w-full ${isLoading ? 'bg-blue-500' : 'bg-blue-700'} text-white py-2 rounded-lg hover:bg-blue-800 font-semibold transition flex justify-center items-center`}
+        className={`w-full ${isLoading ? 'bg-[#2853AF] opacity-80' : 'bg-[#2853AF]'} text-white py-2 rounded-lg hover:bg-[#1d4299] font-semibold transition flex justify-center items-center`}
       >
         {isLoading ? (
           <>
@@ -127,7 +127,7 @@ export default function RegisterForm() {
             Registering...
           </>
         ) : (
-          'sign in'
+          'Sign In'
         )}
       </button>
     </form>
