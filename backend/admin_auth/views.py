@@ -20,8 +20,12 @@ class AdminLoginView(APIView):
                 request.session['admin_id'] = admin_id
                 return Response({
                     "status": "success",
-                    "email": email
+                    "email": email,
+                    "redirect": "/dashboard"
                 })
+                
+                response.set_cookie('sessionid', request.session.session_key)
+                return response
             
             return Response({"error": "Invalid credentials"}, status=401)
             
