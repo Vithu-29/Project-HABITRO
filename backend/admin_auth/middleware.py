@@ -1,4 +1,3 @@
-# middleware.py
 from django.utils.deprecation import MiddlewareMixin
 from django.http import JsonResponse
 
@@ -6,6 +5,9 @@ class AdminAuthMiddleware(MiddlewareMixin):
     EXEMPT_PATHS = [
         '/',
         '/admin_auth/admin-login/',
+        '/admin_auth/forgot-password/',
+        '/admin_auth/verify-otp/',
+        '/admin_auth/reset-password/',
         '/static/',
         '/media/',
     ]

@@ -1,8 +1,8 @@
+
 from rest_framework import serializers
-from django.contrib.auth.hashers import check_password
-from django.db import connections
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+import re
 import logging
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ class AdminLoginSerializer(serializers.Serializer):
                 cursor.execute(
                     """
                     SELECT id, email, password, g_active, 
-                           iq_staff, iq_superuser, last_login
+                    iq_staff, iq_superuser, last_login
                     FROM admin_details 
                     WHERE email = %s
                     """,
@@ -87,3 +87,59 @@ class AdminLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError({
                 'non_field_errors': ['Authentication service unavailable']
             })
+
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.CharField(required=True)
+
+    def validate_email(self, value):
+        value = value.lower().strip()
+        try:
+            validate_email(value)
+            return value
+        except ValidationError:
+            raise serializers.ValidationError("Enter a valid email address")
+
+class VerifyOTPSerializer(serializers.Serializer):
+    otp = serializers.CharField(
+        required=True, 
+        min_length=6, 
+        max_length=6,
+        help_text="6-digit OTP"
+    )
+
+    def validate_otp(self, value):
+        if not value.isdigit():
+            raise serializers.ValidationError("OTP must be 6 digits")
+        return value
+
+class ResetPasswordSerializer(serializers.Serializer):
+    new_password = serializers.CharField(
+        required=True,
+        write_only=True,
+        min_length=8,
+        help_text="New password (min 8 chars)"
+    )
+    confirm_password = serializers.CharField(
+        required=True,
+        write_only=True,
+        help_text="Must match new password"
+    )
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError({
+                'confirm_password': ["Passwords don't match"]
+            })
+        
+        password = data['new_password']
+        if (len(password) < 8 or 
+            not re.search(r'[A-Z]', password) or 
+            not re.search(r'[a-z]', password) or 
+            not re.search(r'[0-9]', password) or 
+            not re.search(r'[^A-Za-z0-9]', password)):
+            raise serializers.ValidationError({
+                'new_password': ["Password must contain 8+ chars with uppercase, lowercase, number, and special char"]
+            })
+        
+        return data
