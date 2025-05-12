@@ -1,40 +1,49 @@
-from django.db import models
-from django.contrib.auth.hashers import make_password, check_password
-from django.core.validators import RegexValidator
+from django.db import connections
+from django.contrib.auth.hashers import check_password
+from django.core.exceptions import ValidationError
+import logging
 
-class AdminUser(models.Model):
-    email = models.EmailField(
-        unique=True,
-        validators=[
-            RegexValidator(
-                regex=r'^[\w\.-]+@gmail\.com$',
-                message="Only Gmail addresses are allowed (e.g., example@gmail.com)"
-            )
-        ]
-    )
-    password = models.CharField(max_length=255)  # Stores hashed password
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+logger = logging.getLogger(__name__)
 
-    def __str__(self):
-        return self.email
-    
-    def set_password(self, raw_password):
-        """Hashes and stores the password"""
-        self.password = make_password(raw_password)
-    
-    def check_password(self, raw_password):
-        """Verifies the password"""
-        return check_password(raw_password, self.password)
-    
-    @classmethod
-    def create_admin(cls, email, password):
-        """Creates new admin with hashed password"""
-        email = email.lower().strip()
-        if cls.objects.filter(email=email).exists():
-            raise ValueError("Admin with this email already exists")
-        
-        admin = cls(email=email)
-        admin.set_password(password)
-        admin.save()
-        return admin
+class HabitroAdminManager:
+    @staticmethod
+    def authenticate(email, password):
+        """
+        Verify email/password against admin_details table
+        Returns admin_id if valid, None otherwise
+        """
+        try:
+            with connections['habitro'].cursor() as cursor:
+                # Get id, email, password, is_active
+                cursor.execute(
+                    """
+                    SELECT id, email, password, is_active 
+                    FROM admin_details 
+                    WHERE email = %s
+                    """,
+                    [email.lower().strip()]
+                )
+                result = cursor.fetchone()
+                
+                if not result:
+                    logger.warning(f"Admin not found: {email}")
+                    return None
+                
+                admin_id, stored_email, stored_hash, is_active = result
+                
+                # Check account active status
+                if not is_active:
+                    logger.warning(f"Inactive admin account: {email}")
+                    raise ValidationError("Account is inactive")
+                
+                # Auto-hashes and compares passwords
+                if not check_password(password, stored_hash):
+                    logger.warning(f"Password mismatch for: {email}")
+                    return None
+                
+                logger.info(f"Authenticated admin: {email}")
+                return admin_id
+                
+        except Exception as e:
+            logger.error(f"Authentication error: {str(e)}")
+            raise ValidationError("Authentication service unavailable")
