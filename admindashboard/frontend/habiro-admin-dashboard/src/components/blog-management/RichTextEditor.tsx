@@ -31,8 +31,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ onSend = () => {} }) =>
   };
 
   return (
-    <div className="bg-white p-4 shadow-lg rounded-lg relative h-[400px]">
-      <h2 className="text-xl font-semibold mb-2">Write Your Blog Content</h2>
+    <div className="bg-white p-4 shadow-lg rounded-lg relative h-[400px] dark:bg-gray-dark dark:shadow-card">
+      <h2 className="text-xl font-semibold mb-2 dark:text-white">Write Your Blog Content</h2>
       <ReactQuill
         theme="snow"
         value={content}

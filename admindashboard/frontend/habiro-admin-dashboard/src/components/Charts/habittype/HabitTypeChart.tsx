@@ -17,7 +17,7 @@ const Chart = dynamic(() => import("react-apexcharts"), {
 export function HabitTypeChart({ data }: PropsType) {
   const options: ApexOptions = {
     labels: ["Good Habits", "Bad Habits"],
-    colors: ["#34D399", "#F87171"], // Green for good, Red for bad
+    colors: ["#4b38d3", "#8477e1"], // Green for good, Red for bad
     chart: {
       type: "pie",
     },

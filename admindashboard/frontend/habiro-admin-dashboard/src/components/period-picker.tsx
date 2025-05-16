@@ -1,5 +1,4 @@
 "use client";
-
 import { ChevronUpIcon } from "@/assets/icons";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";

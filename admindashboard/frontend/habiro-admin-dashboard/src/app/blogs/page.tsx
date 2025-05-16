@@ -31,7 +31,7 @@ export default function BlogManagement() {
 
       {/* Show Rich Text Editor when button is clicked */}
       {showEditor && (
-        <div className="bg-white p-4 rounded-lg shadow-md mb-6 h-[500px]">
+        <div className="bg-white p-4 rounded-lg shadow-md mb-6 h-[500px] dark:bg-gray-dark dark:shadow-card ">
           <RichTextEditor />
           <Button
             onClick={() => setShowEditor(false)}

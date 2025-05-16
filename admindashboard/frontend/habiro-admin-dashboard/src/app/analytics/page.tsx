@@ -17,7 +17,7 @@ const AnalyticsPage = () => {
           <button
             key={tab}
             onClick={() => setSelectedTab(tab)}
-            className={`px-4 py-2 rounded-lg ${selectedTab === tab ? "bg-blue-600 text-white" : "bg-gray-300"
+            className={`px-4 py-2 rounded-lg ${selectedTab === tab ? "bg-blue-600  text-white" : "bg-gray-300 hover:bg-gray-400 text-gray-800"
               }`}
           >
             {tab.replace(/([A-Z])/g, " $1").trim()}

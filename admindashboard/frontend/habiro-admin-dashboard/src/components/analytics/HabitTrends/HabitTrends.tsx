@@ -21,7 +21,7 @@ const HabitTrends = () => {
           <YAxis />
           <Tooltip />
           <Legend />
-          <Bar dataKey="users" fill="#10B981" />
+          <Bar dataKey="users" fill="#1f71d8" />
         </BarChart>
       </ResponsiveContainer>
     </div>

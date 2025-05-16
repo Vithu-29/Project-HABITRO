@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recha
 import { motion } from "framer-motion";
 import axios from "@/lib/axios";
 
-const COLORS = ["#4F46E5", "#FACC15", "#F43F5E"];
+const COLORS = ["#4F46E5", "#8f89ee", "#46dbe4"];
 
 const UserEngagement = () => {
   const [data, setData] = useState([]);
