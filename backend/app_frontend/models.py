@@ -102,8 +102,8 @@ class OTPVerification(models.Model):
         ordering = ['-created_at']
 
     def is_expired(self):
-        """Check if OTP has expired (5 minute lifetime)"""
-        return timezone.now() > self.created_at + timedelta(minutes=5)
+        """Check if OTP has expired (15 minute lifetime)"""
+        return timezone.now() > self.created_at + timedelta(minutes=15)
 
     def __str__(self):
         return f"OTP for {self.email} ({'expired' if self.is_expired() else 'active'})"

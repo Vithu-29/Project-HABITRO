@@ -56,6 +56,10 @@ class AdminLoginView(APIView):
 
 class ForgotPasswordView(APIView):
     def post(self, request):
+        # Ensure session exists before proceeding
+        if not request.session.session_key:
+            request.session.create()
+            
         serializer = ForgotPasswordSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -64,12 +68,19 @@ class ForgotPasswordView(APIView):
         logger.info(f"Password reset requested for: {email}")
         
         try:
+            # Store email in session immediately
+            request.session['reset_email'] = email
+            request.session.modified = True
+            
             otp = HabitroAdminManager.generate_otp(request, email)
             if not otp:
                 return Response(
                     {"error": "No account found with this email"},
                     status=status.HTTP_404_NOT_FOUND
                 )
+            
+            # Force session save and set cookie headers
+            request.session.save()
             
             send_mail(
                 'Password Reset OTP',
@@ -79,9 +90,21 @@ class ForgotPasswordView(APIView):
                 fail_silently=False,
             )
             
-            return Response({
-                "message": "OTP sent to your email"
-            })
+            response = Response({"message": "OTP sent to your email"})
+            
+            # Explicitly set session cookie in response
+            response.set_cookie(
+                settings.SESSION_COOKIE_NAME,
+                request.session.session_key,
+                max_age=settings.SESSION_COOKIE_AGE,
+                domain=settings.SESSION_COOKIE_DOMAIN,
+                path=settings.SESSION_COOKIE_PATH,
+                secure=settings.SESSION_COOKIE_SECURE,
+                httponly=settings.SESSION_COOKIE_HTTPONLY,
+                samesite=settings.SESSION_COOKIE_SAMESITE
+            )
+            
+            return response
             
         except Exception as e:
             logger.error(f"Forgot password error: {str(e)}", exc_info=True)
@@ -97,17 +120,26 @@ class VerifyOTPView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         otp = serializer.validated_data['otp']
-        logger.info(f"Verifying OTP: {otp}")
+        logger.info(f"Verifying OTP: {otp} for session {request.session.session_key}")
         
-        if HabitroAdminManager.verify_otp(request, otp):
-            return Response({
-                "message": "OTP verified successfully",
-                "verified": True
-            })
-        else:
+        try:
+            if HabitroAdminManager.verify_otp(request, otp):
+                # Ensure session is saved
+                request.session['otp_verified'] = True
+                request.session.save()
+                return Response({
+                    "message": "OTP verified successfully",
+                    "verified": True
+                })
             return Response(
                 {"error": "Invalid or expired OTP", "verified": False},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            logger.error(f"OTP verification error: {str(e)}")
+            return Response(
+                {"error": "OTP verification failed"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 class ResetPasswordView(APIView):

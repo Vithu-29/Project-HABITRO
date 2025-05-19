@@ -11,8 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security
 SECRET_KEY = config('SECRET_KEY', default='your-default-secret-key')
 DEBUG = config('DEBUG', default=True, cast=bool)
-ALLOWED_HOSTS = config(
-    'ALLOWED_HOSTS', default='127.0.0.1,localhost,192.168.8.101,192.168.166.1,192.168.168.1').split(',')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS').split(',')
 
 # Application definition
 INSTALLED_APPS = [
@@ -30,9 +29,10 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -40,6 +40,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'config.urls'
+APPEND_SLASH = False  # Disable automatic slash appending
 
 TEMPLATES = [
     {
@@ -101,23 +102,15 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # CORS Settings (Updated for both mobile app and Next.js)
-CORS_ALLOWED_ORIGINS = [
-    # Existing mobile app origins
-    "http://127.0.0.1:8000",
-    "http://192.168.8.101:8000",
+CORS_ALLOWED_ORIGINS = []
 
-    # New Next.js development origins
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://192.168.166.1:3000",
-    "http://192.168.166.1:8000",
-    "http://192.168.168.1:3000", 
-    "http://192.168.168.1:8080"
-]
 
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = True
+
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = False
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
@@ -142,7 +135,7 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 1800
 SESSION_COOKIE_SECURE = False
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'None'
 
 CACHES = {
     'default': {

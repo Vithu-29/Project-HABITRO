@@ -29,7 +29,7 @@ class RegisterView(generics.GenericAPIView):
         # Delete previous OTPs for same email
         OTPVerification.objects.filter(email=email).delete()
 
-        # Save temp registration data with OTP
+        #  registration data
         OTPVerification.objects.create(
             email=email,
             otp=otp,
@@ -50,6 +50,7 @@ class RegisterView(generics.GenericAPIView):
 
 # Verify OTP View
 
+
 class VerifyOTPView(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
         email = request.data.get('email', '').strip().lower()
@@ -61,7 +62,7 @@ class VerifyOTPView(generics.GenericAPIView):
         except OTPVerification.DoesNotExist:
             return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if timezone.now() > otp_record.created_at + timedelta(minutes=5):
+        if timezone.now() > otp_record.created_at + timedelta(minutes=15):
             otp_record.delete()
             return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -120,7 +121,7 @@ class ForgotPasswordView(APIView):
             send_mail(
                 'Password Reset OTP',
                 f'Your OTP for password reset is {otp}',
-                'noreply@yourapp.com',  # Replace with your sender email
+                'noreply@yourapp.com',  # sender email
                 [email],
                 fail_silently=False,
             )
@@ -145,7 +146,7 @@ class VerifyForgotPasswordOTPView(APIView):
             return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if OTP has expired
-        if timezone.now() > otp_record.created_at + timedelta(minutes=5):
+        if timezone.now() > otp_record.created_at + timedelta(minutes=15):
             otp_record.delete()
             return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
 

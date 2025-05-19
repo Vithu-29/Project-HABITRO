@@ -3,5 +3,7 @@
         "corsheaders",
         "habitro",
         "prefs"
-    ]
+    ],
+    "dart.previewFlutterUiGuides": true,
+    "dart.previewFlutterUiGuidesCustomTracking": true
 }
