@@ -4,7 +4,7 @@ import "package:frontend/explore_screen/explore_screen.dart";
 import "package:frontend/home_screen/home_screen.dart";
 import "package:frontend/profile_screen/profile_screen.dart";
 import "package:frontend/report_screen/report_screen.dart";
-import "package:frontend/reward%20screen/reward_screen.dart";
+import "package:frontend/reward_screen/reward_screen.dart";
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
