@@ -3,7 +3,7 @@ import axios from "@/lib/axios"; // ← import your axios instance
 
 export async function getOverviewData() {
   try {
-    const response = await axios.get('dashboard-overview/'); // no need full URL
+    const response = await axios.get('dashboard-overview/'); 
     return response.data; // Axios returns {data, status, ...}
   } catch (error) {
     console.error('Error fetching overview data:', error);

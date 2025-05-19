@@ -12,7 +12,7 @@ type PropsType = {
   className?: string;
 };
 
-export function HabitsOverview({ timeFrame = "monthly", className }: PropsType) {
+export function HabitsOverview({ timeFrame = "daily", className }: PropsType) {
   const [data, setData] = useState<{ habitsCreated: any[]; habitsCompleted: any[] }>({
     habitsCreated: [],
     habitsCompleted: [],

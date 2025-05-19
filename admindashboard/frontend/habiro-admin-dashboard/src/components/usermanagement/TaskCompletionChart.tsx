@@ -25,7 +25,7 @@ const TaskCompletionChart: React.FC<{ completed: number; pending: number }> = ({
   };
 
   return (
-    <div style={{ width: "300px", height: "300px" }}> {/* ✅ Fix chart size */}
+    <div style={{ width: "300px", height: "300px" }}> {/* Fix chart size */}
       <Pie data={data} />
     </div>
   );

@@ -30,7 +30,7 @@ const ScreenTimeChart: React.FC<{ screenTime: number[] }> = ({ screenTime }) => 
 
   const options = {
     responsive: true,
-    maintainAspectRatio: false, // ✅ Allows custom width & height
+    maintainAspectRatio: false, // Allows custom width & height
     scales: {
       y: {
         beginAtZero: true,
@@ -39,7 +39,7 @@ const ScreenTimeChart: React.FC<{ screenTime: number[] }> = ({ screenTime }) => 
   };
 
   return (
-    <div style={{ width: "400px", height: "250px" }}> {/* ✅ Fix chart size */}
+    <div style={{ width: "400px", height: "250px" }}> {/* Fix chart size */}
       <Bar data={data} options={options} />
     </div>
   );
