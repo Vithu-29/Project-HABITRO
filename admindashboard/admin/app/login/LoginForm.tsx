@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function LoginForm() {
   const [email, setEmail] = useState('');
@@ -25,7 +26,6 @@ export default function LoginForm() {
     setError('');
     setSuccess('');
 
-    // Email validation
     const emailError = validateEmail(email);
     if (emailError) {
       setError(emailError);
@@ -40,7 +40,7 @@ export default function LoginForm() {
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include', // Essential for session cookies
+        credentials: 'include',
         body: JSON.stringify({
           email: email.toLowerCase().trim(),
           password
@@ -54,14 +54,8 @@ export default function LoginForm() {
       }
 
       setSuccess('Login successful! Redirecting...');
-      
-      // Store auth state (optional)
       localStorage.setItem('isAuthenticated', 'true');
-      
-      // Redirect to dashboard after 1 second
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1000);
+      setTimeout(() => router.push('/dashboard'), 1000);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
@@ -74,17 +68,8 @@ export default function LoginForm() {
     <form onSubmit={handleLogin} className="flex-1 max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
       <h1 className="text-3xl font-bold mb-6 text-[#2853AF] text-center">Welcome Back!</h1>
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
-          {error}
-        </div>
-      )}
-      
-      {success && (
-        <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg">
-          {success}
-        </div>
-      )}
+      {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">{error}</div>}
+      {success && <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg">{success}</div>}
 
       <div className="space-y-4">
         <div>
@@ -121,6 +106,25 @@ export default function LoginForm() {
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
+        </div>
+
+        <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="remember-me"
+              className="h-4 w-4 text-[#2853AF] focus:ring-[#2853AF] border-gray-300 rounded"
+            />
+            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+              Remember Me
+            </label>
+          </div>
+          <Link 
+            href="/ForgotPassword"
+            className="text-sm text-[#2853AF] hover:text-[#1d4299] font-medium"
+          >
+            Forgot Password?
+          </Link>
         </div>
 
         <button

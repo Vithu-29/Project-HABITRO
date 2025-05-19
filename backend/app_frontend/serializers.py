@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.core.validators import MinLengthValidator
 from .models import CustomUser
 
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True,
@@ -16,6 +17,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         write_only=True,
         required=True,
         style={'input_type': 'password'}
+
     )
 
     class Meta:
@@ -41,8 +43,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        validated_data.pop('confirm_password')  # Remove confirm_password before saving
-        
+        # Remove confirm_password before saving
+        validated_data.pop('confirm_password')
+
         # Create user based on provided credentials
         user = CustomUser.objects.create_user(
             email=validated_data['email'],

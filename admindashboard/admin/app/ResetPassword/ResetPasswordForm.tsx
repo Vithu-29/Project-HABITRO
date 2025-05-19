@@ -9,17 +9,27 @@ export default function ResetPasswordForm() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validatePassword = (password: string) => {
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return 'Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character';
+    }
+    return '';
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    if (!password || !confirmPassword) {
-      setError('Please fill in all fields');
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
 
@@ -28,15 +38,34 @@ export default function ResetPasswordForm() {
       return;
     }
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
-      return;
-    }
+    setIsLoading(true);
 
-    // Add your password reset logic here
-    console.log('Password reset with:', password);
-    setSuccess('Password reset successfully!');
-    setTimeout(() => router.push('/login'), 2000);
+    try {
+      const response = await fetch('http://127.0.0.1:8000/admin_auth/reset-password/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          new_password: password,
+          confirm_password: confirmPassword
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Password reset failed');
+      }
+
+      setSuccess('Password reset successfully! Redirecting...');
+      setTimeout(() => router.push('/Login'), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Password reset failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -50,17 +79,8 @@ export default function ResetPasswordForm() {
 
       <h2 className="text-3xl font-semibold text-[#2853AF] mb-6 text-center">Reset Password</h2>
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg">
-          {success}
-        </div>
-      )}
+      {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">{error}</div>}
+      {success && <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg">{success}</div>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -113,9 +133,12 @@ export default function ResetPasswordForm() {
 
         <button
           type="submit"
-          className="w-full bg-[#2853AF] text-white py-3 rounded-lg hover:bg-[#1d4299] font-medium transition mt-6"
+          disabled={isLoading}
+          className={`w-full bg-[#2853AF] text-white py-3 rounded-lg hover:bg-[#1d4299] font-medium transition mt-6 ${
+            isLoading ? 'opacity-80' : ''
+          }`}
         >
-          Reset Password
+          {isLoading ? 'Resetting Password...' : 'Reset Password'}
         </button>
       </form>
     </div>
