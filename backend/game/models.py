@@ -1,9 +1,16 @@
 from django.db import models
+from django.conf import settings
+from django.contrib.auth import get_user_model
 
 class GameStats(models.Model):
-    user_id = models.IntegerField(default=1)  # Hardcoded for now
+    user = models.ForeignKey(
+        get_user_model(),
+        on_delete=models.CASCADE,
+        related_name='game_stats',
+        null=True
+    ) 
     games_won = models.PositiveIntegerField(default=0)
-    best_time = models.PositiveIntegerField(default=0)  # In seconds
+    best_time = models.PositiveIntegerField(default=0) #in seconds
 
     class Meta:
         verbose_name_plural = "Game Statistics"

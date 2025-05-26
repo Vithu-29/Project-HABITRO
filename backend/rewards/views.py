@@ -1,20 +1,21 @@
 from decimal import Decimal
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view,permission_classes
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Reward
 from .serializers import RewardSerializer
 from django.utils import timezone
 from datetime import timedelta
+from rest_framework.permissions import IsAuthenticated
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_rewards(request):
-    user_id = 1
     reward, created = Reward.objects.get_or_create(
-        user_id=user_id,
+        user=request.user,
         defaults={
             'coins': 100,
-            'gems': Decimal('0.0'),
+            'gems': Decimal('2.0'),
             'daily_streak': 0,
             'max_streak': 0
         }
@@ -23,15 +24,16 @@ def get_rewards(request):
     return Response(serializer.data)
     
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def convert_coins(request):
-    user_id = 1
+    user=request.user
     amount = int(request.data.get('amount', 0))
     
     if amount < 100:
         return Response({"error": "Minimum 100 coins required"}, status=400)
     
     try:
-        reward = Reward.objects.get(user_id=user_id)
+        reward = Reward.objects.get(user=user)
         if reward.coins >= amount:
             reward.coins -= amount
             reward.gems += Decimal(amount) / 1000
@@ -42,10 +44,10 @@ def convert_coins(request):
         return Response(status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def claim_streak(request):
-    user_id = 1
     try:
-        reward = Reward.objects.get(user_id=user_id)
+        reward = Reward.objects.get(user=request.user)
         now = timezone.now()
         today = timezone.localtime(now).date()
 

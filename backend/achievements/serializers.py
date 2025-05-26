@@ -7,7 +7,7 @@ class AchievementSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class UserAchievementSerializer(serializers.ModelSerializer):
-    achievement = AchievementSerializer()  # Nest achievement details
+    achievement = AchievementSerializer()
     class Meta:
         model = UserAchievement
         fields = ['unlocked', 'is_collected', 'achievement']

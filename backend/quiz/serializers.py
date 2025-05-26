@@ -11,5 +11,5 @@ class UserProgressSerializer(serializers.ModelSerializer):
         model = UserProgress
         fields = ['current_question_index']
         extra_kwargs = {
-            'user_id': {'read_only': True}  # Auto-set to 1
+            'user': {'read_only': True}
         }

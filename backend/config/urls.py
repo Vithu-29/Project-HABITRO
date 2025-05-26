@@ -17,6 +17,7 @@ urlpatterns = [
     path('api/', include('rewards.urls')),
     path('game/', include('game.urls')),
     path('achievements/', include('achievements.urls')),
+    path('', include('articles.urls')),
 ]
 
 if settings.DEBUG:

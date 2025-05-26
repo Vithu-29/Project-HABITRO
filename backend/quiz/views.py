@@ -6,13 +6,16 @@ from rest_framework import status
 from .models import Quiz, UserProgress
 from .serializers import QuizSerializer, UserProgressSerializer
 from rewards.models import Reward
+from rest_framework.permissions import IsAuthenticated
 from decouple import config
 
 class GenerateQuizView(APIView):
+    permission_classes = [IsAuthenticated]
+    
     def post(self, request):
         url = "https://openrouter.ai/api/v1/chat/completions"
         headers = {
-            "Authorization": f"Bearer {config('OPENROUTER_API_KEY')}",
+            "Authorization": f"Bearer {config('OPENROUTER_API_KEY')}", #place openrouter api key inside .env 
             "Content-Type": "application/json",
         }
 
@@ -49,7 +52,7 @@ class GenerateQuizView(APIView):
             try:
                 quizzes = json.loads(content)
                 
-                # Validate and save quizzes
+                # Validate quiz format and save to DB
                 for quiz in quizzes:
                     if not all(key in quiz for key in ('question', 'options', 'answer')):
                         raise ValueError("Invalid quiz format")
@@ -88,10 +91,10 @@ class GenerateQuizView(APIView):
 
 
 class GetQuizView(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         try:
-            # Hardcoded user_id=1
-            progress, _ = UserProgress.objects.get_or_create(user_id=1)
+            progress, _ = UserProgress.objects.get_or_create(user=request.user)
             quizzes = Quiz.objects.all()
 
             if quizzes.count() < progress.current_question_index + 10:
@@ -108,9 +111,10 @@ class GetQuizView(APIView):
             return Response({"error": str(e)}, status=500)
 
 class UpdateProgressView(APIView):
+    permission_classes = [IsAuthenticated]
     def patch(self, request):
         try:
-            progress, _ = UserProgress.objects.get_or_create(user_id=1)
+            progress, _ = UserProgress.objects.get_or_create(user=request.user)
             serializer = UserProgressSerializer(progress, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
@@ -120,14 +124,14 @@ class UpdateProgressView(APIView):
             return Response({"error": str(e)}, status=500)
 
 class AddCoinsView(APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request):
         try:
             coins = request.data.get('coins')
             if not coins:
                 return Response({"error": "Coins required"}, status=400)
 
-            # Hardcoded user_id=1
-            reward, _ = Reward.objects.get_or_create(user_id=1)
+            reward, _ = Reward.objects.get_or_create(user=request.user)
             reward.coins += int(coins)
             reward.save()
             return Response({"message": f"Added {coins} coins!"})

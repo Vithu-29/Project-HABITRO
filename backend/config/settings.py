@@ -21,29 +21,35 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'corsheaders',
-    'rest_framework',
     'rest_framework',
     'app_frontend',
     'corsheaders',
     'admin_auth',
+    'quiz',
     'rewards',
     'game',
     'achievements',
+    'articles',
+    'rest_framework.authtoken',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'admin_auth.middleware.AdminAuthMiddleware',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ]
+}
 
 ROOT_URLCONF = 'config.urls'
 APPEND_SLASH = False  # Disable automatic slash appending
@@ -81,14 +87,6 @@ DATABASES = {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },
     },
-    'habitro': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='3306'),
-    }
 }
 
 # Password validation
@@ -115,7 +113,7 @@ CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = True
 
-CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = False
 
 # Internationalization
@@ -141,7 +139,7 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 1800
 SESSION_COOKIE_SECURE = False
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SAMESITE = 'Lax'
 
 CACHES = {
     'default': {
@@ -150,14 +148,6 @@ CACHES = {
     }
 }
 
-# Optional: For development only
-if DEBUG:
-    CORS_ALLOWED_ORIGIN_REGEXES = [
-        r"^http://192\.168\.8\.\d{1,3}:\d+$",  # Mobile app IP range
-        r"^http://192\.168\.166\.\d{1,3}:\d+$",  # Next.js IP range
-        r"^http://localhost:\d+$",
-        r"^http://127\.0\.0\.1:\d+$",
-    ]
     
 import os
 

@@ -8,6 +8,7 @@ from django.contrib.auth import authenticate
 from datetime import timedelta
 from .models import CustomUser, OTPVerification
 from .serializers import RegisterSerializer, VerifyOTPSerializer
+from rest_framework.authtoken.models import Token
 
 #  Register View
 
@@ -88,10 +89,18 @@ class LoginView(APIView):
         user = authenticate(request, username=email, password=password)
 
         if user is not None:
-            return Response({"message": "Login successful"}, status=status.HTTP_200_OK)
+            # Generate or get existing token
+            token, _ = Token.objects.get_or_create(user=user)
+            return Response({
+                "token": token.key,  # Include token in response
+                "message": "Login successful",
+                "user_id": user.id,  # Optional: Include user details
+                "email": user.email
+            }, status=status.HTTP_200_OK)
         else:
-            return Response({"error": "Invalid email or password"}, status=status.HTTP_400_BAD_REQUEST)
-
+            return Response({
+                "error": "Invalid email or password"
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 # Forgot Password View
 class ForgotPasswordView(APIView):
