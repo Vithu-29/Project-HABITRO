@@ -42,7 +42,7 @@ class _QuizScreenState extends State<QuizScreen> {
   Future<void> updateProgress() async {
     try {
       await QuizApiService.updateProgress(
-        currentQuestionIndex: currentQuestionIndex,
+        currentQuestionIndex: index + currentQuestionIndex,
       );
     } catch (e) {
       showError(e.toString());

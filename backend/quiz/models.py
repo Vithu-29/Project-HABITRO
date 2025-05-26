@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth import get_user_model
 
 class Quiz(models.Model):
     question = models.CharField(max_length=255)
@@ -12,7 +13,12 @@ class Quiz(models.Model):
         return self.question
 
 class UserProgress(models.Model):
-    user_id = models.IntegerField(default=1)  # You can make this unique if needed
+    user = models.ForeignKey(
+        get_user_model(),
+        on_delete=models.CASCADE,
+        related_name='quiz_progress',
+        null=True
+    )
     current_question_index = models.IntegerField(default=0)
 
     def __str__(self):

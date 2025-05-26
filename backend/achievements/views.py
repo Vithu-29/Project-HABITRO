@@ -5,12 +5,14 @@ from rest_framework.response import Response
 from rewards.models import Reward
 from .models import Achievement , UserAchievement
 from .serializers import AchievementSerializer , UserAchievementSerializer
+from rest_framework.permissions import IsAuthenticated
 
 class AllAchievementsView(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request):
-        user_id = 1  # Replace with authenticated user later
+        user= request.user
         global_achievements = Achievement.objects.all()
-        user_achievements = UserAchievement.objects.filter(user_id=user_id)
+        user_achievements = UserAchievement.objects.filter(user=user)
         
         merged_data = []
         for achievement in global_achievements:
@@ -26,17 +28,19 @@ class AllAchievementsView(APIView):
         return Response(merged_data)
 
 class UnlockedAchievementsView(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request):
-        unlocked = UserAchievement.objects.filter(user_id=1, unlocked=True)[:8]
+        unlocked = UserAchievement.objects.filter(user=request.user, unlocked=True)[:8]
         serializer = UserAchievementSerializer(unlocked, many=True)
         return Response(serializer.data)
 
 class ClaimAchievementView(APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request, achievement_id):
-        user_id = 1  # Replace with request.user.id after auth
+        user = request.user 
         try:
             user_achievement = UserAchievement.objects.get(
-                user_id=user_id,
+                user=user,
                 achievement_id=achievement_id,
                 unlocked=True,
                 is_collected=False
@@ -44,8 +48,7 @@ class ClaimAchievementView(APIView):
             user_achievement.is_collected = True
             user_achievement.save()
             
-            # Grant rewards (same as before)
-            reward = Reward.objects.get(user_id=user_id)
+            reward = Reward.objects.get(user=user)
             reward.coins += 500
             reward.gems += Decimal('1.0')
             reward.save()

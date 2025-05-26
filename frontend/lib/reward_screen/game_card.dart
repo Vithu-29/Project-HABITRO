@@ -5,11 +5,40 @@ import 'package:frontend/api_services/game_service.dart';
 import 'package:frontend/components/game_constants.dart';
 import 'package:frontend/reward_screen/game/game_board.dart';
 
-class GameCard extends StatelessWidget {
+class GameCard extends StatefulWidget {
   final VoidCallback? onGameCompleted;
   const GameCard({
-    super.key, this.onGameCompleted,
+    super.key,
+    this.onGameCompleted,
   });
+
+  @override
+  State<GameCard> createState() => _GameCardState();
+}
+
+class _GameCardState extends State<GameCard> {
+  double _gems = 0;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRewards();
+  }
+
+  Future<void> _fetchRewards() async {
+  try {
+    final rewards = await GameApiService.getRewards();
+    setState(() {
+      _gems = double.parse(rewards['gems'].toString());
+      _isLoading = false;
+    });
+  } catch (e) {
+    debugPrint('Error fetching rewards: $e');
+    setState(() => _isLoading = false);
+  }
+}
+  
 
   @override
   Widget build(BuildContext context) {
@@ -128,28 +157,32 @@ class GameCard extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(right: 12),
                           child: ElevatedButton(
-                            onPressed: () async {
-                              try {
-                                // Check and deduct gems
-                                await GameApiService.startGame();
+                            onPressed: _isLoading || _gems < 2
+                                ? null
+                                : () async {
+                                    try {
+                                      // Check and deduct gems
+                                      await GameApiService.startGame();
 
-                                // If successful, start game
-                                // ignore: unused_local_variable
-                                final gameResult = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) =>
-                                          GameBoard(gameLevel: level['level'])),
-                                );
-                                onGameCompleted?.call();
-                              } catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(e.toString())),
-                                );
-                              }
-                            },
+                                      // If successful, start game
+                                      // ignore: unused_local_variable
+                                      final gameResult = await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) => GameBoard(
+                                                gameLevel: level['level'])),
+                                      );
+                                      await _fetchRewards();
+                                      widget.onGameCompleted?.call();
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(content: Text(e.toString())),
+                                      );
+                                    }
+                                  },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
+                              backgroundColor: _gems >= 2 ? Colors.blue : Colors.grey,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(15),
                               ),

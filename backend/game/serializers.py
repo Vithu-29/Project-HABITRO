@@ -3,9 +3,9 @@ from rewards.models import Reward
 
 class GameStartSerializer(serializers.Serializer):
     def validate(self, attrs):
-        # Hardcoded user_id=1 for now
+        user = self.context['request'].user
         try:
-            reward = Reward.objects.get(user_id=1)
+            reward = Reward.objects.get(user=user)
             if reward.gems < 2:
                 raise serializers.ValidationError("Not enough gems to play")
             return attrs

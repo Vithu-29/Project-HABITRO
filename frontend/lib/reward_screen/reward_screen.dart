@@ -300,13 +300,13 @@ class __RewardsSectionState extends State<_RewardsSection> {
                     },
               style: ElevatedButton.styleFrom(
                 backgroundColor: isClaimedToday
-                    ? Colors.grey // Grey out if claimed
+                    ? Colors.grey 
                     : Theme.of(context).primaryColor,
               ),
               child: Text(
-                isClaimedToday ? 'Already Claimed' : 'Claim Today\'s Reward',
+                isClaimedToday ? 'Already Claimed' : 'Claim',
                 style: TextStyle(
-                  color: isClaimedToday ? Colors.white : null,
+                  color: Colors.white,
                 ),
               ),
             ),
