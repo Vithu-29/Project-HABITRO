@@ -1,11 +1,9 @@
-// ignore_for_file: use_build_context_synchronously
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:frontend/api_config.dart';
-import 'otp_verification_screen.dart'; // Import the OTPVerificationScreen
-
+import 'otp_verification_screen.dart'; 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
@@ -53,7 +51,7 @@ class SignUpScreenState extends State<SignUpScreen> {
       );
       return;
     }
-
+    
     // 2. Check character requirements (need at least 3/4)
     final hasUpper = password.contains(RegExp(r'[A-Z]'));
     final hasLower = password.contains(RegExp(r'[a-z]'));

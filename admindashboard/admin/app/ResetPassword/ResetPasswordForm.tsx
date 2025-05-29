@@ -27,11 +27,12 @@ export default function ResetPasswordForm() {
     setError('');
     setSuccess('');
 
-    const passwordError = validatePassword(password);
-    if (passwordError) {
-      setError(passwordError);
-      return;
-    }
+    // TEMP: Comment out frontend validation to see backend error
+    // const passwordError = validatePassword(password);
+    // if (passwordError) {
+    //   setError(passwordError);
+    //   return;
+    // }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
@@ -41,7 +42,7 @@ export default function ResetPasswordForm() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/admin_auth/reset-password/', {
+      const response = await fetch('http://localhost:8000/admin_auth/reset-password/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -56,11 +57,13 @@ export default function ResetPasswordForm() {
       const data = await response.json();
 
       if (!response.ok) {
+        // Log backend error for debugging
+        console.error('Backend error:', data);
         throw new Error(data.error || 'Password reset failed');
       }
 
       setSuccess('Password reset successfully! Redirecting...');
-      setTimeout(() => router.push('/Login'), 2000);
+      setTimeout(() => router.push('/login'), 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Password reset failed');
     } finally {
