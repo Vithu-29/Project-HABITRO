@@ -130,6 +130,10 @@ EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 
+# Text.lk SMS Gateway Settings
+TEXT_LK_API_KEY = config('TEXT_LK_API_KEY')
+TEXT_LK_SENDER_ID = config('TEXT_LK_SENDER_ID')
+
 # Session settings
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 1800
@@ -144,6 +148,7 @@ CACHES = {
     }
 }
 
+
 # Optional: For development only
 if DEBUG:
     CORS_ALLOWED_ORIGIN_REGEXES = [
@@ -152,4 +157,24 @@ if DEBUG:
         r"^http://localhost:\d+$",
         r"^http://127\.0\.0\.1:\d+$",
     ]
-    
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        'app_frontend': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}

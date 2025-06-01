@@ -7,13 +7,15 @@ import 'package:frontend/api_config.dart';
 import 'package:frontend/welcome_screen/resetpassword_screen.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
-  final String email; // Email of the user
+  final String? email; 
+  final String? phone;
   final bool isForgotPassword; // Determines the flow (signup or forgot password)
-
+  
   const OTPVerificationScreen({
     super.key,
-    required this.email,
+    this.email,
     required this.isForgotPassword,
+    this.phone,
   });
 
   @override
@@ -27,10 +29,11 @@ class OTPVerificationScreenState extends State<OTPVerificationScreen> {
   Future<void> _verifyOtp() async {
     setState(() => _isLoading = true);
 
-    final body = {
-      "email": widget.email.trim().toLowerCase(),
-      "otp": _otpController.text.trim(),
-    };
+final body = {
+  if (widget.email != null && widget.email!.isNotEmpty) 'email': widget.email!,
+  if (widget.phone != null && widget.phone!.isNotEmpty) 'phone_number': widget.phone!,
+  'otp': _otpController.text.trim(),
+};
 
     print(
         'Sending OTP verification for: ${widget.email}, Code: ${_otpController.text.trim()}, Forgot Password: ${widget.isForgotPassword}');
@@ -61,7 +64,8 @@ class OTPVerificationScreenState extends State<OTPVerificationScreen> {
             context,
             MaterialPageRoute(
               builder: (context) => ResetPasswordScreen(
-                email: widget.email, // Pass the user's email
+                email: widget.email ?? '', 
+                phone: widget.phone ?? '',
               ),
             ),
           );
@@ -105,7 +109,7 @@ class OTPVerificationScreenState extends State<OTPVerificationScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'We sent a code to ${widget.email}',
+              'We sent a code to ${widget.email != null && widget.email!.isNotEmpty ? widget.email : (widget.phone ?? '')}',
               style: const TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 24),

@@ -159,8 +159,8 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                       const SizedBox(height: 24),
                       _buildLabeledField(
-                        'Email',
-                        'Enter your email',
+                        'Email/Phone number',
+                        'Enter your email or phone number',
                         controller: _emailController,
                       ),
                       const SizedBox(height: 12),

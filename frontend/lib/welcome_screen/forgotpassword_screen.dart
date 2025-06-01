@@ -3,8 +3,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:frontend/api_config.dart'; // Ensure you have this file for the base URL
-import 'otp_verification_screen.dart'; // Import the OTPVerificationScreen
+import 'package:frontend/api_config.dart';
+import 'otp_verification_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   @override
@@ -12,40 +12,78 @@ class ForgotPasswordScreen extends StatefulWidget {
 }
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _identifierController = TextEditingController();
   bool _isLoading = false;
 
-  Future<void> _sendForgotPasswordOTP() async {
-    final email = _emailController.text.trim();
+  // Helper method to validate if input is email or phone
+  bool _isValidEmail(String input) {
+    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    return emailRegex.hasMatch(input);
+  }
 
-    if (email.isEmpty) {
+  bool _isValidPhone(String input) {
+  final phoneRegex = RegExp(r'^(\+947\d{8}|07\d{8})$');
+  return phoneRegex.hasMatch(input);
+}
+
+
+  Future<void> _sendForgotPasswordOTP() async {
+    final identifier = _identifierController.text.trim();
+
+    if (identifier.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your email')),
+        const SnackBar(content: Text('Please enter your email or phone number')),
       );
       return;
     }
 
+    // Validate input format
+    final isEmail = _isValidEmail(identifier);
+    final isPhone = _isValidPhone(identifier);
+
+    if (!isEmail && !isPhone) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please enter a valid email or phone number (e.g., +947XXXXXXXX or 07XXXXXXXX)')),
+    );
+    return;
+  }
+
     setState(() => _isLoading = true);
 
     try {
-      final response = await http.post(
-        Uri.parse("${ApiConfig.baseUrl}forgot-password/"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"email": email}),
-      );
+    String normalizedIdentifier = identifier;
+    if (isPhone) {
+      // Normalize to +947 format
+      if (identifier.startsWith('07')) {
+        normalizedIdentifier = '+94${identifier.substring(1)}';
+      }
+      // If it's already +947 format, use as-is
+    }
+
+    final response = await http.post(
+      Uri.parse("${ApiConfig.baseUrl}forgot-password/"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "identifier": normalizedIdentifier,
+      }),
+    );
 
       if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        final message = responseData['message'] ?? 'OTP sent successfully';
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('OTP sent to your email')),
+          SnackBar(content: Text(message)),
         );
 
-        // Navigate to OTPVerificationScreen for forgot password flow
+        // Navigate to OTP verification with appropriate identifier
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => OTPVerificationScreen(
-              email: _emailController.text.trim(), // Pass the user's email
-              isForgotPassword: true, // Forgot password flow
+              email: isEmail ? identifier : null,
+              phone: isPhone ? identifier : null,
+              isForgotPassword: true,
             ),
           ),
         );
@@ -105,7 +143,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     ),
                     const SizedBox(height: 32),
                     const Text(
-                      'Email',
+                      'Email/Phone Number',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -113,9 +151,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     ),
                     const SizedBox(height: 8),
                     TextField(
-                      controller: _emailController,
+                      controller: _identifierController,
+                      keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
-                        hintText: 'Enter your email',
+                        hintText: 'Enter your email or phone number',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -176,7 +215,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _identifierController.dispose();
     super.dispose();
   }
 }
