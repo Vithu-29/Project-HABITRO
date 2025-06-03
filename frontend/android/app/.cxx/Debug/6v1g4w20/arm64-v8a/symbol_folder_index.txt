@@ -1,0 +1,1 @@
+C:\Users\Admin\Envs\test\h habitroo\Project-HABITRO\frontend\build\app\intermediates\cxx\Debug\6v1g4w20\obj\arm64-v8a
