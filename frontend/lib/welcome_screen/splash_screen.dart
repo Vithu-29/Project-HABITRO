@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
 import 'dart:async';
-import 'package:frontend/home_page.dart';
+import 'package:frontend/welcome_screen/welcome_tutorial_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -78,7 +78,7 @@ class _IntroScreenState extends State<IntroScreen> {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
             pageBuilder:(context, animation, secondaryAnimation) => 
-              HomePage(),
+              WelcomeTutorialScreen(),
               transitionsBuilder:(context, animation, secondaryAnimation, child) {
                 return FadeTransition(opacity: animation, child: child,);
               },
