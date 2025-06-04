@@ -26,7 +26,7 @@ INSTALLED_APPS = [
     'app_frontend',
     'corsheaders',
     'admin_auth',
-    #'quiz',
+    'quiz',
     'rewards',
     'game',
     'achievements',
