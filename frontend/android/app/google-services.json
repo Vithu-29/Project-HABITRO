@@ -1,34 +1,41 @@
 {
   "project_info": {
-    "project_number": "68376476720",
-    "project_id": "android-client-e216f",
-    "storage_bucket": "android-client-e216f.firebasestorage.app"
+    "project_number": "561054008386",
+    "project_id": "habitro-34",
+    "storage_bucket": "habitro-34.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:68376476720:android:8eafe0a6d3b5f5bda701f5",
+        "mobilesdk_app_id": "1:561054008386:android:f3c98f10aed23138db19db",
         "android_client_info": {
           "package_name": "com.example.frontend"
         }
       },
       "oauth_client": [
         {
-          "client_id": "68376476720-kba9uvir0eujkiacrffor5mvc0dkn5ug.apps.googleusercontent.com",
+          "client_id": "561054008386-a4dbnmnoe91ho6umseo084dbocsfe25g.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyBfUqvBhvugSkd1VqwBwBarEvHSqoh6Z6U"
+          "current_key": "AIzaSyDdlLfEFRaSRqjZWIr0sdS7-u1OxyidQ6E"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "68376476720-kba9uvir0eujkiacrffor5mvc0dkn5ug.apps.googleusercontent.com",
+              "client_id": "561054008386-a4dbnmnoe91ho6umseo084dbocsfe25g.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "561054008386-fu3r51bta5kj3sgcd2m11lse1kt80rid.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.frontend"
+              }
             }
           ]
         }
