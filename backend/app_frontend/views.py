@@ -6,6 +6,7 @@ from django.utils.crypto import get_random_string
 from django.utils import timezone
 from django.contrib.auth import authenticate, login
 from datetime import timedelta
+from django.db import transaction
 import re
 import requests
 from django.conf import settings
@@ -253,34 +254,100 @@ class LoginView(APIView):
 
 @api_view(['POST'])
 def social_login(request):
-    email = request.data.get('email')
-    full_name = request.data.get('full_name')
-    provider = request.data.get('provider')
-    provider_id = request.data.get('provider_id')
-
-    if not all([email, provider, provider_id]):
-        return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
-
+    """
+    Handle social login (Google, Facebook, etc.)
+    Expected data: email, full_name, provider, provider_id, photo_url (optional)
+    """
     try:
-        user = CustomUser.objects.get(email=email)
-        created = False
-    except CustomUser.DoesNotExist:
-        user = CustomUser.objects.create_user(
-            email=email,
-            full_name=full_name or "Social User",
-            password=None,
-        )
-        created = True
+        # Get data from request
+        email = request.data.get('email')
+        full_name = request.data.get('full_name')
+        provider = request.data.get('provider')
+        provider_id = request.data.get('provider_id')
+        photo_url = request.data.get('photo_url')  # Optional field
 
-    login(request, user)
+        # Log the incoming request for debugging
+        logger.info(f"Social login attempt: email={email}, provider={provider}")
 
-    return Response({
-        "message": "User created successfully" if created else "Login successful",
-        "user": {
-            "email": user.email,
-            "full_name": user.full_name
-        }
-    }, status=status.HTTP_200_OK if not created else status.HTTP_201_CREATED)
+        # Validate required fields
+        if not all([email, provider, provider_id]):
+            logger.warning(f"Missing required fields: email={email}, provider={provider}, provider_id={provider_id}")
+            return Response({
+                "error": "Missing required fields: email, provider, and provider_id are required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate email format
+        if not email or '@' not in email:
+            return Response({
+                "error": "Invalid email format"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Use transaction to ensure data consistency
+        with transaction.atomic():
+            try:
+                # Try to get existing user
+                user = CustomUser.objects.get(email=email)
+                created = False
+                
+                # Update user info if needed
+                if full_name and user.full_name != full_name:
+                    user.full_name = full_name
+                    user.save()
+                
+                logger.info(f"Existing user found: {user.email}")
+                
+            except CustomUser.DoesNotExist:
+                # Create new user
+                user = CustomUser.objects.create_user(
+                    email=email,
+                    full_name=full_name or f"{provider.title()} User",
+                    password=None,  # No password for social login users
+                )
+                created = True
+                logger.info(f"New user created: {user.email}")
+
+            # Optional: Store social provider info if you have a SocialAccount model
+            # This is useful for tracking which social platforms users use
+            """
+            if hasattr(user, 'social_accounts'):
+                social_account, _ = SocialAccount.objects.get_or_create(
+                    user=user,
+                    provider=provider,
+                    defaults={
+                        'provider_id': provider_id,
+                        'photo_url': photo_url
+                    }
+                )
+            """
+
+            # Log the user in
+            login(request, user)
+            
+            # Prepare response
+            response_data = {
+                "message": "User created successfully" if created else "Login successful",
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "full_name": user.full_name,
+                    "is_new_user": created
+                }
+            }
+            
+            # Add photo URL if provided
+            if photo_url:
+                response_data["user"]["photo_url"] = photo_url
+
+            return Response(
+                response_data,
+                status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
+            )
+
+    except Exception as e:
+        logger.error(f"Social login error: {str(e)}", exc_info=True)
+        return Response({
+            "error": "Internal server error occurred during social login"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Forgot Password View
 

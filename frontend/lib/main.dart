@@ -7,11 +7,14 @@ import 'package:frontend/welcome_screen/signin_screen.dart';
 import 'package:frontend/welcome_screen/forgotpassword_screen.dart';
 import 'package:frontend/home_page.dart';
 import 'theme.dart';
+import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(const MyApp());
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -28,7 +31,7 @@ class MyApp extends StatelessWidget {
         '/signup': (context) => SignUpScreen(),
         '/signin': (context) => SignInScreen(),
         '/home': (context) => HomePage(),
-        '/forgot-password':(context) => ForgotPasswordScreen(),
+        '/forgot-password': (context) => ForgotPasswordScreen(),
       },
     );
   }
