@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:frontend/api_config.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SignInScreen extends StatefulWidget {
   @override
@@ -16,7 +18,14 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _rememberMe = false;
   bool _isLoading = false;
   bool _isPasswordVisible = false;
-  
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: [
+      'email',
+      'profile',
+    ],
+  );
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
   Future<void> _signIn() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -62,10 +71,117 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Clear any previous sign-in state
+      await _googleSignIn.signOut();
+      await _auth.signOut();
+
+      // Start Google Sign In process
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+      if (googleUser == null) {
+        // User canceled the sign-in
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+        return;
+      }
+
+      // Get authentication details
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      // Validate that we have the required tokens
+      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
+        throw Exception('Failed to get Google authentication tokens');
+      }
+
+      // Create credential for Firebase
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign in to Firebase
+      final UserCredential authResult =
+          await _auth.signInWithCredential(credential);
+      final User? user = authResult.user;
+
+      if (user == null) {
+        throw Exception('Failed to get Firebase user after Google Sign In');
+      }
+
+      // Validate user email
+      if (user.email == null || user.email!.isEmpty) {
+        throw Exception('No email found in Google account');
+      }
+
+      if (!mounted) return;
+
+      // Send user details to your backend
+      final response = await http.post(
+        Uri.parse("${ApiConfig.baseUrl}social-login/"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": user.email,
+          "full_name": user.displayName ?? "Google User",
+          "provider": "google",
+          "provider_id": user.uid,
+        }),
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        String errorMessage = 'Failed to authenticate with server';
+        try {
+          final error = jsonDecode(response.body);
+          errorMessage = error['error'] ?? errorMessage;
+        } catch (e) {
+          // Use default message if JSON parsing fails
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      String errorMessage = 'Google sign-in failed';
+      if (e.toString().contains('network_error')) {
+        errorMessage = 'Network error. Please check your connection.';
+      } else if (e.toString().contains('sign_in_canceled')) {
+        errorMessage = 'Sign-in was canceled';
+      } else if (e.toString().contains('sign_in_failed')) {
+        errorMessage = 'Google sign-in failed. Please try again.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   void _onSocialSignIn(String provider) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$provider Sign-In pressed (mock logic)')),
-    );
+    if (provider == "Google") {
+      _handleGoogleSignIn();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$provider Sign-In pressed (mock logic)')),
+      );
+    }
   }
 
   Widget _socialIcon(String assetPath, VoidCallback onTap) {
