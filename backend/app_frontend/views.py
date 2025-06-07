@@ -264,7 +264,6 @@ def social_login(request):
         full_name = request.data.get('full_name')
         provider = request.data.get('provider')
         provider_id = request.data.get('provider_id')
-        photo_url = request.data.get('photo_url')  # Optional field
 
         # Log the incoming request for debugging
         logger.info(f"Social login attempt: email={email}, provider={provider}")
@@ -315,7 +314,7 @@ def social_login(request):
                     provider=provider,
                     defaults={
                         'provider_id': provider_id,
-                        'photo_url': photo_url
+
                     }
                 )
             """
@@ -334,9 +333,6 @@ def social_login(request):
                 }
             }
             
-            # Add photo URL if provided
-            if photo_url:
-                response_data["user"]["photo_url"] = photo_url
 
             return Response(
                 response_data,

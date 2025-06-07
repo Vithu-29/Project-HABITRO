@@ -1,14 +1,14 @@
 plugins {
-    id "com.android.application"
+    id 'com.android.application'
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
-    id "com.google.gms.google-services"
+    id 'com.google.gms.google-services'
 }
 
 
 android {
     namespace = "com.example.frontend"
-    compileSdkVersion  35
+    compileSdkVersion 35
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -26,6 +26,7 @@ android {
         targetSdkVersion  35
         versionCode  1 
         versionName  "1.0.0"
+        multiDexEnabled true
     }
 
     buildTypes {
@@ -38,9 +39,11 @@ android {
 }
 
 dependencies {
-    implementation platform('com.google.firebase:firebase-bom:32.7.0')
+    implementation platform('com.google.firebase:firebase-bom:32.5.0')
     implementation 'com.google.firebase:firebase-auth'
-    implementation 'com.google.android.gms:play-services-auth:20.7.1'
+    implementation 'com.google.android.gms:play-services-auth:20.7.0'
+    implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.android.support:multidex:1.0.3'
 }
 
 flutter {

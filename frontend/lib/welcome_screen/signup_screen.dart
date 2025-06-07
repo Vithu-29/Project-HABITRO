@@ -1,5 +1,3 @@
-// ignore_for_file: use_build_context_synchronously, avoid_print
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -25,11 +23,11 @@ class SignUpScreenState extends State<SignUpScreen> {
   bool _isLoading = false;
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
-
-  // Fixed Google Sign-In configuration
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email', 'profile'],
-    // Remove clientId and serverClientId - let it use the default from google-services.json
+    scopes: [
+      'email',
+      'profile',
+    ],
   );
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -40,125 +38,111 @@ class SignUpScreenState extends State<SignUpScreen> {
     return emailRegex.hasMatch(email);
   }
 
-  bool _isValidPhone(String input) {
-    final phoneRegex = RegExp(r'^(\+947\d{8}|07\d{8})$');
-    return phoneRegex.hasMatch(input);
+  bool _isValidPhone(String phone) {
+    final phoneRegex = RegExp(r'^(\+947|07)\d{8}$');
+    return phoneRegex.hasMatch(phone);
   }
 
   Future<void> _handleGoogleSignIn() async {
-    if (_isLoading) return; // Prevent multiple simultaneous calls
+    if (_isLoading) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // Sign out from both services to ensure clean state
+      // Clear any previous sign-in state
       await _googleSignIn.signOut();
       await _auth.signOut();
 
-      // Attempt Google Sign-In
+      // Start Google Sign In process
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-
+      
       if (googleUser == null) {
-        print('User cancelled Google Sign-In');
-        setState(() => _isLoading = false);
+        // User canceled the sign-in
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
         return;
       }
 
-      print('Google Sign-In successful: ${googleUser.email}');
-
       // Get authentication details
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      // Check if tokens are available
+      // Validate that we have the required tokens
       if (googleAuth.accessToken == null || googleAuth.idToken == null) {
         throw Exception('Failed to get Google authentication tokens');
       }
 
-      print('Tokens received, creating Firebase credential...');
-
-      // Create Firebase credential
-      final AuthCredential credential = GoogleAuthProvider.credential(
+      // Create credential for Firebase
+      final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // Sign in to Firebase with the credential
-      final UserCredential userCredential =
-          await _auth.signInWithCredential(credential);
-      final User? user = userCredential.user;
+      // Sign in to Firebase
+      final UserCredential authResult = await _auth.signInWithCredential(credential);
+      final User? user = authResult.user;
 
       if (user == null) {
-        throw Exception('Firebase authentication failed - no user returned');
+        throw Exception('Failed to get Firebase user after Google Sign In');
       }
 
-      print('Firebase sign-in successful: ${user.email}');
+      // Validate user email
+      if (user.email == null || user.email!.isEmpty) {
+        throw Exception('No email found in Google account');
+      }
 
-      // Send user data to your backend
+      if (!mounted) return;
+
+      // Send user details to your backend
       final response = await http.post(
         Uri.parse("${ApiConfig.baseUrl}social-login/"),
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": user.email,
           "full_name": user.displayName ?? "Google User",
           "provider": "google",
           "provider_id": user.uid,
-          "photo_url": user.photoURL,
         }),
       );
 
+      if (!mounted) return;
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // Show success message
-        if (mounted) {
-          // Navigate to home screen
-          Navigator.pushReplacementNamed(context, '/home');
-        }
+        // Success - navigate to home
+        Navigator.pushReplacementNamed(context, '/home');
       } else {
-        // Backend authentication failed
-        await _cleanupAuth();
-        final errorData = jsonDecode(response.body);
-        final errorMessage =
-            errorData['error'] ?? 'Backend authentication failed';
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Login failed: $errorMessage')),
-          );
+        // Handle backend error
+        String errorMessage = 'Failed to authenticate with server';
+        try {
+          final error = jsonDecode(response.body);
+          errorMessage = error['error'] ?? errorMessage;
+        } catch (e) {
+          // Use default message if JSON parsing fails
         }
-      }
-    } catch (e) {
-      await _cleanupAuth();
-
-      String errorMessage = 'Google sign-in failed';
-      if (e.toString().contains('12500')) {
-        errorMessage =
-            'Google Sign-In configuration error. Please check your setup.';
-      } else if (e.toString().contains('network')) {
-        errorMessage = 'Network error. Please check your internet connection.';
-      } else if (e.toString().contains('cancelled')) {
-        errorMessage = 'Sign-in was cancelled';
-      }
-
-      if (mounted) {
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage)),
         );
       }
+    } catch (e) {
+      if (!mounted) return;
+      
+      String errorMessage = 'Google sign-in failed';
+      if (e.toString().contains('network_error')) {
+        errorMessage = 'Network error. Please check your connection.';
+      } else if (e.toString().contains('sign_in_canceled')) {
+        errorMessage = 'Sign-in was canceled';
+      } else if (e.toString().contains('sign_in_failed')) {
+        errorMessage = 'Google sign-in failed. Please try again.';
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
-    }
-  }
-
-  // Helper method to clean up authentication state
-  Future<void> _cleanupAuth() async {
-    try {
-      await _auth.signOut();
-      await _googleSignIn.signOut();
-    } catch (e) {
-      print('Error during cleanup: $e');
     }
   }
 
@@ -244,44 +228,13 @@ class SignUpScreenState extends State<SignUpScreen> {
         body: jsonEncode(body),
       );
 
-      final responseData = jsonDecode(response.body);
-
       if (response.statusCode == 200) {
-        final message = responseData['message'] ?? 'OTP sent successfully';
-
-        if (!isPhone) {
-          final debugOtp = responseData['debug_otp'];
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(message),
-                  if (debugOtp != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        'Debug OTP: $debugOtp',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              duration: const Duration(seconds: 10),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(message),
-              duration: const Duration(seconds: 10),
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(isEmail
+                  ? 'OTP sent to your email'
+                  : 'OTP sent to your phone')),
+        );
 
         Navigator.push(
           context,
@@ -294,9 +247,9 @@ class SignUpScreenState extends State<SignUpScreen> {
           ),
         );
       } else {
-        final error = responseData['error'] ?? 'Registration failed';
+        final error = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error)),
+          SnackBar(content: Text(error['error'] ?? 'Registration failed')),
         );
       }
     } catch (e) {
