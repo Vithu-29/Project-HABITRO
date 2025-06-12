@@ -1,13 +1,13 @@
 from django.core.management.base import BaseCommand
-from habiro_dashboard.models import User, AdminAction
+from habiro_dashboard.models import create_user, AdminAction
 import random
 
 class Command(BaseCommand):
     help = 'Create dummy admin actions'
 
     def handle(self, *args, **kwargs):
-        admins = User.objects.filter(is_active=True)[:5]  # assume first 5 users are admins
-        targets = User.objects.filter(is_active=False)
+        admins = create_user.objects.filter(is_active=True)[:5]  # assume first 5 users are admins
+        targets = create_user.objects.filter(is_active=False)
 
         for admin in admins:
             if targets.exists():

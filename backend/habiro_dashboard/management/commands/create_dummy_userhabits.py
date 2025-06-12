@@ -1,12 +1,12 @@
 from django.core.management.base import BaseCommand
-from habiro_dashboard.models import User, Habit, UserHabit
+from habiro_dashboard.models import create_user, Habit, UserHabit
 import random
 
 class Command(BaseCommand):
     help = 'Create dummy user habits'
 
     def handle(self, *args, **kwargs):
-        users = User.objects.all()
+        users = create_user.objects.all()
         habits = Habit.objects.all()
 
         for user in users:

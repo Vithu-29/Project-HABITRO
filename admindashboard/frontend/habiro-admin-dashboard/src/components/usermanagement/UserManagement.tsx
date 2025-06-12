@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import UserTable from "./UserTable";
+import UserTable from "../Tables/usermanagement-table/UserTable";
 import UserProfile from "./UserProfile";
 import EmailEditor from "./EmailEditor";
 import { getUserManagementData } from "@/services/user_management";
@@ -62,7 +62,7 @@ const UserManagement: React.FC = () => {
   if (!users.length) return <div className="p-6">No users found.</div>;
 
   return (
-    <div className="p-6">
+    <div className="col-span-12 xl:col-span-7">
       {!selectedUser ? (
         <UserTable users={users} onSelectUser={handleUserSelect} />
       ) : (

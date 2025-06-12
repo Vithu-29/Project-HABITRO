@@ -81,7 +81,7 @@ export default function HabitTable() {
                   <td className="p-3">{habit.totalUsers}</td>
                   <td className="p-3">{habit.completedUsers}</td>
                   <td className="p-3">
-                    <Button variant="outline" onClick={() => setSelectedHabit(habit)}>
+                    <Button className="dark:text-white" variant="outline" onClick={() => setSelectedHabit(habit)}>
                       View
                     </Button>
                   </td>

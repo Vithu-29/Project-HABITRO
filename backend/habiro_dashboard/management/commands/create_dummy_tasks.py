@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from habiro_dashboard.models import User, Habit, Task
+from habiro_dashboard.models import create_user, Habit, Task
 import random
 from faker import Faker
 
@@ -9,7 +9,7 @@ class Command(BaseCommand):
     help = 'Create dummy tasks'
 
     def handle(self, *args, **kwargs):
-        users = User.objects.all()
+        users = create_user.objects.all()
         habits = Habit.objects.all()
 
         for user in users:

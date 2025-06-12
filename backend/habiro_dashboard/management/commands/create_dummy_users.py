@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from habiro_dashboard.models import User  # change 'habiro_dashboard' to your app name
+from habiro_dashboard.models import create_user  # change 'habiro_dashboard' to your app name
 import random
 from faker import Faker
 from datetime import timedelta
@@ -23,7 +23,7 @@ class Command(BaseCommand):
             status = random.choice(statuses)
             is_active = True if status == 'active' else False
 
-            User.objects.create(
+            create_user.objects.create(
                 full_name=full_name,
                 email=email,
                 profile_picture=profile_pic_url,

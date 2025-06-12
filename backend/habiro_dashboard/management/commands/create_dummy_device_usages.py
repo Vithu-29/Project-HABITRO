@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from habiro_dashboard.models import User, DeviceUsage
+from habiro_dashboard.models import create_user, DeviceUsage
 import random
 
 class Command(BaseCommand):
@@ -7,7 +7,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         device_types = ['mobile', 'tablet', 'unknown']
-        users = User.objects.all()
+        users = create_user.objects.all()
 
         for user in users:
             DeviceUsage.objects.create(

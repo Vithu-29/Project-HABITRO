@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Users',
+            name='User',
             fields=[
                 ('user_id', models.AutoField(primary_key=True, serialize=False)),
                 ('user_name', models.CharField(max_length=100)),
@@ -22,4 +22,6 @@ class Migration(migrations.Migration):
                 ('password', models.CharField(max_length=128)),
             ],
         ),
+        
+
     ]

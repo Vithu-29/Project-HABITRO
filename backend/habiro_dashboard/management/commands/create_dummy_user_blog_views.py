@@ -1,13 +1,13 @@
 
 from django.core.management.base import BaseCommand
-from habiro_dashboard.models import User, Blog, UserBlogView
+from habiro_dashboard.models import create_user, Blog, UserBlogView
 import random
 
 class Command(BaseCommand):
     help = 'Create dummy user blog views'
 
     def handle(self, *args, **kwargs):
-        users = User.objects.all()
+        users = create_user.objects.all()
         blogs = Blog.objects.all()
 
         for user in users:

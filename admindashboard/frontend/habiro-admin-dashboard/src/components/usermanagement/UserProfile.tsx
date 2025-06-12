@@ -53,7 +53,7 @@ const UserProfile: React.FC<Props> = ({ user, onSendEmail }) => {
             <p className="text-gray-500 mt-2">No screen time data available.</p>
           )}
         </div>
-        <div className="flex-1 min-w-[250px] mr-10">
+        <div className="flex-1 min-w-[250px] mr-15">
           <h3 className="text-lg font-semibold">Task Completion</h3>
           {user.tasks ? (
             <TaskCompletionChart

@@ -17,15 +17,15 @@ const ScreenTimeChart: React.FC<{ screenTime: number[] }> = ({ screenTime }) => 
   const data = {
     labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
     datasets: [
-      {
-        label: "Screen Time (hours)",
-        data: screenTime,
-        backgroundColor: "rgba(75, 192, 192, 0.6)",
-        borderColor: "rgba(75, 192, 192, 1)",
-        borderWidth: 1,
-        
-      },
-    ],
+  {
+    label: "Screen Time (hours)",
+    data: screenTime,
+    backgroundColor: "#4bc0c0", 
+    borderColor: "#4bc0c0",     
+    borderWidth: 1,
+  },
+]
+
   };
 
   const options = {

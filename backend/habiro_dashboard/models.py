@@ -1,7 +1,7 @@
 from django.db import models
 
 
-class User(models.Model):
+class create_user(models.Model):
     STATUS_CHOICES = (
         ('active', 'Active'),
         ('suspended', 'Suspended'),
@@ -18,7 +18,7 @@ class User(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        app_label = 'habiro_dashboard'  # Add this line
+        app_label = 'habiro_dashboard'  
     
     def __str__(self):
         return self.full_name
@@ -43,7 +43,7 @@ class UserHabit(models.Model):
         ('completed', 'Completed'),
     )
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(create_user, on_delete=models.CASCADE)
     habit = models.ForeignKey(Habit, on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='in_progress')
     assigned_date = models.DateTimeField(auto_now_add=True)
@@ -53,7 +53,7 @@ class UserHabit(models.Model):
         return f"{self.user.full_name} - {self.habit.habit_name}"
 
 class Task(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(create_user, on_delete=models.CASCADE)
     habit = models.ForeignKey(Habit, on_delete=models.CASCADE)
     task_name = models.CharField(max_length=255)
     is_completed = models.BooleanField(default=False)
@@ -70,7 +70,7 @@ class DeviceUsage(models.Model):
         ('unknown', 'Unknown'),
     )
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(create_user, on_delete=models.CASCADE)
     device_type = models.CharField(max_length=20, choices=DEVICE_CHOICES)
     usage_count = models.PositiveIntegerField(default=0)
     recorded_at = models.DateTimeField(auto_now_add=True)
@@ -79,7 +79,7 @@ class DeviceUsage(models.Model):
         return f"{self.user.full_name} - {self.device_type}"
 
 class ScreenTime(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(create_user, on_delete=models.CASCADE)
     date = models.DateField()
     active_minutes = models.PositiveIntegerField(default=0)
 
@@ -93,7 +93,7 @@ class UserAnalytics(models.Model):
         ('low', 'Low Engagement'),
     )
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(create_user, on_delete=models.CASCADE)
     engagement_level = models.CharField(max_length=20, choices=ENGAGEMENT_CHOICES)
     last_active_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -120,7 +120,7 @@ class Blog(models.Model):
         return self.title
 
 class UserBlogView(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(create_user, on_delete=models.CASCADE)
     blog = models.ForeignKey(Blog, on_delete=models.CASCADE)
     viewed_at = models.DateTimeField(auto_now_add=True)
 
@@ -134,12 +134,32 @@ class AdminAction(models.Model):
         ('email_sent', 'Email Sent'),
     )
 
-    admin_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='admin_actions')
+    admin_user = models.ForeignKey(create_user, on_delete=models.CASCADE, related_name='admin_actions')
     action_type = models.CharField(max_length=20, choices=ACTION_CHOICES)
-    target_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='targeted_actions')
+    target_user = models.ForeignKey(create_user, on_delete=models.CASCADE, related_name='targeted_actions')
     action_date = models.DateTimeField(auto_now_add=True)
     description = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.admin_user.full_name} {self.action_type} {self.target_user.full_name}"
 
+from django.db import models
+
+class Article(models.Model):
+    category_choices = [
+        ('Personal Development', 'Personal Development'),
+        ('Productivity', 'Productivity'),
+        ('Technology', 'Technology'),
+        ('Health and Fitness', 'Health and Fitness'),
+        ('Mental Well-Being', 'Mental Well-Being'),
+    ]
+
+    title = models.CharField(max_length=200)
+    category = models.CharField(max_length=50, choices=category_choices)
+    content = models.TextField()
+    date = models.DateField(auto_now_add=True)
+    views = models.IntegerField(default=0)
+    image = models.ImageField(upload_to='articles/', null=True, blank=True)
+
+    def __str__(self):
+        return self.title

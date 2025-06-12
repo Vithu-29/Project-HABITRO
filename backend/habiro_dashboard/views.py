@@ -1,14 +1,26 @@
 from django.shortcuts import render
 from django.http import JsonResponse
+from django.utils import timezone
+from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from django.utils import timezone
-from datetime import timedelta
-from .models import User, Task, ScreenTime
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework import status
+from rest_framework.views import APIView
+from django.db.models import Sum, Count, Q
+from datetime import timedelta, date
+from collections import defaultdict
 
-def hello_world(request):
-    return JsonResponse({'message': 'Hello, World!'})
- ## Dashboard Overview-card
+from .models import (
+    create_user, Task, ScreenTime, DeviceUsage, UserHabit,
+    Habit, UserAnalytics, Article
+)
+from .serializers import ArticleSerializer
+
+
+ ## Dashboard Overview-card(Homepage)
 def calculate_growth_rate(today_count, yesterday_count):
     if yesterday_count == 0:
         return today_count * 100
@@ -20,9 +32,9 @@ def dashboard_overview(request):
     yesterday = today - timedelta(days=1)
 
     # Total Users
-    total_users_all = User.objects.count()
-    new_users_today = User.objects.filter(created_at__date=today).count()
-    new_users_yesterday = User.objects.filter(created_at__date=yesterday).count()
+    total_users_all = create_user.objects.count()
+    new_users_today = create_user.objects.filter(created_at__date=today).count()
+    new_users_yesterday = create_user.objects.filter(created_at__date=yesterday).count()
     user_growth_rate = calculate_growth_rate(new_users_today, new_users_yesterday)
 
     # Active Users Today
@@ -40,24 +52,24 @@ def dashboard_overview(request):
     total_tasks = Task.objects.count()
 
     return Response({
-        "views": {
+        "total_users": {
             "value": total_users_all,
             "growthRate": round(user_growth_rate, 2),
         },
-        "profit": {
+        "active_time": {
             "value": round(average_active_minutes, 2),
             "growthRate": 0,
         },
-        "products": {
+        "total_task": {
             "value": total_tasks,
             "growthRate": 0,
         },
-        "users": {
+        "active_users": {
             "value": active_users_today,
             "growthRate": round(active_user_growth, 2),
         },
     })
-  #active users chart
+  #active users chart(Homepage)
 @api_view(['GET'])
 def active_users_chart(request):
     today = timezone.now().date()
@@ -90,11 +102,7 @@ def active_users_chart(request):
     })
     
     
-  #Used Devices Chart
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from .models import DeviceUsage
-from django.db.models import Sum
+  #Used Devices Chart(Homepage)
 
 @api_view(['GET'])
 def used_devices_data(request):
@@ -114,19 +122,11 @@ def used_devices_data(request):
 
     return Response(device_data)
 
-#Recent Users
-
-# habiro_dashboard/views.py
-
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from django.utils import timezone
-from django.conf import settings
-from .models import User, UserHabit, Habit
+#Recent Users(Homepage)
 
 @api_view(['GET'])
 def recent_users(request):
-    users = User.objects.order_by('-join_date')[:6]  # Last 6 users joined
+    users = create_user.objects.order_by('-join_date')[:6]  # Last 6 users joined
 
     data = []
 
@@ -154,17 +154,13 @@ def recent_users(request):
 
     return Response(data)
 
-# user_management_list
-
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from django.utils import timezone
+# user_management_list(User Management)
 from django.db.models import Count, Q
-from .models import User, UserHabit, Habit, ScreenTime, Task
+from .models import create_user, UserHabit, Habit, ScreenTime, Task
 
 @api_view(['GET'])
 def user_management_list(request):
-    users = User.objects.all().order_by('-join_date')  
+    users = create_user.objects.all().order_by('-join_date')  
 
     data = []
 
@@ -219,14 +215,14 @@ from django.core.mail import send_mail
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-# send_email_to_user
+from django.conf import settings
+
+# send_email_to_user (User Management)
 @api_view(['POST'])
 def send_email_to_user(request):
-    """
-    API to send an email to a user.
-    POST body should contain: { "email": "user@example.com", "subject": "Your Subject", "message": "Your message" }
-    """
     try:
+        print("Received request:", request.data)  #  Add this line for debugging
+
         email = request.data.get('email')
         subject = request.data.get('subject')
         message = request.data.get('message')
@@ -237,15 +233,18 @@ def send_email_to_user(request):
         send_mail(
             subject,
             message,
-            'thajeevanv.22@uom.lk',  # Replace with your backend email address (Django settings)
+            'ahabitro@gmail.com',  
             [email],
             fail_silently=False,
         )
         return Response({'message': 'Email sent successfully!'})
-    
+
     except Exception as e:
+        print("Email sending error:", str(e))  
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-# suspend_user
+
+
+# suspend_user(User Management)
 @api_view(['POST'])
 def suspend_user(request):
     """
@@ -257,23 +256,20 @@ def suspend_user(request):
         if not user_id:
             return Response({'error': 'User ID not provided'}, status=400)
 
-        user = User.objects.get(id=user_id)
+        user = create_user.objects.get(id=user_id)
         user.status = 'suspended'
         user.is_active = False
         user.save()
 
         return Response({'message': 'User suspended successfully'})
     
-    except User.DoesNotExist:
+    except create_user.DoesNotExist:
         return Response({'error': 'User not found'}, status=404)
     except Exception as e:
         return Response({'error': str(e)}, status=500)
 
 
 # analysis page
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from django.utils import timezone
 from .models import ScreenTime
 from django.db.models import Sum
 from datetime import timedelta
@@ -326,10 +322,7 @@ def user_engagement_data(request):
     return Response(result)
 
 # habit_management
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
 from django.db.models import Count
-from django.utils import timezone
 from .models import Habit, UserHabit
 
 from collections import defaultdict
@@ -368,8 +361,7 @@ def habit_type_overview(request):
         "badHabits": bad_count
     })
 
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
+# good_habit_analytics_table()
 from .models import Habit, UserHabit
 
 @api_view(['GET'])
@@ -400,3 +392,76 @@ def habit_completed_users(request, habit_id):
     } for uh in userhabits]
 
     return Response(users)
+# dashboard/views.py
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Article
+from .serializers import ArticleSerializer
+
+class ArticleListCreateView(APIView):
+    def get(self, request):
+        articles = Article.objects.all().order_by('-date')
+        serializer = ArticleSerializer(articles, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = ArticleSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from .models import Article
+import json
+from datetime import date
+
+@require_http_methods(["GET"])
+def list_articles(request):
+    articles = Article.objects.all().order_by('-date')
+    data = [
+        {
+            "title": article.title,
+            "category": article.category,
+            "content": article.content,
+            "date": article.date.isoformat(),
+            "views": article.views,
+            "image": article.image.url if article.image else None
+        }
+        for article in articles
+    ]
+    return JsonResponse(data, safe=False)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def create_article(request):
+    title = request.POST.get("title")
+    category = request.POST.get("category")
+    content = request.POST.get("content")
+    image = request.FILES.get("image", None)
+
+    if not title or not category or not content:
+        return JsonResponse({"error": "All fields are required"}, status=400)
+
+    article = Article(
+        title=title,
+        category=category,
+        content=content,
+        image=image,
+        date=date.today(),
+        views=0
+    )
+    article.save()
+
+    return JsonResponse({"message": "Article created successfully!"}, status=201)
+from rest_framework import viewsets
+from .models import Article
+from .serializers import ArticleSerializer
+
+class ArticleViewSet(viewsets.ModelViewSet):
+    queryset = Article.objects.all()
+    serializer_class = ArticleSerializer

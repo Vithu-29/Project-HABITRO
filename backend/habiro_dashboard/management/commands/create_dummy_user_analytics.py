@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from habiro_dashboard.models import User, UserAnalytics
+from habiro_dashboard.models import create_user, UserAnalytics
 import random
 from datetime import timedelta
 from django.utils import timezone
@@ -9,7 +9,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         engagement_levels = ['high', 'moderate', 'low']
-        users = User.objects.all()
+        users = create_user.objects.all()
 
         for user in users:
             UserAnalytics.objects.create(

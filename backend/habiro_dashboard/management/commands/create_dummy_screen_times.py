@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from habiro_dashboard.models import User, ScreenTime
+from habiro_dashboard.models import create_user, ScreenTime
 import random
 from datetime import timedelta
 from django.utils import timezone
@@ -8,7 +8,7 @@ class Command(BaseCommand):
     help = 'Create dummy screen times'
 
     def handle(self, *args, **kwargs):
-        users = User.objects.all()
+        users = create_user.objects.all()
 
         for user in users:
             for i in range(7):  # Last 7 days
