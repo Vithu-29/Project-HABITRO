@@ -9,6 +9,8 @@ urlpatterns = [
     # API endpoints
     path('admin_auth/', include('admin_auth.urls')), 
     
+    path('api/', include('deepapi.urls')),
+    path('api/', include('analyze_responses.urls')),
     # Frontend app (if needed)
     path('app_frontend/', include('app_frontend.urls')),
     
