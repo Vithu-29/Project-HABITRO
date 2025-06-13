@@ -10,6 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Security
 SECRET_KEY = config('SECRET_KEY', default='your-default-secret-key')
+SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS').split(',')
 
@@ -31,7 +32,14 @@ INSTALLED_APPS = [
     'achievements',
     'articles',
     'rest_framework.authtoken',
+    'deepapi',
+    'analyze_responses',
+    
+    
 ]
+
+CSRF_COOKIE_HTTPONLY = False  #########
+CSRF_COOKIE_SECURE = False    #########
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -70,11 +78,21 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
-AUTH_USER_MODEL = 'app_frontend.CustomUser'
+AUTH_USER_MODEL = 'app_frontend.CustomUser' ################################
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',  # Default backend
 ]
 # Database
+#DATABASES = {
+#    'default': {
+#       'ENGINE': 'django.db.backends.mysql',
+#        'NAME': config('DB_NAME'),
+#       'USER': config('DB_USER'),
+#       'PASSWORD': config('DB_PASSWORD'),
+#       'HOST': config('DB_HOST', default='localhost'),
+#       'PORT': config('DB_PORT', default='3306'),
+#   }
+#}
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
