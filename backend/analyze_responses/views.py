@@ -1,20 +1,21 @@
 import json
 import requests
 from decouple import config  # Add this import
-
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import Task,Habit
 import uuid
 from datetime import timedelta, date,datetime
 from rest_framework.views import APIView
-from .serializers import HabitSerializer,RegisterSerializer,LoginSerializer
+from .serializers import HabitSerializer
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view,permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rewards.models import  Reward  # Add Reward to imports
 
-from rest_framework import status
-from django.contrib.auth.models import User
-from rest_framework.authtoken.models import Token
+
+##from rest_framework import status
+
 
 
 
@@ -22,7 +23,8 @@ from rest_framework.authtoken.models import Token
 ###########################################################################################################
                                     ## analyze response ##
 
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def analyze_responses(request):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid request method"}, status=405)
@@ -169,7 +171,8 @@ def extract_tasks(text, expected_days):
     return task_list[:expected_days * 3]
 ###########################################################################################################
                                     ## save tasks ##
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def save_tasks(request):
     if request.method == 'POST':
         try:
@@ -187,7 +190,8 @@ def save_tasks(request):
             habit = Habit.objects.create(
                 id=uuid.uuid4(),
                 name=habit_name,
-                type=habit_type
+                type=habit_type,
+                user=request.user  # ✅ this links the habit to the logged-in user
             )
 
 
@@ -232,12 +236,14 @@ def save_tasks(request):
 
 
 class HabitsWithTodayTasks(APIView):
+    @permission_classes([IsAuthenticated])
     def get(self, request):
         habits = Habit.objects.all()
         serializer = HabitSerializer(habits, many=True)
         return Response(serializer.data)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def update_task_status(request, task_id):
     try:
         task = Task.objects.get(id=task_id)
@@ -257,6 +263,7 @@ from django.utils import timezone
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def task_completion_stats(request):
     time_range = request.GET.get('range', 'daily')
     now = timezone.now()
@@ -317,68 +324,31 @@ def task_completion_stats(request):
 #################################################################################
 ###########################################################################################
 
-class RegisterView(APIView):
-    def post(self, request):
-        serializer = RegisterSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            token, _ = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key}, status=status.HTTP_201_CREATED)
-        return Response({'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 
 
-class LoginView(APIView):
-    def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.validated_data
-            token, _ = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key})
-        return Response({'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 #################################################################################
 ###########################################################################################
 
-
-
-
-
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from .models import UserCoins, CoinTransaction
-from django.contrib.auth.decorators import login_required
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_coin_balance(request):
-    coins, created = UserCoins.objects.get_or_create(user=request.user)
-    return Response({'balance': coins.balance})
-
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def add_coins(request):
     amount = request.data.get('amount', 0)
-    reason = request.data.get('reason', 'task_completion')
-    
     if amount <= 0:
         return Response({'error': 'Invalid amount'}, status=400)
     
-    coins, created = UserCoins.objects.get_or_create(user=request.user)
-    coins.balance += amount
-    coins.save()
+    # Get or create Reward record for the user
+    reward, created = Reward.objects.get_or_create(user=request.user)
+    reward.coins += amount
+    reward.save()
     
-    # Record transaction
-    CoinTransaction.objects.create(
-        user=request.user,
-        amount=amount,
-        reason=reason
-    )
-    
-    return Response({'new_balance': coins.balance})
+    return Response({'new_balance': reward.coins})
+
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -386,44 +356,23 @@ def deduct_coins(request):
     amount = request.data.get('amount', 0)
     reason = request.data.get('reason', 'purchase')
     
-    coins, created = UserCoins.objects.get_or_create(user=request.user)
+    # Get or create Reward record for the user
+    reward, created = Reward.objects.get_or_create(user=request.user)
     
-    if coins.balance < amount:
+    if reward.coins < amount:
         return Response({'error': 'Insufficient coins'}, status=400)
     
-    coins.balance -= amount
-    coins.save()
-    
-    # Record transaction
-    CoinTransaction.objects.create(
-        user=request.user,
-        amount=-amount,
-        reason=reason
-    )
-    
-    return Response({'new_balance': coins.balance})
+    reward.coins -= amount
+    reward.save()
 
-@api_view(['POST'])
+    
+    return Response({'new_balance': reward.coins})
+
+
+from rewards.models import Reward  # Import the Reward model
+
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def deduct_coins(request):
-    amount = request.data.get('amount', 0)
-    reason = request.data.get('reason', 'adjustment')
-    
-    coins, created = UserCoins.objects.get_or_create(user=request.user)
-    
-    if amount <= 0:
-        return Response({'error': 'Invalid amount'}, status=400)
-    
-    if coins.balance < amount:
-        return Response({'error': 'Insufficient coins'}, status=400)
-    
-    coins.balance -= amount
-    coins.save()
-    
-    CoinTransaction.objects.create(
-        user=request.user,
-        amount=-amount,
-        reason=reason
-    )
-    
-    return Response({'new_balance': coins.balance})
+def get_coin_balance(request):
+    reward, created = Reward.objects.get_or_create(user=request.user)
+    return Response({'balance': reward.coins})  # Changed coins.balance to reward.coins

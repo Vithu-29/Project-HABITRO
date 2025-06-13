@@ -1,22 +1,41 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/habit.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AIService {
   //***********************************************************************************************************//
   //send the entered habit to analyze good or bad
 
-  static const String  baseurl = 'http://192.168.30.157:8000';
+  static const String baseurl = 'http://192.168.64.157:8000';
+  static final _storage = FlutterSecureStorage();
+
+  static Map<String, String> _headers(String token) {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Token $token', // Use 'Bearer $token' if using JWT
+    };
+  }
+
+  static Future<String?> _getToken() async {
+    return await _storage.read(key: 'authToken'); // Corrected key
+  }
 
   static Future<String> analyzeHabit(String habit) async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('No token found');
+    }
     try {
       final response = await http.post(
-        Uri.parse("$baseurl/api/analyze_habit/"),
-        headers: {"Content-Type": "application/json"},
+        Uri.parse(
+          "$baseurl/api/analyze_habit/",
+        ),
+        headers: _headers(token),
         body: json.encode({"habit": habit}),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = json.decode(response.body);
         return data['classification'];
       } else {
@@ -35,6 +54,10 @@ class AIService {
     Map<String, dynamic> responses, {
     bool regenerate = false,
   }) async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('No token found');
+    }
     try {
       final finalRequest = {...responses, "regenerate": regenerate};
 
@@ -43,7 +66,7 @@ class AIService {
 
       final response = await http.post(
         Uri.parse("$baseurl/api/analyze_responses/"),
-        headers: {"Content-Type": "application/json"},
+        headers: _headers(token),
         body: json.encode(finalRequest),
       );
 
@@ -79,12 +102,16 @@ class AIService {
     String habit,
     String habitType,
   ) async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('No token found');
+    }
     try {
       final response = await http.post(
         Uri.parse(
           "$baseurl/api/generate_dynamic_questions/",
-        ), // Replace with your actual Django backend URL
-        headers: {'Content-Type': 'application/json'},
+        ),
+        headers: _headers(token),
         body: json.encode({
           'habit': habit,
           'habit_type': habitType, // Send the habit type ('good' or 'bad')
@@ -111,12 +138,16 @@ class AIService {
     required String habitName,
     required String habitType,
     required List<Map<String, dynamic>>
-    tasks, // List<Map<String, dynamic>> tasks
+        tasks, // List<Map<String, dynamic>> tasks
   }) async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('No token found');
+    }
     try {
       final response = await http.post(
         Uri.parse("$baseurl/api/save_tasks/"),
-        headers: {"Content-Type": "application/json"},
+        headers: _headers(token),
         body: json.encode({
           "habit_name": habitName,
           "habit_type": habitType,
@@ -138,9 +169,14 @@ class AIService {
   ////////////////////////////////////fetch habits for today////////////////////////////////////////////////////////////////
 
   Future<List<Habit>> fetchHabitsWithTodayTasks() async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('No token found');
+    }
     try {
       final response = await http.get(
         Uri.parse('$baseurl/api/habits-today/'),
+        headers: _headers(token),
       );
 
       if (response.statusCode == 200) {
@@ -157,11 +193,15 @@ class AIService {
 
   ///////////////////  update task status //////////////////////////////////////////////////////
   Future<void> updateTaskStatus(String taskId, bool isCompleted) async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('No token found');
+    }
     await http.post(
       Uri.parse(
         '$baseurl/api/task/$taskId/update_task_status/',
       ),
-      headers: {"Content-Type": "application/json"},
+      headers: _headers(token),
       body: json.encode({'isCompleted': isCompleted}),
     );
   }
@@ -169,39 +209,44 @@ class AIService {
   //////////////////////////////////////////////////////////////////////
 
   static Future<Map<String, dynamic>> getCompletionStats(String range) async {
-  try {
-    final response = await http.get(
-      Uri.parse("$baseurl/api/task_completion_stats/?range=$range"),
-      headers: {"Content-Type": "application/json"},
-    );
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return {
-        'stats': data['stats'],
-        'labels': data['labels'],
-        'taskCounts': data['taskCounts'],
-      };
-    } else {
-      throw Exception('Failed to load stats: ${response.statusCode}');
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('No token found');
     }
-  } catch (e) {
-    print("Error fetching completion stats: $e");
-    throw Exception('Failed to load completion stats');
-  }
-}
+    try {
+      final response = await http.get(
+        Uri.parse("$baseurl/api/task_completion_stats/?range=$range"),
+        headers: _headers(token),
+      );
 
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'stats': data['stats'],
+          'labels': data['labels'],
+          'taskCounts': data['taskCounts'],
+        };
+      } else {
+        throw Exception('Failed to load stats: ${response.statusCode}');
+      }
+    } catch (e) {
+      print("Error fetching completion stats: $e");
+      throw Exception('Failed to load completion stats');
+    }
+  }
 
   ////////////////////////////////////////coins related ///////////////////////
   // Add these methods to your AIService class
+
   static Future<int> getCoinBalance() async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('No token found');
+    }
     try {
       final response = await http.get(
         Uri.parse('$baseurl/api/coins/balance/'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer YOUR_AUTH_TOKEN', // Add your auth
-        },
+        headers: _headers(token),
       );
 
       if (response.statusCode == 200) {
@@ -216,17 +261,17 @@ class AIService {
   }
 
   static Future<int> addCoins(
-    int amount, {
-    String reason = 'task_completion',
-  }) async {
+    int amount,
+  ) async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('No token found');
+    }
     try {
       final response = await http.post(
         Uri.parse('$baseurl/api/coins/add/'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer YOUR_AUTH_TOKEN',
-        },
-        body: json.encode({'amount': amount, 'reason': reason}),
+        headers: _headers(token),
+        body: json.encode({'amount': amount}),
       );
 
       if (response.statusCode == 200) {
@@ -235,7 +280,7 @@ class AIService {
       }
       throw Exception('Failed to add coins');
     } catch (e) {
-      print('Error adding coins: $e');
+      //print('Error adding coins: $e');
       throw Exception('Failed to add coins');
     }
   }
@@ -267,83 +312,81 @@ class AIService {
 
   ////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////
-  static Future<Map<String, dynamic>> registerUser({
-    required String username,
-    required String email,
-    required String password,
-  }) async {
-    final url = Uri.parse('$baseurl/api/register/');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'username': username,
-        'email': email,
-        'password': password,
-      }),
-    );
+  // static Future<Map<String, dynamic>> registerUser({
+  //   required String username,
+  //   required String email,
+  //   required String password,
+  // }) async {
+  //   final url = Uri.parse('$baseurl/api/register/');
+  //   final response = await http.post(
+  //     url,
+  //     headers: {'Content-Type': 'application/json'},
+  //     body: json.encode({
+  //       'username': username,
+  //       'email': email,
+  //       'password': password,
+  //     }),
+  //   );
 
-    if (response.statusCode == 201) {
-      return {'success': true, 'data': json.decode(response.body)};
-    } else {
-      final errorData = json.decode(response.body);
-      return {
-        'success': false,
-        'error': errorData['error'] ?? 'Registration failed.',
-      };
+  //   if (response.statusCode == 201) {
+  //     return {'success': true, 'data': json.decode(response.body)};
+  //   } else {
+  //     final errorData = json.decode(response.body);
+  //     return {
+  //       'success': false,
+  //       'error': errorData['error'] ?? 'Registration failed.',
+  //     };
+  //   }
+  // }
+
+  // static Future<Map<String, dynamic>> loginUser(
+  //   String username,
+  //   String password,
+  // ) async {
+  //   final url = Uri.parse('$baseurl/api/login/');
+  //   final response = await http.post(
+  //     url,
+  //     headers: {'Content-Type': 'application/json'},
+  //     body: json.encode({'username': username, 'password': password}),
+  //   );
+
+  //   if (response.statusCode == 200) {
+  //     return {'success': true, 'data': json.decode(response.body)};
+  //   } else {
+  //     final errorData = json.decode(response.body);
+  //     return {'success': false, 'error': errorData['error'] ?? 'Login failed.'};
+  //   }
+  // }
+
+  static Future<int> deductCoins(int amount) async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('No token found');
+    }
+    try {
+      final response = await http.post(
+        Uri.parse('$baseurl/api/coins/deduct/'),
+        headers: _headers(token),
+        body: json.encode({
+          'amount': amount,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['new_balance'];
+      } else if (response.statusCode == 400) {
+        final error = json.decode(response.body)['error'];
+        throw Exception(error);
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized - please login again');
+      }
+      throw Exception('Failed to deduct coins');
+    } catch (e) {
+      print('Error deducting coins: $e');
+      throw Exception('Failed to deduct coins: ${e.toString()}');
     }
   }
-
-  static Future<Map<String, dynamic>> loginUser(
-    String username,
-    String password,
-  ) async {
-    final url = Uri.parse('$baseurl/api/login/');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'username': username, 'password': password}),
-    );
-
-    if (response.statusCode == 200) {
-      return {'success': true, 'data': json.decode(response.body)};
-    } else {
-      final errorData = json.decode(response.body);
-      return {'success': false, 'error': errorData['error'] ?? 'Login failed.'};
-    }
-  }
-
-
-
-
-
-  static Future<int> deductCoins(int amount, {String reason = 'adjustment'}) async {
-  try {
-    final response = await http.post(
-      Uri.parse('$baseurl/api/coins/deduct/'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer YOUR_AUTH_TOKEN'
-      },
-      body: json.encode({
-        'amount': amount,
-        'reason': reason,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return data['new_balance'];
-    } else if (response.statusCode == 400) {
-      final error = json.decode(response.body)['error'];
-      throw Exception(error);
-    }
-    throw Exception('Failed to deduct coins');
-  } catch (e) {
-    print('Error deducting coins: $e');
-    throw Exception('Failed to deduct coins: ${e.toString()}');
-  }
-}
 }
 
 //***********************************************************************************************************//

@@ -34,8 +34,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'deepapi',
     'analyze_responses',
-    'rest_framework',
-    'corsheaders',
+    
     
 ]
 
@@ -79,7 +78,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
-AUTH_USER_MODEL = 'app_frontend.CustomUser'
+AUTH_USER_MODEL = 'app_frontend.CustomUser' ################################
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',  # Default backend
 ]

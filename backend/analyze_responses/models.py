@@ -1,7 +1,8 @@
 import uuid
 from django.db import models
 from datetime import date
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+
 
 
 class Task(models.Model):
@@ -25,6 +26,12 @@ class Task(models.Model):
 
 
 class Habit(models.Model):
+    user = models.ForeignKey(
+        get_user_model(),
+        on_delete=models.CASCADE,
+        related_name='habits',
+        null=True
+    )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     type = models.CharField(max_length=20)  # "good" or "bad"
@@ -33,19 +40,3 @@ class Habit(models.Model):
         return f"{self.name}"
     
 
-class UserCoins(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    balance = models.PositiveIntegerField(default=0)
-    last_updated = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.user.username}'s coins: {self.balance}"
-
-class CoinTransaction(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    amount = models.IntegerField()
-    reason = models.CharField(max_length=100)  # e.g., "task_completion"
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.user.username}: {self.amount} coins ({self.reason})"

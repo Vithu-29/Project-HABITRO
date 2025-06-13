@@ -3,7 +3,6 @@ import 'package:confetti/confetti.dart';
 import 'package:frontend/home_screen/home_app_bar.dart';
 import '../services/ai_services.dart';
 import '../models/habit.dart';
-import '../services/coin_services.dart';
 import './first.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,7 +26,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(duration: const Duration(seconds: 2));
+    _confettiController =
+        ConfettiController(duration: const Duration(seconds: 2));
     _loadCoins();
     _refreshHabits();
   }
@@ -43,34 +43,43 @@ class _HomeScreenState extends State<HomeScreen> {
       final coins = await AIService.getCoinBalance();
       setState(() => userCoins = coins);
     } catch (e) {
-      final localCoins = await CoinService.getCoins();
-      setState(() => userCoins = localCoins);
+      // final localCoins = await CoinService.getCoins();
+      // setState(() => userCoins = localCoins);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content:
+                Text('Failed to show coin balance. Please check your connection.')),
+      );
     }
   }
 
   Future<void> _deductCoins(int amount, {String reason = 'adjustment'}) async {
     try {
-      final newBalance = await AIService.deductCoins(amount, reason: reason);
+      final newBalance = await AIService.deductCoins(amount);
       setState(() => userCoins = newBalance);
     } catch (e) {
-      await CoinService.deductCoins(amount);
-      await _loadCoins();
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   const SnackBar(content: Text('Deducted coins locally (offline mode)')),
-      // );
+      // await CoinService.deductCoins(amount);
+      // await _loadCoins();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content:
+                Text('Failed to deduct coins. Please check your connection.')),
+      );
     }
   }
 
   Future<void> _addCoinsForTaskCompletion() async {
     try {
-      final newBalance = await AIService.addCoins(10, reason: 'task_completion');
+      final newBalance = await AIService.addCoins(10);
       setState(() => userCoins = newBalance);
     } catch (e) {
-      await CoinService.addCoins(10);
-      await _loadCoins();
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   const SnackBar(content: Text('Connected to local coins (offline mode)')),
-      // );
+      // await CoinService.addCoins(100);
+      // await _loadCoins();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content:
+                Text('Failed to add coins. Please check your connection.')),
+      );
     }
   }
 
@@ -185,17 +194,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         const Text("You have no habits"),
                         const Text("Add a habit by clicking (+) icon below."),
                         const SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => FirstScreen(),
-                              ),
-                            ).then((_) => _refreshHabits());
-                          },
-                          child: const Text('Add your first habit'),
-                        ),
+                        // ElevatedButton(
+                        //   onPressed: () {
+                        //     Navigator.push(
+                        //       context,
+                        //       MaterialPageRoute(
+                        //         builder: (context) => FirstScreen(),
+                        //       ),
+                        //     ).then((_) => _refreshHabits());
+                        //   },
+                        //   child: const Text('Add your first habit'),
+                        // ),
                       ],
                     ),
                   );
@@ -259,7 +268,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) =>  FirstScreen()),
+            MaterialPageRoute(builder: (context) => FirstScreen()),
           ).then((_) => _refreshHabits());
         },
         shape: const CircleBorder(),
@@ -292,8 +301,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Chip(
                   label: Text(habit.type),
                   backgroundColor: habit.type == "Good"
-                      ? const Color.fromARGB(255, 15, 102, 202)
-                      : Colors.red[100],
+                      ? const Color.fromARGB(255, 189, 249, 188)
+                      : const Color.fromARGB(255, 244, 168, 168),
                 ),
               ],
             ),
@@ -328,7 +337,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Row(
                       children: [
                         Icon(Icons.monetization_on, color: Colors.amber),
-                        Text("+10"),
+                        Text("+100"),
                       ],
                     ),
                 ],
