@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Task,Habit,UserCoins,CoinTransaction
+from .models import Task,Habit
 
 class HabitAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'type', 'created_at')  # Show in list view
@@ -7,5 +7,3 @@ class HabitAdmin(admin.ModelAdmin):
 
 admin.site.register(Task)
 admin.site.register(Habit, HabitAdmin)
-admin.site.register(UserCoins)
-admin.site.register(CoinTransaction)

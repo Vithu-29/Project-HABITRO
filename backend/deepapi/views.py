@@ -4,10 +4,12 @@ from decouple import config  # Add this import
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import re  # Import regular expression module to clean up the response
+from rest_framework.decorators import api_view,permission_classes
+from rest_framework.permissions import IsAuthenticated
 
 
-
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def analyze_habit(request):
     if request.method == "POST":
         data = json.loads(request.body)
@@ -66,7 +68,8 @@ def analyze_habit(request):
 
 
 # Define the endpoint to generate dynamic questions
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def generate_dynamic_questions(request):
     if request.method == "POST":
         try:
