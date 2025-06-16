@@ -2,10 +2,14 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:frontend/api_config.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:local_auth/error_codes.dart' as auth_error;
 
 class SignInScreen extends StatefulWidget {
   @override
@@ -25,6 +29,151 @@ class _SignInScreenState extends State<SignInScreen> {
     ],
   );
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final LocalAuthentication _localAuth = LocalAuthentication();
+  bool _canCheckBiometrics = false;
+  List<BiometricType> _availableBiometrics = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometrics();
+  }
+
+  Future<void> _checkBiometrics() async {
+    bool canCheckBiometrics;
+    try {
+      canCheckBiometrics = await _localAuth.canCheckBiometrics;
+      if (canCheckBiometrics) {
+        final availableBiometrics = await _localAuth.getAvailableBiometrics();
+        if (mounted) {
+          setState(() {
+            _canCheckBiometrics = canCheckBiometrics;
+            _availableBiometrics = availableBiometrics;
+          });
+        }
+        print("Available biometrics: $_availableBiometrics");
+      }
+    } on PlatformException catch (e) {
+      print("Error checking biometrics: $e");
+    }
+  }
+
+  Future<void> _authenticateWithBiometrics(bool isFingerprint) async {
+    if (!_canCheckBiometrics) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Biometric authentication not available')),
+      );
+      return;
+    }
+
+    // Check for specific biometric type
+    if (isFingerprint &&
+        !_availableBiometrics.contains(BiometricType.fingerprint) &&
+        !_availableBiometrics.contains(BiometricType.strong)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Fingerprint authentication not available')),
+      );
+      return;
+    } else if (!isFingerprint &&
+        !_availableBiometrics.contains(BiometricType.face) &&
+        !_availableBiometrics.contains(BiometricType.weak)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Face authentication not available')),
+      );
+      return;
+    }
+
+    try {
+      setState(() => _isLoading = true);
+
+      final authenticate = await _localAuth.authenticate(
+        localizedReason:
+            'Scan your ${isFingerprint ? "fingerprint" : "face"} to authenticate',
+        options: const AuthenticationOptions(
+          stickyAuth: true,
+          biometricOnly: true,
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (authenticate) {
+        // Get saved credentials
+        final prefs = await SharedPreferences.getInstance();
+        final email = prefs.getString('saved_email');
+        final password = prefs.getString('saved_password');
+
+        if (email != null && password != null) {
+          // Log in with saved credentials
+          await _signInWithCredentials(email, password);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No saved credentials found')),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Authentication failed')),
+        );
+      }
+    } on PlatformException catch (e) {
+      String message;
+      switch (e.code) {
+        case auth_error.notAvailable:
+          message = 'Biometrics not available on this device';
+          break;
+        case auth_error.notEnrolled:
+          message = 'No biometrics enrolled on this device';
+          break;
+        case auth_error.lockedOut:
+          message = 'Biometrics locked out due to too many attempts';
+          break;                                                             
+        case auth_error.permanentlyLockedOut:                                  
+          message =
+              'Biometrics permanently locked. Please use another authentication method';
+          break;
+        default:
+          message = 'Error: ${e.message}';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),                                          
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _signInWithCredentials(String email, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse("${ApiConfig.baseUrl}login/"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": email,
+          "password": password,
+        }),
+      );
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Login successful')),
+        );
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Saved credentials are no longer valid')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error connecting to server: $e')),
+      );
+    }
+  }
 
   Future<void> _signIn() async {
     final email = _emailController.text.trim();
@@ -39,19 +188,24 @@ class _SignInScreenState extends State<SignInScreen> {
 
     setState(() => _isLoading = true);
 
-    final body = {
-      "email": email,
-      "password": password,
-    };
-
     try {
       final response = await http.post(
         Uri.parse("${ApiConfig.baseUrl}login/"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode(body),
+        body: jsonEncode({
+          "email": email,
+          "password": password,
+        }),
       );
 
       if (response.statusCode == 200) {
+        // Save credentials if remember me is checked
+        if (_rememberMe) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('saved_email', email);
+          await prefs.setString('saved_password', password);
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login successful')),
         );
@@ -379,13 +533,23 @@ class _SignInScreenState extends State<SignInScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Image.asset("assets/images/face.png",
-                              height: 50, fit: BoxFit.contain),
+                          GestureDetector(
+                            onTap: _isLoading
+                                ? null
+                                : () => _authenticateWithBiometrics(false),
+                            child: Image.asset("assets/images/face.png",
+                                height: 50, fit: BoxFit.contain),
+                          ),
                           const SizedBox(width: 20),
                           const Text("or"),
                           const SizedBox(width: 20),
-                          Image.asset("assets/images/finger.png",
-                              height: 50, fit: BoxFit.contain),
+                          GestureDetector(
+                            onTap: _isLoading
+                                ? null
+                                : () => _authenticateWithBiometrics(true),
+                            child: Image.asset("assets/images/finger.png",
+                                height: 50, fit: BoxFit.contain),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),

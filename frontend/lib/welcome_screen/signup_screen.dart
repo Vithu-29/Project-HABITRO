@@ -1,9 +1,12 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:frontend/api_config.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'otp_verification_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -55,7 +58,7 @@ class SignUpScreenState extends State<SignUpScreen> {
 
       // Start Google Sign In process
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      
+
       if (googleUser == null) {
         // User canceled the sign-in
         if (mounted) {
@@ -65,7 +68,8 @@ class SignUpScreenState extends State<SignUpScreen> {
       }
 
       // Get authentication details
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
       // Validate that we have the required tokens
       if (googleAuth.accessToken == null || googleAuth.idToken == null) {
@@ -79,7 +83,8 @@ class SignUpScreenState extends State<SignUpScreen> {
       );
 
       // Sign in to Firebase
-      final UserCredential authResult = await _auth.signInWithCredential(credential);
+      final UserCredential authResult =
+          await _auth.signInWithCredential(credential);
       final User? user = authResult.user;
 
       if (user == null) {
@@ -119,14 +124,14 @@ class SignUpScreenState extends State<SignUpScreen> {
         } catch (e) {
           // Use default message if JSON parsing fails
         }
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage)),
         );
       }
     } catch (e) {
       if (!mounted) return;
-      
+
       String errorMessage = 'Google sign-in failed';
       if (e.toString().contains('network_error')) {
         errorMessage = 'Network error. Please check your connection.';
@@ -135,7 +140,73 @@ class SignUpScreenState extends State<SignUpScreen> {
       } else if (e.toString().contains('sign_in_failed')) {
         errorMessage = 'Google sign-in failed. Please try again.';
       }
-      
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleFacebookSignIn() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final LoginResult result = await FacebookAuth.instance.login();
+
+      if (result.status == LoginStatus.success) {
+        final userData = await FacebookAuth.instance.getUserData();
+
+        final OAuthCredential credential =
+            FacebookAuthProvider.credential(result.accessToken!.token);
+
+        final userCredential = await _auth.signInWithCredential(credential);
+        final User? user = userCredential.user;
+
+        if (user == null) {
+          throw Exception('Failed to get user data after Facebook Sign In');
+        }
+
+        if (!mounted) return;
+
+        final response = await http.post(
+          Uri.parse("${ApiConfig.baseUrl}social-login/"),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode({
+            "email": userData['email'],
+            "full_name": userData['name'] ?? "Facebook User",
+            "provider": "facebook",
+            "provider_id": user.uid,
+          }),
+        );
+
+        if (!mounted) return;
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          Navigator.pushReplacementNamed(context, '/home');
+        } else {
+          final error = jsonDecode(response.body);
+          throw Exception(
+              error['error'] ?? 'Failed to authenticate with server');
+        }
+      } else {
+        throw Exception('Facebook sign-in failed');
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      String errorMessage = 'Facebook sign-in failed';
+      if (e.toString().contains('network_error')) {
+        errorMessage = 'Network error. Please check your connection.';
+      } else if (e.toString().contains('cancelled')) {
+        errorMessage = 'Sign-in was canceled';
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(errorMessage)),
       );
@@ -439,10 +510,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                           const SizedBox(width: 38),
                           _socialButton(
                             'assets/images/facebook.png',
-                            () => ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Facebook sign-in clicked')),
-                            ),
+                            _isLoading ? () {} : _handleFacebookSignIn,
                           ),
                         ],
                       ),
