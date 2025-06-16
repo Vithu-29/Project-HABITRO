@@ -2,7 +2,7 @@ import "package:flutter/material.dart";
 import "package:frontend/components/curved_nav_bar.dart";
 import "package:frontend/explore_screen/explore_screen.dart";
 import "package:frontend/home_screen/home_screen.dart";
-import "package:frontend/profile_screen/profile_screen.dart";
+import "package:frontend/profile_screen/menu.dart";
 import "package:frontend/report_screen/report_screen.dart";
 import "package:frontend/reward_screen/reward_screen.dart";
 
@@ -21,7 +21,7 @@ class HomePageState extends State<HomePage> {
     ExploreScreen(),
     ReportScreen(),
     RewardScreen(),
-    ProfileScreen(),
+    MenuPage(),
   ];
 
   void _onNavBarTap(int index) {

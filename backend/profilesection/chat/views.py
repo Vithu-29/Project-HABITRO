@@ -1,0 +1,327 @@
+from rest_framework import viewsets, status, mixins
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.viewsets import GenericViewSet
+from django.contrib.auth.models import User
+from django.db.models import Q, F
+from django.conf import settings
+
+from .models import (
+    UserProfile,
+    Friendship,
+    ChatMessage,
+    Leaderboard,
+    Notification
+)
+from .serializers import (
+    UserSerializer,
+    UserProfileSerializer,
+    FriendshipSerializer,
+    ChatMessageSerializer,
+    LeaderboardSerializer,
+    NotificationSerializer,
+    MiniUserSerializer
+)
+
+# USER
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['GET'])
+    def me(self, request):
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['GET'])
+    def search(self, request):
+        query = request.query_params.get('q', '')
+        users = User.objects.filter(
+            Q(username__icontains=query) |
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query)
+        ).exclude(id=request.user.id)[:10]
+        serializer = MiniUserSerializer(users, many=True)
+        return Response(serializer.data)
+
+
+# USER PROFILE
+
+class UserProfileViewSet(viewsets.ModelViewSet):
+    queryset = UserProfile.objects.all()
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['PATCH'])
+    def update_points(self, request):
+        points = int(request.data.get('points', 0))
+        profile = request.user.profile
+        profile.update_points(points)
+
+        entry, _ = Leaderboard.objects.get_or_create(
+            user=request.user,
+            period='weekly',
+            defaults={'score': 0}
+        )
+        entry.score = F('score') + points
+        entry.save()
+
+        return Response({
+            'status': 'Points updated',
+            'total_points': profile.total_points,
+            'weekly_points': profile.weekly_points
+        })
+
+
+# FRIENDSHIP
+
+class FriendshipViewSet(viewsets.ModelViewSet):
+    serializer_class = FriendshipSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Friendship.objects.filter(
+            Q(requester=self.request.user) | Q(receiver=self.request.user)
+        ).select_related('requester__profile', 'receiver__profile')
+
+    def create(self, request):
+        receiver_id = request.data.get('receiver_id')
+        if receiver_id == request.user.id:
+            return Response({'error': 'Cannot send friend request to yourself'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        friendship, created = Friendship.objects.get_or_create(
+            requester=request.user,
+            receiver_id=receiver_id,
+            defaults={'status': 'pending'}
+        )
+
+        if not created:
+            return Response({'error': 'Friend request already exists'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        Notification.objects.create(
+            user_id=receiver_id,
+            notification_type='friend_request',
+            message=f'{request.user.username} sent you a friend request',
+            related_id=friendship.id
+        )
+
+        serializer = self.get_serializer(friendship)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['POST'])
+    def accept(self, request, pk=None):
+        friendship = self.get_object()
+        if friendship.receiver != request.user:
+            return Response({'error': 'Permission denied'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        friendship.status = 'accepted'
+        friendship.save()
+
+        Notification.objects.create(
+            user=friendship.requester,
+            notification_type='friend_request',
+            message=f'{request.user.username} accepted your friend request',
+            related_id=friendship.id
+        )
+        return Response({'status': 'Friend request accepted'})
+
+    @action(detail=True, methods=['POST'])
+    def reject(self, request, pk=None):
+        friendship = self.get_object()
+        if friendship.receiver != request.user:
+            return Response({'error': 'Permission denied'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        friendship.status = 'rejected'
+        friendship.save()
+        return Response({'status': 'Friend request rejected'})
+
+
+# CHAT
+
+class ChatViewSet(viewsets.ModelViewSet):
+    serializer_class = ChatMessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ChatMessage.objects.filter(
+            Q(sender=self.request.user) | Q(receiver=self.request.user)
+        ).select_related('sender__profile', 'receiver__profile')
+
+    def perform_create(self, serializer):
+        message = serializer.save(sender=self.request.user)
+        Notification.objects.create(
+            user=message.receiver,
+            notification_type='message',
+            message=f'New message from {self.request.user.username}',
+            related_id=message.id
+        )
+
+    @action(detail=False, methods=['GET'])
+    def conversations(self, request):
+        ids = ChatMessage.objects.filter(
+            Q(sender=request.user) | Q(receiver=request.user)
+        ).values_list('sender', 'receiver')
+
+        user_ids = set()
+        for sid, rid in ids:
+            if sid != request.user.id:
+                user_ids.add(sid)
+            if rid != request.user.id:
+                user_ids.add(rid)
+
+        users = User.objects.filter(id__in=user_ids)
+        serializer = MiniUserSerializer(users, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['GET'])
+    def with_user(self, request):
+        user_id = request.query_params.get('user_id')
+        if not user_id:
+            return Response({'error': 'Missing user_id'}, status=400)
+
+        try:
+            other_user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+
+        messages = ChatMessage.objects.filter(
+            Q(sender=request.user, receiver=other_user) |
+            Q(sender=other_user, receiver=request.user)
+        ).order_by('timestamp')
+
+        ChatMessage.objects.filter(
+            sender=other_user,
+            receiver=request.user,
+            is_read=False
+        ).update(is_read=True)
+
+        serializer = self.get_serializer(messages, many=True)
+        return Response(serializer.data)
+
+
+# LEADERBOARD
+
+
+class LeaderboardViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = LeaderboardSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        period = self.request.query_params.get('period', 'weekly')
+        return Leaderboard.objects.filter(
+            period=period
+        ).select_related('user__profile').order_by('-score')[:100]
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        data = serializer.data
+        
+        # Process avatar URLs
+        for entry in data:
+            avatar_url = entry.get('avatar')
+            if avatar_url:
+                # Build full URL for avatars
+                entry['avatar'] = request.build_absolute_uri(avatar_url)
+            else:
+                # Provide default avatar URL
+                entry['avatar'] = request.build_absolute_uri(
+                    settings.MEDIA_URL + 'default_avatar.png'
+                )
+        
+        return Response(data)
+
+    @action(detail=False, methods=['GET'])
+    def around_me(self, request):
+        period = request.query_params.get('period', 'weekly')
+
+        try:
+            entry = Leaderboard.objects.get(user=request.user, period=period)
+        except Leaderboard.DoesNotExist:
+            return Response({'error': 'Not on leaderboard'}, status=404)
+
+        higher = Leaderboard.objects.filter(
+            period=period, 
+            score__gt=entry.score
+        ).order_by('score')[:5]
+        
+        lower = Leaderboard.objects.filter(
+            period=period, 
+            score__lt=entry.score
+        ).order_by('-score')[:5]
+
+        combined = list(higher) + [entry] + list(lower)
+        serializer = self.get_serializer(combined, many=True)
+        
+        # Process avatar URLs for around_me
+        data = serializer.data
+        for entry in data:
+            if entry.get('avatar'):
+                entry['avatar'] = request.build_absolute_uri(entry['avatar'])
+            else:
+                entry['avatar'] = request.build_absolute_uri(
+                    settings.MEDIA_URL + 'default_avatar.png'
+                )
+                
+        return Response({'entries': data})
+    
+    
+    
+# NOTIFICATIONS
+
+
+class NotificationViewSet(mixins.ListModelMixin,
+                          mixins.UpdateModelMixin,
+                          GenericViewSet):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user).order_by('-created_at')
+
+    @action(detail=False, methods=['POST'])
+    def mark_all_read(self, request):
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return Response({'status': 'All notifications marked as read'})
+
+
+# EDIT PROFILE VIEWSET
+
+class EditProfileViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer(self, *args, **kwargs):
+        return UserSerializer(*args, **kwargs)
+
+    @action(detail=False, methods=['GET', 'PUT'])
+    def me(self, request):
+        if request.method == 'GET':
+            serializer = UserSerializer(request.user)
+            return Response(serializer.data)
+
+        elif request.method == 'PUT':
+            serializer = UserSerializer(request.user, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+
+                # Handle nested UserProfile update
+                profile_data = request.data.get('profile')
+                if profile_data:
+                    profile_serializer = UserProfileSerializer(
+                        request.user.profile, data=profile_data, partial=True
+                    )
+                    if profile_serializer.is_valid():
+                        profile_serializer.save()
+                    else:
+                        return Response(profile_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

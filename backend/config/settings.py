@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'achievements',
     'articles',
     'rest_framework.authtoken',
+    'profilesection',
 ]
 
 MIDDLEWARE = [
