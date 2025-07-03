@@ -10,6 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Security
 SECRET_KEY = config('SECRET_KEY', default='your-default-secret-key')
+SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS').split(',')
 
@@ -25,19 +26,38 @@ INSTALLED_APPS = [
     'app_frontend',
     'corsheaders',
     'admin_auth',
+    'quiz',
+    'rewards',
+    'game',
+    'achievements',
+    'articles',
+    'rest_framework.authtoken',
+    'deepapi',
+    'analyze_responses',
+    
+    
 ]
+
+CSRF_COOKIE_HTTPONLY = False  #########
+CSRF_COOKIE_SECURE = False    #########
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'admin_auth.middleware.AdminAuthMiddleware',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ]
+}
 
 ROOT_URLCONF = 'config.urls'
 APPEND_SLASH = False  # Disable automatic slash appending
@@ -58,11 +78,21 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
-AUTH_USER_MODEL = 'app_frontend.CustomUser'
+AUTH_USER_MODEL = 'app_frontend.CustomUser' ################################
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',  # Default backend
 ]
 # Database
+#DATABASES = {
+#    'default': {
+#       'ENGINE': 'django.db.backends.mysql',
+#        'NAME': config('DB_NAME'),
+#       'USER': config('DB_USER'),
+#       'PASSWORD': config('DB_PASSWORD'),
+#       'HOST': config('DB_HOST', default='localhost'),
+#       'PORT': config('DB_PORT', default='3306'),
+#   }
+#}
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -75,14 +105,6 @@ DATABASES = {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },
     },
-    'habitro': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='3306'),
-    }
 }
 
 # Password validation
@@ -109,7 +131,7 @@ CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = True
 
-CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = False
 
 # Internationalization

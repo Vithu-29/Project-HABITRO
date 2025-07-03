@@ -16,14 +16,29 @@ class HomeScreenState extends State<HomeScreen> {
   int onboardingStep = 0;
   bool showOnboarding = true;
   bool onboardingCompleted = false;
+
+  // Define keys for navigation items
   final GlobalKey fabKey = GlobalKey();
   final GlobalKey dateKey = GlobalKey();
-
-  // For navigation bar item positions
   final GlobalKey exploreKey = GlobalKey();
   final GlobalKey reportKey = GlobalKey();
   final GlobalKey rewardKey = GlobalKey();
   final GlobalKey profileKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    // Check if onboarding should be shown
+    _checkOnboardingStatus();
+  }
+
+  Future<void> _checkOnboardingStatus() async {
+    // Implement logic to check if onboarding has been completed
+    // For now, we'll just set it to true to show onboarding
+    setState(() {
+      showOnboarding = true;
+    });
+  }
 
   void handleDateSelection(int index) {
     setState(() {
@@ -47,10 +62,18 @@ class HomeScreenState extends State<HomeScreen> {
           selectedIndex = navTargets[target]!;
         }
       } else {
-        showOnboarding = false;
-        
+        setState(() {
+          showOnboarding = false;
+          onboardingCompleted = true;
+        });
+        _saveOnboardingCompleted();
       }
     });
+  }
+
+  Future<void> _saveOnboardingCompleted() async {
+    // Implement logic to save that onboarding is completed
+    // Example: SharedPreferences.getInstance().then((prefs) => prefs.setBool('onboarding_completed', true));
   }
 
   Offset? _getTargetOffset(String? target) {
@@ -105,6 +128,7 @@ class HomeScreenState extends State<HomeScreen> {
 
   Widget _buildOnboardingOverlay() {
     if (!showOnboarding) return const SizedBox();
+
     final item = onboardingItems[onboardingStep];
     final target = item.targetElement;
 
@@ -138,7 +162,6 @@ class HomeScreenState extends State<HomeScreen> {
       ],
     );
 
-  
     Widget messageBoxWithButton = Container(
       width: 300,
       padding: const EdgeInsets.fromLTRB(14, 24, 14, 16), // Adjusted padding
@@ -159,7 +182,7 @@ class HomeScreenState extends State<HomeScreen> {
         children: [
           if (item.title.isNotEmpty) ...[
             Image.asset(
-              'assets/images/welcome.png', 
+              'assets/images/welcome.png',
               height: 100, // height
               fit: BoxFit.contain,
             ),
@@ -191,7 +214,7 @@ class HomeScreenState extends State<HomeScreen> {
       ),
     );
 
-    // FAB step: finger points right, overlays + icon, finger at right center of box
+    // Handle different onboarding steps
     if (target == 'fab') {
       return Stack(
         children: [
@@ -209,38 +232,32 @@ class HomeScreenState extends State<HomeScreen> {
           ),
         ],
       );
-    }
-    // Date step: finger points up, overlays today's date, finger at top center of box
-    if (target == 'date') {
+    } else if (target == 'date') {
       return Stack(
         children: [
           Container(color: Colors.black.withOpacity(0.5)),
           Column(
             children: [
-              const SizedBox(height: 30), // AppBar height
+              const SizedBox(height: 30),
               _buildFingerIcon(target: 'date'),
-              const SizedBox(
-                  height: 1), // Reduced space between finger and message
+              const SizedBox(height: 1),
               Align(
-                alignment: const Alignment(
-                    0.0, -0.3), // Positioned slightly above center
+                alignment: const Alignment(0.0, -0.3),
                 child: messageBoxWithButton,
               ),
             ],
           ),
         ],
       );
-    }
-
-    if (target == 'explore' ||
+    } else if (target == 'explore' ||
         target == 'report' ||
         target == 'reward' ||
         target == 'profile') {
       double horizontalOffset = 0.0;
-      if (target == 'explore') horizontalOffset = -0.5; // 2nd nav item
-      if (target == 'report') horizontalOffset = -0.05; // 3rd nav item
-      if (target == 'reward') horizontalOffset = 0.4; // 4th nav item
-      if (target == 'profile') horizontalOffset = 0.8; // 5th nav item
+      if (target == 'explore') horizontalOffset = -0.5;
+      if (target == 'report') horizontalOffset = -0.05;
+      if (target == 'reward') horizontalOffset = 0.4;
+      if (target == 'profile') horizontalOffset = 0.8;
 
       return Stack(
         children: [
@@ -248,11 +265,11 @@ class HomeScreenState extends State<HomeScreen> {
           Column(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              const SizedBox(height: 40), // Added space to push messages down
+              const SizedBox(height: 40),
               Align(
                 alignment: Alignment(horizontalOffset, 0),
                 child: Container(
-                  width: 280, // Slightly narrower than welcome message
+                  width: 280,
                   padding:
                       const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
                   decoration: BoxDecoration(
@@ -283,17 +300,18 @@ class HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 3), // Space between message and finger
+              const SizedBox(height: 3),
               Align(
                 alignment: Alignment(horizontalOffset, 0),
                 child: _buildFingerIcon(target: target!),
               ),
-              const SizedBox(height: 60), // Space for navigation bar
+              const SizedBox(height: 60),
             ],
           ),
         ],
       );
     }
+
     // Default (centered welcome)
     return Stack(
       children: [
@@ -312,6 +330,7 @@ class HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: HomeAppBar(
+        key: dateKey, // Add key to the appbar
         selectedIndex: selectedIndex,
         onDateSelected: handleDateSelection,
       ),
@@ -337,12 +356,17 @@ class HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          _buildOnboardingOverlay(),
+          if (showOnboarding) _buildOnboardingOverlay(),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         key: fabKey,
-        onPressed: null,
+        onPressed: () {
+          // Add your functionality for the FAB here
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Add Habit button pressed')),
+          );
+        },
         shape: const CircleBorder(),
         backgroundColor: Theme.of(context).colorScheme.primary,
         child: const Icon(

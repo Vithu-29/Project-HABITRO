@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:frontend/api_config.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -199,6 +200,11 @@ class _SignInScreenState extends State<SignInScreen> {
       );
 
       if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final token = data['token'];
+
+        // Save token securely
+        await storage.write(key: 'authToken', value: token);
         // Save credentials if remember me is checked
         if (_rememberMe) {
           final prefs = await SharedPreferences.getInstance();
@@ -209,7 +215,11 @@ class _SignInScreenState extends State<SignInScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login successful')),
         );
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/home',
+          (Route<dynamic> route) => false,
+        );
       } else {
         final error = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(

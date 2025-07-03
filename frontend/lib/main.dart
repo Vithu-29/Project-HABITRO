@@ -7,9 +7,11 @@ import 'package:frontend/welcome_screen/signin_screen.dart';
 import 'package:frontend/welcome_screen/forgotpassword_screen.dart';
 import 'package:frontend/home_page.dart';
 import 'theme.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 
-Future<void> main() async {
+Future<Future<void>> main() async async {
+  await dotenv.load(fileName: ".env");
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
