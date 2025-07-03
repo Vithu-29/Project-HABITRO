@@ -1,4 +1,4 @@
-// ignore_for_file: sort_child_properties_last, use_key_in_widget_constructors, library_private_types_in_public_api, use_build_context_synchronously
+// ignore_for_file: sort_child_properties_last, use_key_in_widget_constructors, library_private_types_in_public_api, use_build_context_synchronously, avoid_print
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
