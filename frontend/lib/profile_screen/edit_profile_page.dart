@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'auth_service.dart';
+import 'dart:developer';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -25,9 +26,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
   String? _avatarUrl;
   final ImagePicker _picker = ImagePicker();
 
-  //final String token =
-  //'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzc5OTQxMTM5LCJpYXQiOjE3NDg0MDUxMzksImp0aSI6IjFjMzE5YTQyNWZmYjRjNTk4NmFiZjI0Zjg3NjQ3N2Y2IiwidXNlcl9pZCI6MX0.jXVGeAkPmh6SIR3gBfz9UzfrXP8_GPENbfF7-Aoxdag'; // 🔐 Replace with your actual token
-  final String apiUrl = 'http://127.0.0.1:8000/api/profile/me/';
+  //  Updated IP address for emulator
+  final String apiUrl = 'http://10.0.2.2:8000/api/profile/me/';
 
   @override
   void initState() {
@@ -66,50 +66,50 @@ class _EditProfilePageState extends State<EditProfilePage> {
           _phoneController.text = profile['phone_number'] ?? '';
           isPrivate = profile['is_private'] ?? false;
           selectedGender = _capitalize(profile['gender'] ?? 'Male');
-          _avatarUrl =
-              profile['avatar'] != null
-                  ? 'http://127.0.0.1:8000${profile['avatar']}'
-                  : null;
+          _avatarUrl = profile['avatar'] != null
+              ? 'http://10.0.2.2:8000${profile['avatar']}'
+              : null;
         });
       } else {
-        print("❌ Error fetching profile: ${response.body}");
+        log(" Error fetching profile: ${response.body}");
       }
     } catch (e) {
-      print("❌ Exception: $e");
+      log(" Exception: $e");
     }
   }
 
   Future<void> updateProfile() async {
     final uri = Uri.parse(apiUrl);
-    final request =
-        http.MultipartRequest('PUT', uri)
-          ..headers['Authorization'] = 'Bearer ${AuthService.token}'
-          ..fields['username'] = _usernameController.text.trim()
-          ..fields['profile.name'] = _nameController.text.trim()
-          ..fields['profile.email'] = _emailController.text.trim()
-          ..fields['profile.gender'] = selectedGender
-          ..fields['profile.date_of_birth'] = _dobController.text.trim()
-          ..fields['profile.phone_number'] = _phoneController.text.trim()
-          ..fields['profile.is_private'] = isPrivate.toString();
+    final request = http.MultipartRequest('PUT', uri)
+      ..headers['Authorization'] = 'Bearer ${AuthService.token}'
+      ..fields['username'] = _usernameController.text.trim()
+      ..fields['name'] = _nameController.text.trim()
+      ..fields['email'] = _emailController.text.trim()
+      ..fields['gender'] = selectedGender
+      ..fields['date_of_birth'] = _dobController.text.trim()
+      ..fields['phone_number'] = _phoneController.text.trim()
+      ..fields['is_private'] = isPrivate.toString();
 
     if (_imageFile != null) {
       request.files.add(
-        await http.MultipartFile.fromPath('profile.avatar', _imageFile!.path),
+        await http.MultipartFile.fromPath('avatar', _imageFile!.path),
       );
     }
 
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
 
+    if (!mounted) return;
+
     if (response.statusCode == 200) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("✅ Profile updated!")));
-      fetchUserProfile(); // refresh
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(" Profile updated!")),
+      );
+      fetchUserProfile();
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("❌ Failed: ${response.body}")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(" Failed: ${response.body}")),
+      );
     }
   }
 
@@ -171,15 +171,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 children: [
                   CircleAvatar(
                     radius: 50,
-                    backgroundImage:
-                        _imageFile != null
-                            ? FileImage(_imageFile!)
-                            : (_avatarUrl != null
-                                    ? NetworkImage(_avatarUrl!)
-                                    : const AssetImage(
-                                      'assets/default_avatar.png',
-                                    ))
-                                as ImageProvider,
+                    backgroundImage: _imageFile != null
+                        ? FileImage(_imageFile!)
+                        : (_avatarUrl != null
+                            ? NetworkImage(_avatarUrl!)
+                            : const AssetImage('assets/default_avatar.png'))
+                            as ImageProvider,
                   ),
                   GestureDetector(
                     onTap: _pickImage,
@@ -272,13 +269,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
           border: InputBorder.none,
         ),
         value: selectedGender,
-        items:
-            ['Male', 'Female', 'Other']
-                .map(
-                  (gender) =>
-                      DropdownMenuItem(value: gender, child: Text(gender)),
-                )
-                .toList(),
+        items: ['Male', 'Female', 'Other']
+            .map((gender) => DropdownMenuItem(value: gender, child: Text(gender)))
+            .toList(),
         onChanged: (value) {
           setState(() {
             selectedGender = value!;

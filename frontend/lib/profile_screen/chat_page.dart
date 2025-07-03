@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:developer';
 
-import 'friends_Page.dart';
-import 'select_Friend_Page.dart';
+import 'Friends_Page.dart';
+import 'Select_Friend_Page.dart';
 
 const String baseUrl = 'http://<your_ip>:8000'; // Replace with your IP
 
@@ -54,7 +55,7 @@ class _ChatPageState extends State<ChatPage> {
         isLoading = false;
       });
     } catch (e) {
-      print('Error: $e');
+      log('Error: $e');
       setState(() {
         isLoading = false;
       });

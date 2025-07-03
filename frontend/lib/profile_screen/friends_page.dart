@@ -228,7 +228,8 @@ class FriendsPage extends StatelessWidget {
             childAspectRatio: 0.75,
           ),
           itemBuilder: (context, index) {
-            return const FriendCard(friendName: 'Name', username: 'username');
+            // Remove const here since FriendCard is now stateful
+            return FriendCard(friendName: 'Name', username: 'username');
           },
         ),
       ),
@@ -241,7 +242,7 @@ class FriendsPage extends StatelessWidget {
   }
 }
 
-class FriendCard extends StatelessWidget {
+class FriendCard extends StatefulWidget {
   final String friendName;
   final String username;
 
@@ -252,6 +253,11 @@ class FriendCard extends StatelessWidget {
   });
 
   @override
+  State<FriendCard> createState() => _FriendCardState();
+}
+
+class _FriendCardState extends State<FriendCard> {
+  @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap:
@@ -260,8 +266,8 @@ class FriendCard extends StatelessWidget {
             MaterialPageRoute(
               builder:
                   (context) => FriendPersonalChatPage(
-                    friendName: friendName,
-                    username: username,
+                    friendName: widget.friendName,
+                    username: widget.username,
                   ),
             ),
           ),
@@ -287,7 +293,7 @@ class FriendCard extends StatelessWidget {
                   GestureDetector(
                     onTapDown:
                         (details) =>
-                            _showFriendOptions(context, details.globalPosition),
+                            _showFriendOptions(details.globalPosition),
                     child: const Icon(
                       Icons.more_vert,
                       size: 18,
@@ -305,7 +311,7 @@ class FriendCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                friendName,
+                widget.friendName,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
@@ -313,7 +319,7 @@ class FriendCard extends StatelessWidget {
                 ),
               ),
               Text(
-                '@$username',
+                '@${widget.username}',
                 style: const TextStyle(color: Colors.black, fontSize: 12),
               ),
             ],
@@ -323,7 +329,7 @@ class FriendCard extends StatelessWidget {
     );
   }
 
-  void _showFriendOptions(BuildContext context, Offset position) async {
+  void _showFriendOptions(Offset position) async {
     final selected = await showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(
@@ -371,14 +377,17 @@ class FriendCard extends StatelessWidget {
       ],
     );
 
+    // Add mounted check here after async operation
+    if (!mounted) return;
+
     if (selected == 'message') {
       Navigator.push(
         context,
         MaterialPageRoute(
           builder:
               (context) => FriendPersonalChatPage(
-                friendName: friendName,
-                username: username,
+                friendName: widget.friendName,
+                username: widget.username,
               ),
         ),
       );

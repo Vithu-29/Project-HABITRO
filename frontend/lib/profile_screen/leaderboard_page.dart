@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'auth_service.dart';
+import 'dart:developer';
 
 class LeaderboardPage extends StatefulWidget {
   const LeaderboardPage({super.key});
@@ -12,10 +13,14 @@ class LeaderboardPage extends StatefulWidget {
 
 class _LeaderboardPageState extends State<LeaderboardPage> {
   List<dynamic> leaderboardData = [];
+  List<dynamic> top3Users = [];
   bool isLoading = true;
   String? errorMessage;
-  String period = 'weekly'; // Default period
+  String period = 'weekly';
   String currentUsername = '';
+  int currentPage = 1;
+  int totalPages = 20;
+  Map<String, dynamic>? currentUserGlobal;
 
   @override
   void initState() {
@@ -38,6 +43,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
         setState(() {
           currentUsername = data['username'] ?? '';
         });
+        await _fetchCurrentUserRank();
         _fetchLeaderboard();
       } else {
         setState(() {
@@ -53,23 +59,66 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     }
   }
 
-  Future<void> _fetchLeaderboard() async {
+  Future<void> _fetchCurrentUserRank() async {
     try {
       final response = await http.get(
-        Uri.parse('http://127.0.0.1:8000/api/leaderboard/?period=$period'),
-        headers: {
-          'Authorization': 'Bearer ${AuthService.token}',
-        },
+        Uri.parse(
+          'http://127.0.0.1:8000/api/leaderboard/around_me/?period=$period',
+        ),
+        headers: {'Authorization': 'Bearer ${AuthService.token}'},
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        // Add rank based on position
-        for (int i = 0; i < data.length; i++) {
-          data[i]['rank'] = i + 1;
+        final entry = data['entries'].firstWhere(
+          (u) => u['username'] == currentUsername,
+          orElse: () => null,
+        );
+
+        if (entry != null) {
+          setState(() {
+            currentUserGlobal = entry;
+          });
         }
+      }
+    } catch (e) {
+      log("Error fetching current user rank: $e");
+    }
+  }
+
+  Future<void> _fetchLeaderboard() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      if (top3Users.isEmpty) {
+        final top3Response = await http.get(
+          Uri.parse(
+            'http://127.0.0.1:8000/api/leaderboard/?period=$period&page=1',
+          ),
+          headers: {'Authorization': 'Bearer ${AuthService.token}'},
+        );
+        if (top3Response.statusCode == 200) {
+          final data = json.decode(top3Response.body);
+          setState(() {
+            top3Users = data.length >= 3 ? data.sublist(0, 3) : data;
+          });
+        }
+      }
+
+      final response = await http.get(
+        Uri.parse(
+          'http://127.0.0.1:8000/api/leaderboard/?period=$period&page=$currentPage',
+        ),
+        headers: {'Authorization': 'Bearer ${AuthService.token}'},
+      );
+
+      if (response.statusCode == 200) {
+        final pageData = json.decode(response.body);
         setState(() {
-          leaderboardData = data;
+          leaderboardData = pageData;
           isLoading = false;
         });
       } else {
@@ -80,7 +129,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
       }
     } catch (e) {
       setState(() {
-        errorMessage = 'Leaderboard Exception: $e';
+        errorMessage = 'Error: $e';
         isLoading = false;
       });
     }
@@ -88,43 +137,38 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
 
   void _changePeriod(String newPeriod) {
     setState(() {
-      period = {
-        'Daily': 'daily',
-        'Weekly': 'weekly',
-        'Monthly': 'monthly',
-        'All Time': 'all_time',
-      }[newPeriod]!;
-      isLoading = true;
+      period =
+          {
+            'Daily': 'daily',
+            'Weekly': 'weekly',
+            'Monthly': 'monthly',
+            'All Time': 'all_time',
+          }[newPeriod]!;
+      currentPage = 1;
+      top3Users.clear();
     });
+    _fetchCurrentUserRank();
     _fetchLeaderboard();
   }
 
-  void _refreshData() {
-    setState(() {
-      isLoading = true;
-      errorMessage = null;
-    });
-    _fetchLeaderboard();
+  void _changePage(int page) {
+    if (page >= 1 && page <= totalPages) {
+      setState(() {
+        currentPage = page;
+      });
+      _fetchLeaderboard();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Split data into top 3 and others
-    final top3 = leaderboardData.length >= 3 
-        ? leaderboardData.sublist(0, 3) 
-        : leaderboardData;
-    final otherUsers = leaderboardData.length > 3 
-        ? leaderboardData.sublist(3) 
-        : [];
-
-    // Find current user entry
-    Map<String, dynamic>? currentUserEntry;
-    for (var user in leaderboardData) {
-      if (user['username'] == currentUsername) {
-        currentUserEntry = user;
-        break;
-      }
-    }
+    final otherUsers =
+        leaderboardData
+            .where(
+              (user) =>
+                  !top3Users.any((top) => top['username'] == user['username']),
+            )
+            .toList();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -142,67 +186,108 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.black),
-            onPressed: _refreshData,
+            onPressed: _fetchLeaderboard,
           ),
         ],
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : errorMessage != null
+      body:
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : errorMessage != null
               ? Center(child: Text(errorMessage!))
               : Column(
-                  children: [
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        _buildPeriodDropdown(),
+                        const Spacer(),
+                        _buildSortDropdown(),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (top3Users.length >= 2) _buildTopUser(top3Users[1], 2),
+                      if (top3Users.length >= 2) const SizedBox(width: 4),
+                      if (top3Users.isNotEmpty)
+                        _buildTopUser(top3Users[0], 1, isCenter: true),
+                      if (top3Users.length >= 3) const SizedBox(width: 4),
+                      if (top3Users.length >= 3) _buildTopUser(top3Users[2], 3),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: otherUsers.length,
+                      itemBuilder: (context, index) {
+                        final user = otherUsers[index];
+                        return _buildUserTile(
+                          user['rank'],
+                          user['username'],
+                          user['score'],
+                          user['avatar'] ?? 'https://i.pravatar.cc/150',
+                          isCurrentUser: user['username'] == currentUsername,
+                        );
+                      },
+                    ),
+                  ),
+                  if (currentUserGlobal != null)
+                    Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2853AF),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
                       child: Row(
                         children: [
-                          _buildPeriodDropdown(),
-                          const Spacer(),
-                          _buildSortDropdown(),
+                          Text(
+                            '${currentUserGlobal!['rank']}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          CircleAvatar(
+                            backgroundImage: NetworkImage(
+                              currentUserGlobal!['avatar'] ??
+                                  'https://i.pravatar.cc/150',
+                            ),
+                            radius: 16,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Me',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          Text(
+                            '${currentUserGlobal!['score']}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (top3.length >= 2) _buildTopUser(top3[1], 2),
-                        if (top3.length >= 2) const SizedBox(width: 4),
-                        if (top3.isNotEmpty) _buildTopUser(top3[0], 1, isCenter: true),
-                        if (top3.length >= 3) const SizedBox(width: 4),
-                        if (top3.length >= 3) _buildTopUser(top3[2], 3),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: otherUsers.length + (currentUserEntry != null ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (index < otherUsers.length) {
-                            final user = otherUsers[index];
-                            return _buildUserTile(
-                              user['rank'],
-                              user['username'],
-                              user['score'],
-                              user['avatar'] ?? 'https://i.pravatar.cc/150',
-                            );
-                          } else {
-                            return _buildUserTile(
-                              currentUserEntry!['rank'],
-                              "Me",
-                              currentUserEntry['score'],
-                              currentUserEntry['avatar'] ?? 'https://i.pravatar.cc/150',
-                              isCurrentUser: true,
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                    _buildPagination(),
-                  ],
-                ),
+                  _buildPagination(),
+                ],
+              ),
     );
   }
 
@@ -213,24 +298,22 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
       decoration: BoxDecoration(
         color: const Color.fromRGBO(232, 239, 255, 1),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
       ),
       child: DropdownButton<String>(
-        value: period == 'daily' ? 'Daily' 
-              : period == 'monthly' ? 'Monthly'
-              : period == 'all_time' ? 'All Time'
-              : 'Weekly',
+        value:
+            {
+              'daily': 'Daily',
+              'weekly': 'Weekly',
+              'monthly': 'Monthly',
+              'all_time': 'All Time',
+            }[period],
         underline: const SizedBox(),
-        items: options.map((String v) {
-          return DropdownMenuItem(
-            value: v,
-            child: Text(v),
-          );
-        }).toList(),
+        items:
+            options
+                .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                .toList(),
         onChanged: (newValue) {
-          if (newValue != null) {
-            _changePeriod(newValue);
-          }
+          if (newValue != null) _changePeriod(newValue);
         },
         icon: const Icon(Icons.arrow_drop_down),
       ),
@@ -238,24 +321,20 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
   }
 
   Widget _buildSortDropdown() {
-    final options = ['Success rate'];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: const Color.fromRGBO(232, 239, 255, 1),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
       ),
       child: DropdownButton<String>(
         value: 'Success rate',
         underline: const SizedBox(),
-        items: options.map((String v) {
-          return DropdownMenuItem(
-            value: v,
-            child: Text(v),
-          );
-        }).toList(),
-        onChanged: (_) {}, // Not implemented
+        items:
+            [
+              'Success rate',
+            ].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+        onChanged: (_) {},
         icon: const Icon(Icons.arrow_drop_down),
       ),
     );
@@ -266,39 +345,20 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     int rank, {
     bool isCenter = false,
   }) {
-    Gradient backgroundGradient;
-
-    if (rank == 1) {
-      backgroundGradient = const LinearGradient(
-        colors: [
-          Color.fromRGBO(40, 83, 175, 1),
-          Color.fromRGBO(40, 83, 175, 0.7),
-        ],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      );
-    } else if (rank == 2) {
-      backgroundGradient = const LinearGradient(
-        colors: [
-          Color.fromRGBO(40, 83, 175, 1),
-          Color.fromRGBO(10, 176, 214, 1),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
-    } else {
-      backgroundGradient = const LinearGradient(
-        colors: [
-          Color.fromRGBO(10, 176, 214, 1),
-          Color.fromRGBO(40, 83, 175, 0.7),
-        ],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      );
-    }
+    Gradient gradient =
+        rank == 1
+            ? const LinearGradient(
+              colors: [Color(0xFF2853AF), Color(0xB32853AF)],
+            )
+            : rank == 2
+            ? const LinearGradient(
+              colors: [Color(0xFF2853AF), Color(0xFF0AB0D6)],
+            )
+            : const LinearGradient(
+              colors: [Color(0xFF0AB0D6), Color(0xB32853AF)],
+            );
 
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
         Stack(
           alignment: Alignment.topCenter,
@@ -308,7 +368,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
               width: 80,
               margin: const EdgeInsets.only(top: 30),
               decoration: BoxDecoration(
-                gradient: backgroundGradient,
+                gradient: gradient,
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
@@ -359,9 +419,8 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: isCurrentUser
-            ? const Color.fromRGBO(40, 83, 175, 1)
-            : const Color.fromRGBO(232, 239, 255, 1),
+        color:
+            isCurrentUser ? const Color(0xFF2853AF) : const Color(0xFFE8EFFF),
         borderRadius: BorderRadius.circular(30),
       ),
       child: Row(
@@ -374,10 +433,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
             ),
           ),
           const SizedBox(width: 10),
-          CircleAvatar(
-            backgroundImage: NetworkImage(image),
-            radius: 16,
-          ),
+          CircleAvatar(backgroundImage: NetworkImage(image), radius: 16),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -405,30 +461,42 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _pageButton('1', isSelected: true),
-          _pageButton('2'),
-          _pageButton('3'),
-          const Text('...'),
-          _pageButton('20'),
-          _pageButton('>>'),
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed:
+                currentPage > 1 ? () => _changePage(currentPage - 1) : null,
+          ),
+          for (int i = 1; i <= totalPages; i++)
+            if (i == 1 ||
+                i == totalPages ||
+                (i >= currentPage - 2 && i <= currentPage + 2))
+              _pageButton(i.toString(), isSelected: i == currentPage),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed:
+                currentPage < totalPages
+                    ? () => _changePage(currentPage + 1)
+                    : null,
+          ),
         ],
       ),
     );
   }
 
   Widget _pageButton(String label, {bool isSelected = false}) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? const Color.fromRGBO(40, 83, 175, 1)
-            : const Color.fromRGBO(217, 217, 217, 1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(color: isSelected ? Colors.white : Colors.black),
+    return GestureDetector(
+      onTap: () => _changePage(int.parse(label)),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF2853AF) : const Color(0xFFD9D9D9),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(color: isSelected ? Colors.white : Colors.black),
+        ),
       ),
     );
   }
