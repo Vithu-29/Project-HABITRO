@@ -14,7 +14,7 @@ from .models import CustomUser, OTPVerification
 from .serializers import RegisterSerializer, VerifyOTPSerializer
 from rest_framework.decorators import api_view
 import logging
-
+from rest_framework.authtoken.models import Token
 
 logger = logging.getLogger(__name__)
 
@@ -238,10 +238,12 @@ class LoginView(APIView):
         # Verify password
         if not user.check_password(password):
             return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
-
+        
+        token, created = Token.objects.get_or_create(user=user)
         login(request, user)
         return Response({
             "message": "Login successful",
+            "token": token.key,
             "user": {
                 "email": user.email,
                 "phone_number": user.phone_number,

@@ -10,7 +10,9 @@ from rest_framework.permissions import IsAuthenticated
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+
 def analyze_habit(request):
+    print("User:", request.user)
     if request.method == "POST":
         data = json.loads(request.body)
         habit_text = data.get("habit", "")
@@ -27,7 +29,7 @@ def analyze_habit(request):
         }
 
         payload = {
-            "model": "deepseek/deepseek-r1-zero:free",  # Using DeepSeek R1 Zero
+            "model":"deepseek/deepseek-chat-v3-0324:free",#"model": "deepseek/deepseek-r1-zero:free",  # Using DeepSeek R1 Zero
             "messages": [
                 {"role": "system", "content": "You are an AI that classifies habits as 'Good' or 'Bad'."},
                 {"role": "user", "content": f"Analyze this habit and classify it as 'Good' or 'Bad': {habit_text}"}
@@ -40,6 +42,9 @@ def analyze_habit(request):
 
         try:
             response = requests.post(url, headers=headers, json=payload)
+            print("OpenRouter Status Code:", response.status_code)
+            print("OpenRouter Response Text:", response.text)
+
             
             # Debugging: Check the status code and response data
               # Debug: print the status code
@@ -49,16 +54,24 @@ def analyze_habit(request):
             if "choices" in response_data:
                 # Extract the result and remove LaTeX formatting
                 result = response_data["choices"][0]["message"]["content"].strip()
+                match = re.search(r"\b(Good|Bad)\b", result, re.IGNORECASE)
+                if match:
+                    cleaned_result = match.group(1).capitalize()
+                else:
+                    cleaned_result = "Unknown"
+
 
                 # Clean LaTeX formatting (e.g., \boxed{Bad} becomes Bad)
-                cleaned_result = re.sub(r'\\boxed\{(.*?)\}', r'\1', result)
+                #cleaned_result = re.sub(r'\\boxed\{(.*?)\}', r'\1', result)
 
                 return JsonResponse({"habit": habit_text, "classification": cleaned_result})
 
             return JsonResponse({"error": "Failed to get response from OpenRouter"}, status=500)
 
         except Exception as e:
-            print(f"Error: {str(e)}")  # Debug: print the error message
+            import traceback
+            traceback.print_exc()
+            print(f"Error in analyze_habit: {e}")#print(f"Error: {str(e)}")  # Debug: print the error message
             return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Invalid request method"}, status=405)
@@ -104,7 +117,7 @@ def generate_dynamic_questions(request):
 
 
             payload = {
-                "model": "deepseek/deepseek-r1-zero:free",
+                "model":"deepseek/deepseek-chat-v3-0324:free",
                 "messages": [
                     {"role": "system", "content": system_prompt}
                 ],

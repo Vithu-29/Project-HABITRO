@@ -23,6 +23,7 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _rememberMe = false;
   bool _isLoading = false;
   bool _isPasswordVisible = false;
+  final storage = FlutterSecureStorage();
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: [
       'email',
@@ -129,8 +130,8 @@ class _SignInScreenState extends State<SignInScreen> {
           break;
         case auth_error.lockedOut:
           message = 'Biometrics locked out due to too many attempts';
-          break;                                                             
-        case auth_error.permanentlyLockedOut:                                  
+          break;
+        case auth_error.permanentlyLockedOut:
           message =
               'Biometrics permanently locked. Please use another authentication method';
           break;
@@ -139,7 +140,7 @@ class _SignInScreenState extends State<SignInScreen> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),                                          
+        SnackBar(content: Text(message)),
       );
     } finally {
       if (mounted) {
@@ -159,6 +160,10 @@ class _SignInScreenState extends State<SignInScreen> {
         }),
       );
       if (response.statusCode == 200) {
+        // Set is_signed_in flag to true
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('is_signed_in', true);
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login successful')),
         );
@@ -211,6 +216,10 @@ class _SignInScreenState extends State<SignInScreen> {
           await prefs.setString('saved_email', email);
           await prefs.setString('saved_password', password);
         }
+
+        // Set is_signed_in flag to true
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('is_signed_in', true);
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login successful')),
@@ -302,6 +311,10 @@ class _SignInScreenState extends State<SignInScreen> {
       if (!mounted) return;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        // Set is_signed_in flag to true
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('is_signed_in', true);
+
         Navigator.pushReplacementNamed(context, '/home');
       } else {
         String errorMessage = 'Failed to authenticate with server';

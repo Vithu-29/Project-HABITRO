@@ -7,7 +7,7 @@ class AIService {
   //***********************************************************************************************************//
   //send the entered habit to analyze good or bad
 
-  static const String baseurl = 'http://192.168.64.157:8000';
+  static const String baseurl = 'http://192.168.8.101:8000';
   static final _storage = FlutterSecureStorage();
 
   static Map<String, String> _headers(String token) {

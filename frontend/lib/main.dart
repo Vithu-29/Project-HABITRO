@@ -10,7 +10,7 @@ import 'theme.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 
-Future<Future<void>> main() async async {
+Future<void> main() async{
   await dotenv.load(fileName: ".env");
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
