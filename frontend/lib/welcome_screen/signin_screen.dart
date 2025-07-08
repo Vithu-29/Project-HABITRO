@@ -2,7 +2,6 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:frontend/api_config.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -10,7 +9,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:local_auth/error_codes.dart' as auth_error;
+import 'package:frontend/services/biometric_auth_service.dart';
 
 class SignInScreen extends StatefulWidget {
   @override
@@ -42,142 +41,114 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> _checkBiometrics() async {
-    bool canCheckBiometrics;
     try {
-      canCheckBiometrics = await _localAuth.canCheckBiometrics;
-      if (canCheckBiometrics) {
-        final availableBiometrics = await _localAuth.getAvailableBiometrics();
+      final isAvailable = await BiometricAuthService.isBiometricAvailable();
+      if (isAvailable) {
+        final availableBiometrics =
+            await BiometricAuthService.getAvailableBiometrics();
         if (mounted) {
           setState(() {
-            _canCheckBiometrics = canCheckBiometrics;
+            _canCheckBiometrics = isAvailable;
             _availableBiometrics = availableBiometrics;
           });
         }
         print("Available biometrics: $_availableBiometrics");
       }
-    } on PlatformException catch (e) {
+    } catch (e) {
       print("Error checking biometrics: $e");
     }
   }
 
   Future<void> _authenticateWithBiometrics(bool isFingerprint) async {
-    if (!_canCheckBiometrics) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Biometric authentication not available')),
-      );
-      return;
-    }
+    if (_isLoading) return;
 
-    // Check for specific biometric type
-    if (isFingerprint &&
-        !_availableBiometrics.contains(BiometricType.fingerprint) &&
-        !_availableBiometrics.contains(BiometricType.strong)) {
+    // Only allow fingerprint authentication, not face authentication
+    if (!isFingerprint) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Fingerprint authentication not available')),
-      );
-      return;
-    } else if (!isFingerprint &&
-        !_availableBiometrics.contains(BiometricType.face) &&
-        !_availableBiometrics.contains(BiometricType.weak)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Face authentication not available')),
+            content: Text('Face authentication is not supported yet')),
       );
       return;
     }
 
-    try {
-      setState(() => _isLoading = true);
+    setState(() => _isLoading = true);
 
-      final authenticate = await _localAuth.authenticate(
-        localizedReason:
-            'Scan your ${isFingerprint ? "fingerprint" : "face"} to authenticate',
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: true,
-        ),
-      );
+    final result = await BiometricAuthService.authenticateWithBiometrics(
+      isFingerprint: isFingerprint,
+      context: context,
+    );
 
-      if (!mounted) return;
+    if (mounted) {
+      setState(() => _isLoading = false);
 
-      if (authenticate) {
-        // Get saved credentials
-        final prefs = await SharedPreferences.getInstance();
-        final email = prefs.getString('saved_email');
-        final password = prefs.getString('saved_password');
-
-        if (email != null && password != null) {
-          // Log in with saved credentials
-          await _signInWithCredentials(email, password);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No saved credentials found')),
-          );
-        }
+      if (result.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.message)),
+        );
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/home',
+          (Route<dynamic> route) => false,
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Authentication failed')),
+          SnackBar(content: Text(result.message)),
         );
-      }
-    } on PlatformException catch (e) {
-      String message;
-      switch (e.code) {
-        case auth_error.notAvailable:
-          message = 'Biometrics not available on this device';
-          break;
-        case auth_error.notEnrolled:
-          message = 'No biometrics enrolled on this device';
-          break;
-        case auth_error.lockedOut:
-          message = 'Biometrics locked out due to too many attempts';
-          break;
-        case auth_error.permanentlyLockedOut:
-          message =
-              'Biometrics permanently locked. Please use another authentication method';
-          break;
-        default:
-          message = 'Error: ${e.message}';
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
       }
     }
   }
 
   Future<void> _signInWithCredentials(String email, String password) async {
     try {
+      // Show loading indicator
+      setState(() => _isLoading = true);
+
+      // Add a parameter to indicate biometric auth was used
       final response = await http.post(
         Uri.parse("${ApiConfig.baseUrl}login/"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": email,
           "password": password,
+          "biometric_auth":
+              true, // Let the server know this is a biometric login
         }),
       );
+
       if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final token = data['token'];
+
+        // Save token securely
+        await storage.write(key: 'authToken', value: token);
+
         // Set is_signed_in flag to true
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('is_signed_in', true);
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login successful')),
+          const SnackBar(content: Text('Biometric login successful')),
         );
-        Navigator.pushReplacementNamed(context, '/home');
+
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/home',
+          (Route<dynamic> route) => false,
+        );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Saved credentials are no longer valid')),
-        );
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? 'Login failed');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error connecting to server: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error connecting to server: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
