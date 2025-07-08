@@ -121,10 +121,10 @@ class _TaskCardScreenState extends State<TasksCardView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Not Now'),
             style: TextButton.styleFrom(
               foregroundColor: Colors.grey[600],
             ),
+            child: const Text('Not Now'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),

@@ -8,6 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'otp_verification_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -113,6 +114,10 @@ class SignUpScreenState extends State<SignUpScreen> {
       if (!mounted) return;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        // Set is_signed_in flag to true
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('is_signed_in', true);
+
         // Success - navigate to home
         Navigator.pushReplacementNamed(context, '/home');
       } else {
@@ -188,6 +193,10 @@ class SignUpScreenState extends State<SignUpScreen> {
         if (!mounted) return;
 
         if (response.statusCode == 200 || response.statusCode == 201) {
+          // Set is_signed_in flag to true
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('is_signed_in', true);
+
           Navigator.pushReplacementNamed(context, '/home');
         } else {
           final error = jsonDecode(response.body);
