@@ -38,7 +38,8 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
         children: [
           // Top row with greeting and coins
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween, // Space between greeting and coins
+            mainAxisAlignment: MainAxisAlignment
+                .spaceBetween, // Space between greeting and coins
             children: [
               // "Hello User!" text on the left
               const Text(
@@ -71,15 +72,18 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
               itemCount: weekDates.length,
               itemBuilder: (context, index) {
                 final date = weekDates[index];
-                final isSelected = DateFormat('yyyy-MM-dd').format(date) == selectedFormatted;
-                final isToday = DateFormat('yyyy-MM-dd').format(date) == todayFormatted;
+                final isSelected =
+                    DateFormat('yyyy-MM-dd').format(date) == selectedFormatted;
+                final isToday =
+                    DateFormat('yyyy-MM-dd').format(date) == todayFormatted;
                 final progress = isToday ? completionRate : 0.0;
 
                 return GestureDetector(
                   onTap: () => onDateSelected(date),
                   child: Container(
-                    width: 45,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    width: 42, // Decrease from 45 to 40 if needed
+                    margin: const EdgeInsets.symmetric(
+                        horizontal: 6), // Increase this value from 2 to 8
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -88,7 +92,9 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                           style: TextStyle(
                             fontSize: 16,
                             color: isSelected ? Colors.black : Colors.grey,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                         Stack(
@@ -99,13 +105,16 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                               height: 35,
                               child: CircularProgressIndicator(
                                 value: progress,
-                                backgroundColor: const Color.fromRGBO(167, 165, 165, 0.3), //progress indicator bg color
+                                backgroundColor: const Color.fromRGBO(167, 165,
+                                    165, 0.3), //progress indicator bg color
                                 valueColor: AlwaysStoppedAnimation<Color>(
                                   progress == 1.0
-                                      ? Colors.amber 
+                                      ? Colors.amber
                                       : isSelected
-                                          ? const Color.fromARGB(255, 20, 74, 183)
-                                          : const Color.fromARGB(255, 183, 179, 179),
+                                          ? const Color.fromARGB(
+                                              255, 20, 74, 183)
+                                          : const Color.fromARGB(
+                                              255, 183, 179, 179),
                                 ),
                                 strokeWidth: 4,
                               ),

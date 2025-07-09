@@ -62,16 +62,21 @@ class _SignInScreenState extends State<SignInScreen> {
   Future<void> _authenticateWithBiometrics(bool isFingerprint) async {
     if (_isLoading) return;
 
-    // Only allow fingerprint authentication, not face authentication
-    if (!isFingerprint) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Face authentication is not supported yet')),
-      );
-      return;
-    }
-
     setState(() => _isLoading = true);
+
+    // Check if face ID is available if using face authentication
+    if (!isFingerprint) {
+      bool isFaceAvailable = await BiometricAuthService.isFaceIdAvailable();
+      if (!isFaceAvailable) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text('Face authentication is not available on this device')),
+        );
+        return;
+      }
+    }
 
     final result = await BiometricAuthService.authenticateWithBiometrics(
       isFingerprint: isFingerprint,

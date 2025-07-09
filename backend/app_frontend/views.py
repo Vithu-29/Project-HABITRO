@@ -219,6 +219,9 @@ class LoginView(APIView):
         identifier = request.data.get(
             'email', '').strip()  # Can be email or phone
         password = request.data.get('password')
+        biometric_auth = request.data.get('biometric_auth', False)
+        biometric_type = request.data.get(
+            'biometric_type', None)  # 'fingerprint' or 'face'
 
         if not identifier or not password:
             return Response({"error": "Email/phone and password are required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -238,11 +241,16 @@ class LoginView(APIView):
         # Verify password
         if not user.check_password(password):
             return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
+        # Log biometric auth attempt
+        if biometric_auth:
+            logger.info(
+                f"Biometric authentication successful: user={user.email}, type={biometric_type}")
+
         token, created = Token.objects.get_or_create(user=user)
         login(request, user)
         return Response({
-            "message": "Login successful",
+            "message": f"{'Biometric' if biometric_auth else 'Login'} successful",
             "token": token.key,
             "user": {
                 "email": user.email,
@@ -268,11 +276,13 @@ def social_login(request):
         provider_id = request.data.get('provider_id')
 
         # Log the incoming request for debugging
-        logger.info(f"Social login attempt: email={email}, provider={provider}")
+        logger.info(
+            f"Social login attempt: email={email}, provider={provider}")
 
         # Validate required fields
         if not all([email, provider, provider_id]):
-            logger.warning(f"Missing required fields: email={email}, provider={provider}, provider_id={provider_id}")
+            logger.warning(
+                f"Missing required fields: email={email}, provider={provider}, provider_id={provider_id}")
             return Response({
                 "error": "Missing required fields: email, provider, and provider_id are required"
             }, status=status.HTTP_400_BAD_REQUEST)
@@ -289,14 +299,14 @@ def social_login(request):
                 # Try to get existing user
                 user = CustomUser.objects.get(email=email)
                 created = False
-                
+
                 # Update user info if needed
                 if full_name and user.full_name != full_name:
                     user.full_name = full_name
                     user.save()
-                
+
                 logger.info(f"Existing user found: {user.email}")
-                
+
             except CustomUser.DoesNotExist:
                 # Create new user
                 user = CustomUser.objects.create_user(
@@ -323,7 +333,7 @@ def social_login(request):
 
             # Log the user in
             login(request, user)
-            
+
             # Prepare response
             response_data = {
                 "message": "User created successfully" if created else "Login successful",
@@ -334,7 +344,6 @@ def social_login(request):
                     "is_new_user": created
                 }
             }
-            
 
             return Response(
                 response_data,

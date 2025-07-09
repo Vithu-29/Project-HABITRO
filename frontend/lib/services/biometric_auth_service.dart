@@ -62,6 +62,7 @@ class BiometricAuthService {
       return availableBiometrics.contains(BiometricType.face) ||
           availableBiometrics.contains(BiometricType.weak);
     } catch (e) {
+      print("Error checking face ID availability: $e");
       return false;
     }
   }
@@ -147,6 +148,7 @@ class BiometricAuthService {
           "email": email,
           "password": password,
           "biometric_auth": true,
+          "biometric_type": isFingerprint ? "fingerprint" : "face",
         }),
       );
 
