@@ -677,9 +677,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       } else if (!wasCompleted && willBeCompleted) {
                         await _addCoinsForTaskCompletion();
                       }
+
                       setState(() {
                         task.isCompleted = willBeCompleted;
                       });
+
                       _refreshHabits();
                     },
                   ),
