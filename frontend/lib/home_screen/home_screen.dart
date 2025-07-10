@@ -633,14 +633,14 @@ class _HomeScreenState extends State<HomeScreen> {
             ? Colors.grey.shade400 // More visible grey when disabled
             : Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
+        tooltip: (widget.isOnboardingActive || showOnboarding)
+            ? 'Complete the tutorial first'
+            : 'Add a new habit',
         child: const Icon(
           Icons.add,
           color: Colors.white,
           size: 40,
         ),
-        tooltip: (widget.isOnboardingActive || showOnboarding)
-            ? 'Complete the tutorial first'
-            : 'Add a new habit',
       ),
     );
   }

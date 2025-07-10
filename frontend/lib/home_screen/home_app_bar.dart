@@ -81,9 +81,9 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                 return GestureDetector(
                   onTap: () => onDateSelected(date),
                   child: Container(
-                    width: 42, // Decrease from 45 to 40 if needed
+                    width: 40, // Decrease from 45 to 40 if needed
                     margin: const EdgeInsets.symmetric(
-                        horizontal: 6), // Increase this value from 2 to 8
+                        horizontal: 5), // Increase this value from 2 to 8
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
