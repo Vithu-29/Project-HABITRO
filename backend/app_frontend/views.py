@@ -242,10 +242,10 @@ class LoginView(APIView):
         if not user.check_password(password):
             return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Log biometric auth attempt
+        # Log biometric auth attempt with specific type
         if biometric_auth:
             logger.info(
-                f"Biometric authentication successful: user={user.email}, type={biometric_type}")
+                f"Biometric authentication successful: user={user.email}, type={biometric_type or 'unspecified'}")
 
         token, created = Token.objects.get_or_create(user=user)
         login(request, user)
@@ -523,4 +523,5 @@ class TestSMSView(APIView):
         formatted_phone = format_phone_number(phone)
         if send_sms_via_textlk(formatted_phone, "Test SMS from backend"):
             return Response({"message": "SMS sent successfully"})
+        return Response({"error": "SMS failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response({"error": "SMS failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

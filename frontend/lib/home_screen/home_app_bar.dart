@@ -140,6 +140,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       elevation: 0,
       backgroundColor: Colors.white,
+      automaticallyImplyLeading: false, // Remove the back button
     );
   }
 }

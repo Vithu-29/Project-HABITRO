@@ -64,15 +64,28 @@ class _SignInScreenState extends State<SignInScreen> {
 
     setState(() => _isLoading = true);
 
-    // Check if face ID is available if using face authentication
-    if (!isFingerprint) {
-      bool isFaceAvailable = await BiometricAuthService.isFaceIdAvailable();
-      if (!isFaceAvailable) {
+    // Check if the specific biometric is available before attempting authentication
+    bool isBiometricAvailable;
+    if (isFingerprint) {
+      isBiometricAvailable =
+          await BiometricAuthService.isFingerprintAvailable();
+      if (!isBiometricAvailable) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Fingerprint authentication not available on this device')),
+        );
+        return;
+      }
+    } else {
+      isBiometricAvailable = await BiometricAuthService.isFaceIdAvailable();
+      if (!isBiometricAvailable) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content:
-                  Text('Face authentication is not available on this device')),
+                  Text('Face authentication not available on this device')),
         );
         return;
       }
@@ -428,7 +441,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                       const SizedBox(height: 24),
                       _buildLabeledField(
-                        'Email/Phone number',
+                        'Email/Phone Number',
                         'Enter your email or phone number',
                         controller: _emailController,
                       ),
@@ -511,6 +524,8 @@ class _SignInScreenState extends State<SignInScreen> {
                         ],
                       ),
                       const SizedBox(height: 24),
+                      // Biometric authentication section
+                      const SizedBox(height: 16),
                       Row(
                         children: const [
                           Expanded(child: Divider()),
@@ -529,28 +544,36 @@ class _SignInScreenState extends State<SignInScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
+                      // Always show both biometric options regardless of device capabilities
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          // Face ID button
                           GestureDetector(
                             onTap: _isLoading
                                 ? null
                                 : () => _authenticateWithBiometrics(false),
-                            child: Image.asset("assets/images/face.png",
-                                height: 50, fit: BoxFit.contain),
+                            child: Image.asset(
+                              "assets/images/face.png",
+                              height: 50,
+                              fit: BoxFit.contain,
+                            ),
                           ),
-                          const SizedBox(width: 20),
-                          const Text("or"),
-                          const SizedBox(width: 20),
+                          const SizedBox(width: 40),
+                          // Fingerprint button
                           GestureDetector(
                             onTap: _isLoading
                                 ? null
                                 : () => _authenticateWithBiometrics(true),
-                            child: Image.asset("assets/images/finger.png",
-                                height: 50, fit: BoxFit.contain),
+                            child: Image.asset(
+                              "assets/images/finger.png",
+                              height: 50,
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 16),
                       Center(
                         child: TextButton(

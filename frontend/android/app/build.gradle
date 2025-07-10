@@ -5,7 +5,6 @@ plugins {
     id 'com.google.gms.google-services'
 }
 
-
 android {
     namespace = "com.example.frontend"
     compileSdkVersion 35
@@ -14,7 +13,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-        coreLibraryDesugaringEnabled true//newly added
+        coreLibraryDesugaringEnabled true  // Required for Java 8+ features
     }
 
     kotlinOptions {
@@ -27,14 +26,12 @@ android {
         targetSdkVersion  35
         versionCode  1 
         versionName  "1.0.0"
-        multiDexEnabled true
+        multiDexEnabled true  // Required for multidex support
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            signingConfig = signingConfigs.debug  // Update later with release keys
         }
     }
 }
@@ -48,12 +45,9 @@ dependencies {
     implementation 'com.facebook.android:facebook-android-sdk:latest.release'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation "androidx.biometric:biometric:1.1.0"
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'  // Updated to 2.1.4 (required by flutter_local_notifications)
 }
 
 flutter {
     source = "../.."
-}
-
-dependencies {
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
 }

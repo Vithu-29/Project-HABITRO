@@ -18,7 +18,25 @@ class CustomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     // Define colors for consistent appearance
     final Color activeColor = Colors.white;
-    final Color inactiveColor = isDisabled ? Colors.grey : Colors.black;
+    final Color inactiveColor = Colors
+        .black; // Changed from Colors.grey to Colors.black for all unselected icons
+
+    // During onboarding (when disabled), all icons should have the same color
+    final Color homeColor = isDisabled
+        ? inactiveColor
+        : (selectedIndex == 0 ? activeColor : inactiveColor);
+    final Color exploreColor = isDisabled
+        ? inactiveColor
+        : (selectedIndex == 1 ? activeColor : inactiveColor);
+    final Color analyticsColor = isDisabled
+        ? inactiveColor
+        : (selectedIndex == 2 ? activeColor : inactiveColor);
+    final Color rewardsColor = isDisabled
+        ? inactiveColor
+        : (selectedIndex == 3 ? activeColor : inactiveColor);
+    final Color profileColor = isDisabled
+        ? inactiveColor
+        : (selectedIndex == 4 ? activeColor : inactiveColor);
 
     return CurvedNavigationBar(
       buttonBackgroundColor: Theme.of(context).colorScheme.primary,
@@ -32,23 +50,23 @@ class CustomNavBar extends StatelessWidget {
         Icon(
           Icons.home_outlined,
           size: 30,
-          color: selectedIndex == 0 ? activeColor : inactiveColor,
+          color: homeColor,
         ),
         Icon(
           Icons.explore_outlined,
           size: 30,
-          color: selectedIndex == 1 ? activeColor : inactiveColor,
+          color: exploreColor,
         ),
         Icon(
           Icons.analytics_outlined,
           size: 30,
-          color: selectedIndex == 2 ? activeColor : inactiveColor,
+          color: analyticsColor,
         ),
         SvgPicture.asset(
           'assets/icons/ex1.svg',
           height: 30,
           colorFilter: ColorFilter.mode(
-            selectedIndex == 3 ? activeColor : inactiveColor,
+            rewardsColor,
             BlendMode.srcIn,
           ),
         ),
@@ -56,12 +74,14 @@ class CustomNavBar extends StatelessWidget {
           'assets/icons/menu1.svg',
           height: 30,
           colorFilter: ColorFilter.mode(
-            selectedIndex == 4 ? activeColor : inactiveColor,
+            profileColor,
             BlendMode.srcIn,
           ),
         ),
       ],
-      onTap: isDisabled ? (_) {} : onTap, // Disable navigation when onboarding is active
+      onTap: isDisabled
+          ? (_) {}
+          : onTap, // Disable navigation when onboarding is active
     );
   }
 }
