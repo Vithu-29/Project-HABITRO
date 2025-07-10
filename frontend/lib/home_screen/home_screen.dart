@@ -11,10 +11,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 class HomeScreen extends StatefulWidget {
   final bool isNewSignIn;
   final Function(bool)? onOnboardingStateChanged;
+  final bool isOnboardingActive; // Add this parameter
 
   const HomeScreen({
     this.isNewSignIn = false,
     this.onOnboardingStateChanged,
+    this.isOnboardingActive = false, // Default to false
     super.key,
   });
 
@@ -618,19 +620,27 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         key: fabKey, // Add key for onboarding
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => FirstScreen()),
-          ).then((_) => _refreshHabits());
-        },
+        onPressed: (widget.isOnboardingActive || showOnboarding)
+            ? null // Disable during onboarding or when overlay is shown
+            : () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => FirstScreen()),
+                ).then((_) => _refreshHabits());
+              },
         shape: const CircleBorder(),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: (widget.isOnboardingActive || showOnboarding)
+            ? Colors.grey.shade400 // More visible grey when disabled
+            : Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
         child: const Icon(
           Icons.add,
           color: Colors.white,
           size: 40,
         ),
+        tooltip: (widget.isOnboardingActive || showOnboarding)
+            ? 'Complete the tutorial first'
+            : 'Add a new habit',
       ),
     );
   }
