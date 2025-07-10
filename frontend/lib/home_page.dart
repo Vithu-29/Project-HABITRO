@@ -35,6 +35,7 @@ class HomePageState extends State<HomePage> {
         HomeScreen(
           isNewSignIn: isSignedIn,
           onOnboardingStateChanged: _handleOnboardingStateChanged,
+          isOnboardingActive: _isOnboardingActive, // Pass the onboarding state
         ),
         const ExploreScreen(),
         const ReportScreen(),
@@ -52,19 +53,26 @@ class HomePageState extends State<HomePage> {
         _selectedIndex = 0; // Force home during onboarding
         _isOnboardingActive = true;
       });
+
+      // Rebuild pages with updated onboarding state
+      _initializePages();
     } else if (!isActive && _isOnboardingActive) {
-      // Finishing onboarding
+      // Finishing onboarding - ensure proper state update sequence
       setState(() {
         _isOnboardingActive = false;
       });
 
-      // Force a rebuild after state settles
-      Future.microtask(() {
-        if (mounted) {
-          setState(() {
-            _selectedIndex = 0; // Reset to home screen
-          });
-        }
+      // Force a complete rebuild of pages with updated state
+      _initializePages().then((_) {
+        // Use a slight delay to ensure state has propagated
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            setState(() {
+              // This additional setState ensures the UI is fully refreshed
+              _selectedIndex = 0;
+            });
+          }
+        });
       });
     }
   }
