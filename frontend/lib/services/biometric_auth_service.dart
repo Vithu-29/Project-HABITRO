@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../api_config.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class BiometricAuthResult {
   final bool success;
@@ -47,6 +48,13 @@ class BiometricAuthService {
   // Check if fingerprint is available
   static Future<bool> isFingerprintAvailable() async {
     try {
+      // For web platform, check if window.isFingerprintAvailable is true
+      if (kIsWeb) {
+        // This is a placeholder for JavaScript interop in Flutter web
+        // You'd need to use js package to properly check this
+        return false; // For now, assume false for web
+      }
+
       final availableBiometrics = await getAvailableBiometrics();
       return availableBiometrics.contains(BiometricType.fingerprint) ||
           availableBiometrics.contains(BiometricType.strong);
@@ -58,11 +66,17 @@ class BiometricAuthService {
   // Check if face recognition is available
   static Future<bool> isFaceIdAvailable() async {
     try {
+      // For web platform, check if window.isFaceIdAvailable is true
+      if (kIsWeb) {
+        // This is a placeholder for JavaScript interop in Flutter web
+        // You'd need to use js package to properly check this
+        return false; // For now, assume false for web
+      }
+
       final availableBiometrics = await getAvailableBiometrics();
       return availableBiometrics.contains(BiometricType.face) ||
           availableBiometrics.contains(BiometricType.weak);
     } catch (e) {
-      print("Error checking face ID availability: $e");
       return false;
     }
   }
@@ -90,23 +104,24 @@ class BiometricAuthService {
         );
       }
 
-      // Check for specific biometric type
-      if (isFingerprint) {
-        final fingerprintAvailable = await isFingerprintAvailable();
-        if (!fingerprintAvailable) {
-          return BiometricAuthResult(
-            success: false,
-            message: 'Fingerprint authentication not available',
-          );
-        }
-      } else {
-        final faceIdAvailable = await isFaceIdAvailable();
-        if (!faceIdAvailable) {
-          return BiometricAuthResult(
-            success: false,
-            message: 'Face authentication not available',
-          );
-        }
+      // Get available biometric types
+      final availableBiometrics = await getAvailableBiometrics();
+      final hasFaceId = availableBiometrics.contains(BiometricType.face) ||
+          availableBiometrics.contains(BiometricType.weak);
+      final hasFingerprint = availableBiometrics.contains(BiometricType.fingerprint) ||
+          availableBiometrics.contains(BiometricType.strong);
+
+      // Check if the requested biometric type is available
+      if (isFingerprint && !hasFingerprint) {
+        return BiometricAuthResult(
+          success: false,
+          message: 'Fingerprint authentication not available on this device',
+        );
+      } else if (!isFingerprint && !hasFaceId) {
+        return BiometricAuthResult(
+          success: false,
+          message: 'Face authentication not available on this device',
+        );
       }
 
       // Check if we have saved credentials
@@ -118,10 +133,14 @@ class BiometricAuthService {
         );
       }
 
+      // Set the authentication reason based on the biometric type
+      final authReason = isFingerprint
+          ? 'Scan your fingerprint to sign in'
+          : 'Scan your face to sign in';
+
       // Authenticate with biometrics
       final authenticated = await _localAuth.authenticate(
-        localizedReason:
-            'Scan your ${isFingerprint ? "fingerprint" : "face"} to sign in',
+        localizedReason: authReason,
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: true,

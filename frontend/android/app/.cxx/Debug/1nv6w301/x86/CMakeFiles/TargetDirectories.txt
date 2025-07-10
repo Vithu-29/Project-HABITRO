@@ -1,2 +1,0 @@
-D:/PROJECT/Project-HABITRO/frontend/android/app/.cxx/Debug/1nv6w301/x86/CMakeFiles/edit_cache.dir
-D:/PROJECT/Project-HABITRO/frontend/android/app/.cxx/Debug/1nv6w301/x86/CMakeFiles/rebuild_cache.dir

@@ -45,13 +45,44 @@
           .then(function(available) {
             window.isWebAuthnAvailable = available;
             console.log('WebAuthn biometric authentication available:', available);
+            
+            // Try to detect specific biometric capabilities
+            if (available && navigator.credentials && navigator.credentials.preventSilentAccess) {
+              // Attempt to detect fingerprint capabilities
+              try {
+                const fingerprintAvailable = 'fingerprint' in navigator || 
+                                            (window.PublicKeyCredential && 
+                                             window.PublicKeyCredential.prototype.getClientExtensionResults);
+                window.isFingerprintAvailable = fingerprintAvailable;
+                console.log('Fingerprint authentication likely available:', fingerprintAvailable);
+              } catch (e) {
+                window.isFingerprintAvailable = false;
+                console.log('Error detecting fingerprint capability:', e);
+              }
+              
+              // Attempt to detect face recognition capabilities
+              try {
+                const faceIdAvailable = 'face' in navigator || 
+                                       (window.FaceDetector !== undefined) || 
+                                       ('FaceDetector' in window);
+                window.isFaceIdAvailable = faceIdAvailable;
+                console.log('Face authentication likely available:', faceIdAvailable);
+              } catch (e) {
+                window.isFaceIdAvailable = false;
+                console.log('Error detecting face capability:', e);
+              }
+            }
           })
           .catch(function(error) {
             console.error('Error checking WebAuthn availability:', error);
             window.isWebAuthnAvailable = false;
+            window.isFingerprintAvailable = false;
+            window.isFaceIdAvailable = false;
           });
       } else {
         window.isWebAuthnAvailable = false;
+        window.isFingerprintAvailable = false;
+        window.isFaceIdAvailable = false;
         console.log('WebAuthn is not supported in this browser');
       }
     };
