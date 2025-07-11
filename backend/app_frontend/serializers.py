@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.core.validators import MinLengthValidator
 from .models import CustomUser
 import re
+from .models import Challenge, ChallengeHabit, UserChallenge, UserChallengeHabit
 
 
 def normalize_phone_number(phone_number):
@@ -138,3 +139,33 @@ class VerifyOTPSerializer(serializers.Serializer):
         if not value.isdigit():
             raise serializers.ValidationError("OTP must contain only digits.")
         return value
+
+class ChallengeHabitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChallengeHabit
+        fields = ['id', 'title', 'description', 'frequency']
+
+class ChallengeSerializer(serializers.ModelSerializer):
+    habits = ChallengeHabitSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = Challenge
+        fields = ['id', 'title', 'description', 'category', 'duration_days', 'habits']
+
+class UserChallengeHabitSerializer(serializers.ModelSerializer):
+    habit = ChallengeHabitSerializer(read_only=True)
+    
+    class Meta:
+        model = UserChallengeHabit
+        fields = ['id', 'habit', 'is_completed', 'completed_date']
+
+class UserChallengeSerializer(serializers.ModelSerializer):
+    challenge = ChallengeSerializer(read_only=True)
+    habits = UserChallengeHabitSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = UserChallenge
+        fields = ['id', 'challenge', 'start_date', 'is_active', 'habits']
+
+class JoinChallengeSerializer(serializers.Serializer):
+    challenge_id = serializers.IntegerField(required=True)

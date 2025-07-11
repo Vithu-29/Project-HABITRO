@@ -83,7 +83,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                   child: Container(
                     width: 40, // Decrease from 45 to 40 if needed
                     margin: const EdgeInsets.symmetric(
-                        horizontal: 5), // Increase this value from 2 to 8
+                        horizontal: 6), // Increase this value from 2 to 8
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

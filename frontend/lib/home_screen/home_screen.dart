@@ -5,6 +5,7 @@ import 'package:frontend/onboarding_content.dart';
 import '../services/ai_services.dart';
 import '../models/habit.dart';
 import './first.dart';
+import './mychallenges_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -623,10 +624,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onPressed: (widget.isOnboardingActive || showOnboarding)
             ? null // Disable during onboarding or when overlay is shown
             : () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => FirstScreen()),
-                ).then((_) => _refreshHabits());
+                _showAddOptions(context);
               },
         shape: const CircleBorder(),
         backgroundColor: (widget.isOnboardingActive || showOnboarding)
@@ -642,6 +640,85 @@ class _HomeScreenState extends State<HomeScreen> {
           size: 40,
         ),
       ),
+    );
+  }
+
+  void _showAddOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.psychology, color: Colors.blue),
+                ),
+                title: const Text(
+                  'Add With AI',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => FirstScreen()),
+                  ).then((_) => _refreshHabits());
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.flag, color: Colors.blue),
+                ),
+                title: const Text(
+                  'Challenges',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => MyChallengesScreen()),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
     );
   }
 

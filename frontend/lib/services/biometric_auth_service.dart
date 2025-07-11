@@ -1,13 +1,14 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:local_auth/local_auth.dart';
 import 'package:local_auth/error_codes.dart' as auth_error;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../api_config.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../api_config.dart';
 
 class BiometricAuthResult {
   final bool success;
@@ -23,15 +24,33 @@ class BiometricAuthResult {
 
 class BiometricAuthService {
   static final LocalAuthentication _localAuth = LocalAuthentication();
-  static final _storage = FlutterSecureStorage();
+  static const _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+    ),
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
+  );
 
-  // Check if biometric auth is available
+  // Check if biometric authentication is available
   static Future<bool> isBiometricAvailable() async {
     try {
-      final isAvailable = await _localAuth.canCheckBiometrics;
-      final isDeviceSupported = await _localAuth.isDeviceSupported();
-      return isAvailable && isDeviceSupported;
-    } on PlatformException catch (_) {
+      if (kIsWeb) {
+        return false; // Biometrics not supported on web
+      }
+
+      final bool isAvailable = await _localAuth.isDeviceSupported();
+      if (!isAvailable) return false;
+
+      final bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
+      if (!canCheckBiometrics) return false;
+
+      final List<BiometricType> availableBiometrics =
+          await _localAuth.getAvailableBiometrics();
+      return availableBiometrics.isNotEmpty;
+    } catch (e) {
+      print('Error checking biometric availability: $e');
       return false;
     }
   }
@@ -39,8 +58,12 @@ class BiometricAuthService {
   // Get available biometric types
   static Future<List<BiometricType>> getAvailableBiometrics() async {
     try {
+      if (kIsWeb) {
+        return [];
+      }
       return await _localAuth.getAvailableBiometrics();
-    } on PlatformException catch (_) {
+    } on PlatformException catch (e) {
+      print('Error getting available biometrics: $e');
       return [];
     }
   }
@@ -48,17 +71,19 @@ class BiometricAuthService {
   // Check if fingerprint is available
   static Future<bool> isFingerprintAvailable() async {
     try {
-      // For web platform, check if window.isFingerprintAvailable is true
       if (kIsWeb) {
-        // This is a placeholder for JavaScript interop in Flutter web
-        // You'd need to use js package to properly check this
-        return false; // For now, assume false for web
+        return false;
       }
 
-      final availableBiometrics = await getAvailableBiometrics();
+      final bool isAvailable = await _localAuth.isDeviceSupported();
+      if (!isAvailable) return false;
+
+      final List<BiometricType> availableBiometrics =
+          await _localAuth.getAvailableBiometrics();
       return availableBiometrics.contains(BiometricType.fingerprint) ||
           availableBiometrics.contains(BiometricType.strong);
     } catch (e) {
+      print('Error checking fingerprint availability: $e');
       return false;
     }
   }
@@ -66,41 +91,145 @@ class BiometricAuthService {
   // Check if face recognition is available
   static Future<bool> isFaceIdAvailable() async {
     try {
-      // For web platform, check if window.isFaceIdAvailable is true
       if (kIsWeb) {
-        // This is a placeholder for JavaScript interop in Flutter web
-        // You'd need to use js package to properly check this
-        return false; // For now, assume false for web
+        return false;
       }
 
-      final availableBiometrics = await getAvailableBiometrics();
+      final bool isAvailable = await _localAuth.isDeviceSupported();
+      if (!isAvailable) return false;
+
+      final List<BiometricType> availableBiometrics =
+          await _localAuth.getAvailableBiometrics();
       return availableBiometrics.contains(BiometricType.face) ||
           availableBiometrics.contains(BiometricType.weak);
     } catch (e) {
+      print('Error checking face ID availability: $e');
       return false;
     }
   }
 
-  // Check if credentials are saved
-  static Future<bool> areSavedCredentialsAvailable() async {
-    final prefs = await SharedPreferences.getInstance();
-    final email = prefs.getString('saved_email');
-    final password = prefs.getString('saved_password');
-    return email != null && password != null;
+  // Save credentials securely with expiration
+  static Future<void> saveCredentialsForBiometric(
+      String email, String password) async {
+    try {
+      // Hash the password for additional security
+      final bytes = utf8.encode(password);
+      final hashedPassword = sha256.convert(bytes).toString();
+
+      // Set expiration (30 days from now)
+      final expirationTime =
+          DateTime.now().add(const Duration(days: 30)).millisecondsSinceEpoch;
+
+      // Store in secure storage
+      await _secureStorage.write(key: 'biometric_email', value: email);
+      await _secureStorage.write(
+          key: 'biometric_password_hash', value: hashedPassword);
+      await _secureStorage.write(
+          key: 'biometric_expiration', value: expirationTime.toString());
+      await _secureStorage.write(
+          key: 'biometric_original_password', value: password);
+
+      // Update SharedPreferences flag
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('biometric_enabled', true);
+
+      print('Biometric credentials saved securely');
+    } catch (e) {
+      print('Error saving biometric credentials: $e');
+    }
   }
 
-  // Authenticate with biometrics and get saved credentials
+  // Check if saved credentials are valid and not expired
+  static Future<bool> areSavedCredentialsValid() async {
+    try {
+      final email = await _secureStorage.read(key: 'biometric_email');
+      final passwordHash =
+          await _secureStorage.read(key: 'biometric_password_hash');
+      final expirationStr =
+          await _secureStorage.read(key: 'biometric_expiration');
+
+      if (email == null || passwordHash == null || expirationStr == null) {
+        return false;
+      }
+
+      // Check expiration
+      final expiration = int.tryParse(expirationStr);
+      if (expiration == null ||
+          DateTime.now().millisecondsSinceEpoch > expiration) {
+        await clearSavedCredentials();
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      print('Error checking credential validity: $e');
+      return false;
+    }
+  }
+
+  // Check if saved credentials are available (legacy support)
+  static Future<bool> areSavedCredentialsAvailable() async {
+    return await areSavedCredentialsValid();
+  }
+
+  // Check if biometric authentication is enabled
+  static Future<bool> isBiometricEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isEnabled = prefs.getBool('biometric_enabled') ?? false;
+
+      if (isEnabled) {
+        // Double-check if credentials are still valid
+        return await areSavedCredentialsValid();
+      }
+
+      return false;
+    } catch (e) {
+      print('Error checking biometric enabled status: $e');
+      return false;
+    }
+  }
+
+  // Clear all saved credentials
+  static Future<void> clearSavedCredentials() async {
+    try {
+      await _secureStorage.delete(key: 'biometric_email');
+      await _secureStorage.delete(key: 'biometric_password_hash');
+      await _secureStorage.delete(key: 'biometric_expiration');
+      await _secureStorage.delete(key: 'biometric_original_password');
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('biometric_enabled', false);
+
+      // Also clear legacy credentials
+      await prefs.remove('saved_email');
+      await prefs.remove('saved_password');
+
+      print('Biometric credentials cleared');
+    } catch (e) {
+      print('Error clearing credentials: $e');
+    }
+  }
+
+  // Enhanced biometric authentication
   static Future<BiometricAuthResult> authenticateWithBiometrics({
     required bool isFingerprint,
     required BuildContext context,
   }) async {
     try {
-      // Check if biometrics are available
+      if (kIsWeb) {
+        return BiometricAuthResult(
+          success: false,
+          message: 'Biometric authentication not supported on web',
+        );
+      }
+
+      // Check if biometrics are available on device
       final isAvailable = await isBiometricAvailable();
       if (!isAvailable) {
         return BiometricAuthResult(
           success: false,
-          message: 'Biometric authentication not available on this device',
+          message: 'This device does not support biometric authentication',
         );
       }
 
@@ -108,66 +237,74 @@ class BiometricAuthService {
       final availableBiometrics = await getAvailableBiometrics();
       final hasFaceId = availableBiometrics.contains(BiometricType.face) ||
           availableBiometrics.contains(BiometricType.weak);
-      final hasFingerprint = availableBiometrics.contains(BiometricType.fingerprint) ||
-          availableBiometrics.contains(BiometricType.strong);
+      final hasFingerprint =
+          availableBiometrics.contains(BiometricType.fingerprint) ||
+              availableBiometrics.contains(BiometricType.strong);
 
-      // Check if the requested biometric type is available
+      // Check if the requested biometric type is available and show specific error messages
       if (isFingerprint && !hasFingerprint) {
         return BiometricAuthResult(
           success: false,
-          message: 'Fingerprint authentication not available on this device',
+          message: 'This device does not have fingerprint biometric',
         );
       } else if (!isFingerprint && !hasFaceId) {
         return BiometricAuthResult(
           success: false,
-          message: 'Face authentication not available on this device',
+          message: 'This device does not have face biometric',
         );
       }
 
-      // Check if we have saved credentials
-      final hasSavedCredentials = await areSavedCredentialsAvailable();
-      if (!hasSavedCredentials) {
+      // Check if credentials are valid
+      if (!await areSavedCredentialsValid()) {
         return BiometricAuthResult(
           success: false,
-          message: 'You need to sign in with "Remember Me" checked first',
+          message:
+              'Please sign in manually with "Remember Me" to enable biometric authentication.',
         );
       }
 
       // Set the authentication reason based on the biometric type
       final authReason = isFingerprint
-          ? 'Scan your fingerprint to sign in'
-          : 'Scan your face to sign in';
+          ? 'Use your fingerprint to sign in'
+          : 'Use face recognition to sign in';
 
-      // Authenticate with biometrics
-      final authenticated = await _localAuth.authenticate(
+      // Perform biometric authentication
+      final bool didAuthenticate = await _localAuth.authenticate(
         localizedReason: authReason,
         options: const AuthenticationOptions(
-          stickyAuth: true,
           biometricOnly: true,
+          stickyAuth: true,
         ),
       );
 
-      if (!authenticated) {
+      if (!didAuthenticate) {
         return BiometricAuthResult(
           success: false,
-          message: 'Authentication failed',
+          message: 'Biometric authentication cancelled',
         );
       }
 
       // Get saved credentials
-      final prefs = await SharedPreferences.getInstance();
-      final email = prefs.getString('saved_email')!;
-      final password = prefs.getString('saved_password')!;
+      final email = await _secureStorage.read(key: 'biometric_email');
+      final originalPassword =
+          await _secureStorage.read(key: 'biometric_original_password');
 
-      // Send login request to backend
+      if (email == null || originalPassword == null) {
+        await clearSavedCredentials();
+        return BiometricAuthResult(
+          success: false,
+          message:
+              'Credentials not found. Please sign in again with "Remember Me".',
+        );
+      }
+
+      // Authenticate with backend using standard login flow
       final response = await http.post(
         Uri.parse("${ApiConfig.baseUrl}login/"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": email,
-          "password": password,
-          "biometric_auth": true,
-          "biometric_type": isFingerprint ? "fingerprint" : "face",
+          "password": originalPassword,
         }),
       );
 
@@ -175,48 +312,72 @@ class BiometricAuthService {
         final data = jsonDecode(response.body);
         final token = data['token'];
 
-        // Save token securely
-        await _storage.write(key: 'authToken', value: token);
+        // Save new token
+        const storage = FlutterSecureStorage();
+        await storage.write(key: 'authToken', value: token);
 
-        // Set is_signed_in flag to true
+        // Update session flag
+        final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('is_signed_in', true);
+
+        // Refresh credential expiration
+        final newExpiration =
+            DateTime.now().add(const Duration(days: 30)).millisecondsSinceEpoch;
+        await _secureStorage.write(
+            key: 'biometric_expiration', value: newExpiration.toString());
 
         return BiometricAuthResult(
           success: true,
-          message: 'Biometric login successful',
+          message: 'Biometric authentication successful',
           token: token,
         );
       } else {
-        final error = jsonDecode(response.body);
+        final errorData = jsonDecode(response.body);
+
+        // If credentials are invalid, clear them
+        if (response.statusCode == 401 || response.statusCode == 400) {
+          await clearSavedCredentials();
+          return BiometricAuthResult(
+            success: false,
+            message:
+                'Credentials invalid. Please sign in again with "Remember Me".',
+          );
+        }
+
         return BiometricAuthResult(
           success: false,
-          message: error['error'] ?? 'Login failed',
+          message: errorData['error'] ?? 'Authentication failed',
         );
       }
     } on PlatformException catch (e) {
       String message;
       switch (e.code) {
         case auth_error.notAvailable:
-          message = 'Biometrics not available on this device';
+          message = 'Biometric authentication not available';
           break;
         case auth_error.notEnrolled:
-          message = 'No biometrics enrolled on this device';
+          message = 'No biometrics enrolled on device';
           break;
         case auth_error.lockedOut:
-          message = 'Biometrics locked out due to too many attempts';
+          message = 'Biometric authentication locked due to too many attempts';
           break;
         case auth_error.permanentlyLockedOut:
-          message = 'Biometrics permanently locked. Please use another method';
+          message = 'Biometric authentication permanently locked';
           break;
         default:
-          message = 'Error: ${e.message}';
+          message = 'Biometric authentication error: ${e.message}';
       }
       return BiometricAuthResult(success: false, message: message);
     } catch (e) {
       return BiometricAuthResult(
         success: false,
-        message: 'An error occurred: $e',
+        message: 'Authentication error: $e',
       );
     }
+  }
+
+  // Disable biometric authentication
+  static Future<void> disableBiometricAuth() async {
+    await clearSavedCredentials();
   }
 }
