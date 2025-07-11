@@ -11,10 +11,12 @@ import re
 import requests
 from django.conf import settings
 from .models import CustomUser, OTPVerification
-from .serializers import RegisterSerializer, VerifyOTPSerializer
+from .serializers import RegisterSerializer, VerifyOTPSerializer, ChallengeSerializer, UserChallengeSerializer, UserChallengeHabit, JoinChallengeSerializer, UserChallenge, Challenge,ChallengeHabit
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view
 import logging
 from rest_framework.authtoken.models import Token
+
 
 logger = logging.getLogger(__name__)
 
@@ -525,3 +527,266 @@ class TestSMSView(APIView):
             return Response({"message": "SMS sent successfully"})
         return Response({"error": "SMS failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response({"error": "SMS failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# Resend OTP View
+
+
+class ResendOTPView(APIView):
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email', '').strip().lower()
+        phone_number = request.data.get('phone_number', '').strip()
+        is_forgot_password = request.data.get('is_forgot_password', False)
+
+        if not email and not phone_number:
+            return Response({"error": "Email or phone number is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Normalize phone number if provided
+        if phone_number:
+            phone_number = normalize_phone_number(phone_number)
+            if not phone_number:
+                return Response(
+                    {"error": "Invalid phone number format. Use +947XXXXXXXX or 07XXXXXXXX"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Generate new OTP
+        otp = get_random_string(length=6, allowed_chars='0123456789')
+        logger.info(f"Resent OTP for {phone_number or email}: {otp}")
+
+        # Update or create OTP record
+        if phone_number:
+            OTPVerification.objects.filter(phone_number=phone_number).delete()
+        else:
+            OTPVerification.objects.filter(email=email).delete()
+
+        try:
+            # Get existing user details for password reset flow
+            if is_forgot_password:
+                try:
+                    if email:
+                        user = CustomUser.objects.get(email=email)
+                    else:
+                        user = CustomUser.objects.get(
+                            phone_number=phone_number)
+
+                    # Create OTP record without storing temp data
+                    OTPVerification.objects.create(
+                        email=email if email else None,
+                        phone_number=phone_number if phone_number else None,
+                        otp=otp,
+                        created_at=timezone.now()
+                    )
+                except CustomUser.DoesNotExist:
+                    return Response({"error": "Account not found"}, status=status.HTTP_404_NOT_FOUND)
+            else:
+                # For registration flow, get details from previous OTP record
+                try:
+                    if email:
+                        prev_otp = OTPVerification.objects.filter(
+                            email=email).first()
+                    else:
+                        prev_otp = OTPVerification.objects.filter(
+                            phone_number=phone_number).first()
+
+                    if not prev_otp:
+                        return Response({"error": "No pending registration found"}, status=status.HTTP_404_NOT_FOUND)
+
+                    # Create new OTP record with previous temp data
+                    OTPVerification.objects.create(
+                        email=email if email else None,
+                        phone_number=phone_number if phone_number else None,
+                        otp=otp,
+                        temp_password=prev_otp.temp_password,
+                        full_name=prev_otp.full_name,
+                        created_at=timezone.now()
+                    )
+                except Exception as e:
+                    logger.error(f"Error finding previous OTP: {str(e)}")
+                    return Response({"error": "Failed to resend OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            # Send OTP via appropriate channel
+            if phone_number:
+                message = f'Your OTP code is {otp}'
+                if not send_sms_via_textlk(phone_number, message):
+                    logger.error(f"Failed to send SMS to {phone_number}")
+                    return Response({"error": "Failed to send SMS OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({"message": "OTP resent to your phone"}, status=status.HTTP_200_OK)
+            else:
+                send_mail(
+                    'Your OTP Code',
+                    f'Your OTP code is {otp}',
+                    settings.DEFAULT_FROM_EMAIL,
+                    [email],
+                    fail_silently=False,
+                )
+                return Response({"message": "OTP resent to your email"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error resending OTP: {str(e)}")
+            return Response({"error": f"Failed to resend OTP: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ChallengeListView(generics.ListAPIView):
+    serializer_class = ChallengeSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        # Exclude challenges the user has already joined
+        user_challenges = UserChallenge.objects.filter(
+            user=self.request.user
+        ).values_list('challenge_id', flat=True)
+        
+        return Challenge.objects.filter(is_active=True).exclude(
+            id__in=user_challenges
+        )
+
+class UserChallengeListView(generics.ListAPIView):
+    serializer_class = UserChallengeSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return UserChallenge.objects.filter(
+            user=self.request.user,
+            is_active=True
+        ).prefetch_related('habits__habit')
+
+class JoinChallengeView(generics.GenericAPIView):
+    serializer_class = JoinChallengeSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            challenge = Challenge.objects.get(
+                id=serializer.validated_data['challenge_id'],
+                is_active=True
+            )
+        except Challenge.DoesNotExist:
+            return Response(
+                {"error": "Challenge not found or inactive"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check if user already joined this challenge
+        if UserChallenge.objects.filter(
+            user=request.user,
+            challenge=challenge
+        ).exists():
+            return Response(
+                {"error": "You have already joined this challenge"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create user challenge
+        user_challenge = UserChallenge.objects.create(
+            user=request.user,
+            challenge=challenge
+        )
+        
+        # Create user challenge habits
+        for habit in challenge.habits.all():
+            UserChallengeHabit.objects.create(
+                user_challenge=user_challenge,
+                habit=habit
+            )
+        
+        return Response(
+            {"message": "Successfully joined challenge"},
+            status=status.HTTP_201_CREATED
+        )
+
+class UpdateChallengeHabitView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, habit_id, *args, **kwargs):
+        try:
+            user_habit = UserChallengeHabit.objects.get(
+                id=habit_id,
+                user_challenge__user=request.user
+            )
+        except UserChallengeHabit.DoesNotExist:
+            return Response(
+                {"error": "Habit not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        is_completed = request.data.get('is_completed', False)
+        user_habit.is_completed = is_completed
+        if is_completed:
+            user_habit.completed_date = timezone.now().date()
+        else:
+            user_habit.completed_date = None
+        user_habit.save()
+        
+        return Response(
+            {"message": "Habit status updated"},
+            status=status.HTTP_200_OK
+        )
+        
+        # Add to the existing views.py file
+
+class JoinChallengeView(generics.GenericAPIView):
+    serializer_class = JoinChallengeSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        challenge_id = serializer.validated_data['challenge_id']
+        # New: Get selected habit IDs from request
+        habit_ids = request.data.get('habit_ids', [])
+        
+        try:
+            challenge = Challenge.objects.get(
+                id=challenge_id,
+                is_active=True
+            )
+        except Challenge.DoesNotExist:
+            return Response(
+                {"error": "Challenge not found or inactive"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check if user already joined this challenge
+        if UserChallenge.objects.filter(
+            user=request.user,
+            challenge=challenge
+        ).exists():
+            return Response(
+                {"error": "You have already joined this challenge"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create user challenge
+        user_challenge = UserChallenge.objects.create(
+            user=request.user,
+            challenge=challenge
+        )
+        
+        # Create user challenge habits only for selected habits
+        if habit_ids:
+            for habit_id in habit_ids:
+                try:
+                    habit = ChallengeHabit.objects.get(
+                        id=habit_id, 
+                        challenge=challenge
+                    )
+                    UserChallengeHabit.objects.create(
+                        user_challenge=user_challenge,
+                        habit=habit
+                    )
+                except ChallengeHabit.DoesNotExist:
+                    continue
+        else:
+            # If no habits are selected, add all habits (backward compatibility)
+            for habit in challenge.habits.all():
+                UserChallengeHabit.objects.create(
+                    user_challenge=user_challenge,
+                    habit=habit
+                )
+        
+        return Response(
+            {"message": "Successfully joined the challenge"},
+            status=status.HTTP_201_CREATED
+        )

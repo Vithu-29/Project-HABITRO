@@ -130,3 +130,47 @@ class OTPVerification(models.Model):
 
     def __str__(self):
         return f"OTP for {self.email} ({'expired' if self.is_expired() else 'active'})"
+
+class Challenge(models.Model):
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    category = models.CharField(max_length=100)  # e.g., "Fitness", "Nutrition"
+    duration_days = models.IntegerField(default=30)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    
+    def __str__(self):
+        return self.title
+
+class ChallengeHabit(models.Model):
+    challenge = models.ForeignKey(Challenge, related_name='habits', on_delete=models.CASCADE)
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    frequency = models.CharField(max_length=100)  # e.g., "Daily", "Weekly"
+    
+    def __str__(self):
+        return f"{self.challenge.title} - {self.title}"
+
+class UserChallenge(models.Model):
+    user = models.ForeignKey(CustomUser, related_name='user_challenges', on_delete=models.CASCADE)
+    challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE)
+    start_date = models.DateField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        unique_together = ('user', 'challenge')
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.challenge.title}"
+
+class UserChallengeHabit(models.Model):
+    user_challenge = models.ForeignKey(UserChallenge, related_name='habits', on_delete=models.CASCADE)
+    habit = models.ForeignKey(ChallengeHabit, on_delete=models.CASCADE)
+    is_completed = models.BooleanField(default=False)
+    completed_date = models.DateField(null=True, blank=True)
+    
+    class Meta:
+        unique_together = ('user_challenge', 'habit')
+    
+    def __str__(self):
+        return f"{self.user_challenge} - {self.habit.title}"

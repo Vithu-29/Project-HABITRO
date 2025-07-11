@@ -52,6 +52,7 @@ dependencies:
   fl_chart: ^0.70.2
   flutter_local_notifications: ^19.1.0
   timezone: 0.10.1
+  crypto: ^3.0.3
 
 
 dev_dependencies:

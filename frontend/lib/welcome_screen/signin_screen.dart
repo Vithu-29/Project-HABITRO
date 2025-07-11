@@ -33,6 +33,9 @@ class _SignInScreenState extends State<SignInScreen> {
   final LocalAuthentication _localAuth = LocalAuthentication();
   bool _canCheckBiometrics = false;
   List<BiometricType> _availableBiometrics = [];
+  bool _isFingerprintAvailable = false;
+  bool _isFaceIdAvailable = false;
+  bool _isBiometricEnabled = false;
 
   @override
   void initState() {
@@ -46,13 +49,25 @@ class _SignInScreenState extends State<SignInScreen> {
       if (isAvailable) {
         final availableBiometrics =
             await BiometricAuthService.getAvailableBiometrics();
+        final fingerprintAvailable =
+            await BiometricAuthService.isFingerprintAvailable();
+        final faceIdAvailable = await BiometricAuthService.isFaceIdAvailable();
+        final biometricEnabled =
+            await BiometricAuthService.isBiometricEnabled();
+
         if (mounted) {
           setState(() {
             _canCheckBiometrics = isAvailable;
             _availableBiometrics = availableBiometrics;
+            _isFingerprintAvailable = fingerprintAvailable;
+            _isFaceIdAvailable = faceIdAvailable;
+            _isBiometricEnabled = biometricEnabled;
           });
         }
         print("Available biometrics: $_availableBiometrics");
+        print("Fingerprint available: $_isFingerprintAvailable");
+        print("Face ID available: $_isFaceIdAvailable");
+        print("Biometric enabled: $_isBiometricEnabled");
       }
     } catch (e) {
       print("Error checking biometrics: $e");
@@ -64,33 +79,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
     setState(() => _isLoading = true);
 
-    // Check if the specific biometric is available before attempting authentication
-    bool isBiometricAvailable;
-    if (isFingerprint) {
-      isBiometricAvailable =
-          await BiometricAuthService.isFingerprintAvailable();
-      if (!isBiometricAvailable) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text(
-                  'Fingerprint authentication not available on this device')),
-        );
-        return;
-      }
-    } else {
-      isBiometricAvailable = await BiometricAuthService.isFaceIdAvailable();
-      if (!isBiometricAvailable) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content:
-                  Text('Face authentication not available on this device')),
-        );
-        return;
-      }
-    }
-
+    // Remove the device capability checks here - let the service handle it
     final result = await BiometricAuthService.authenticateWithBiometrics(
       isFingerprint: isFingerprint,
       context: context,
@@ -110,8 +99,24 @@ class _SignInScreenState extends State<SignInScreen> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result.message)),
+          SnackBar(
+            content: Text(result.message),
+            duration: Duration(seconds: 4),
+          ),
         );
+
+        // If credentials expired, show helpful message and refresh biometric status
+        if (result.message.contains('expired') ||
+            result.message.contains('invalid')) {
+          await _checkBiometrics();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Please sign in manually with "Remember Me" to refresh biometric authentication.'),
+              duration: Duration(seconds: 6),
+            ),
+          );
+        }
       }
     }
   }
@@ -121,15 +126,13 @@ class _SignInScreenState extends State<SignInScreen> {
       // Show loading indicator
       setState(() => _isLoading = true);
 
-      // Add a parameter to indicate biometric auth was used
+      // Use standard login endpoint without biometric flags
       final response = await http.post(
         Uri.parse("${ApiConfig.baseUrl}login/"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": email,
           "password": password,
-          "biometric_auth":
-              true, // Let the server know this is a biometric login
         }),
       );
 
@@ -199,8 +202,13 @@ class _SignInScreenState extends State<SignInScreen> {
 
         // Save token securely
         await storage.write(key: 'authToken', value: token);
-        // Save credentials if remember me is checked
+
+        // Save credentials for biometric auth if remember me is checked
         if (_rememberMe) {
+          await BiometricAuthService.saveCredentialsForBiometric(
+              email, password);
+
+          // Also save in legacy format for compatibility
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('saved_email', email);
           await prefs.setString('saved_password', password);
@@ -209,6 +217,9 @@ class _SignInScreenState extends State<SignInScreen> {
         // Set is_signed_in flag to true
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('is_signed_in', true);
+
+        // Refresh biometric status
+        await _checkBiometrics();
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login successful')),
@@ -524,55 +535,58 @@ class _SignInScreenState extends State<SignInScreen> {
                         ],
                       ),
                       const SizedBox(height: 24),
-                      // Biometric authentication section
-                      const SizedBox(height: 16),
-                      Row(
-                        children: const [
-                          Expanded(child: Divider()),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8.0),
-                            child: Text(
-                              "Use Biometrics",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                      // Biometric authentication section - always show if biometrics are enabled
+                      if (_isBiometricEnabled) ...[
+                        const SizedBox(height: 16),
+                        Row(
+                          children: const [
+                            Expanded(child: Divider()),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 8.0),
+                              child: Text(
+                                "Use Biometrics",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
                               ),
                             ),
-                          ),
-                          Expanded(child: Divider()),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      // Always show both biometric options regardless of device capabilities
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Face ID button
-                          GestureDetector(
-                            onTap: _isLoading
-                                ? null
-                                : () => _authenticateWithBiometrics(false),
-                            child: Image.asset(
-                              "assets/images/face.png",
-                              height: 50,
-                              fit: BoxFit.contain,
+                            Expanded(child: Divider()),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Always show Face ID option if biometrics are enabled
+                            GestureDetector(
+                              onTap: _isLoading
+                                  ? null
+                                  : () => _authenticateWithBiometrics(false),
+                              child: Image.asset(
+                                "assets/images/face.png",
+                                height: 40,
+                                width: 40,
+                                fit: BoxFit.contain,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 40),
-                          // Fingerprint button
-                          GestureDetector(
-                            onTap: _isLoading
-                                ? null
-                                : () => _authenticateWithBiometrics(true),
-                            child: Image.asset(
-                              "assets/images/finger.png",
-                              height: 50,
-                              fit: BoxFit.contain,
+                            const SizedBox(width: 80),
+                            // Always show Fingerprint option if biometrics are enabled
+                            GestureDetector(
+                              onTap: _isLoading
+                                  ? null
+                                  : () => _authenticateWithBiometrics(true),
+                              child: Image.asset(
+                                "assets/images/finger.png",
+                                height: 40,
+                                width: 40,
+                                fit: BoxFit.contain,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
 
                       const SizedBox(height: 16),
                       Center(
