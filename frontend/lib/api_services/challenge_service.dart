@@ -3,36 +3,41 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-
 class ChallengeService {
   // Update this URL to match your backend server
   static const String baseUrl = 'http://10.10.42.10:8000/';
 
   // Get authentication token from storage
   static Future<String?> _getAuthToken() async {
-    
-  final prefs = await SharedPreferences.getInstance();
-  
-  // Try various possible key names
-  String? token = prefs.getString('authToken');
-  if (token != null) return token;
-  
-  token = prefs.getString('auth_token');
-  if (token != null) return token;
-  
-  token = prefs.getString('token');
-  if (token != null) return token;
-  
-  // If using FlutterSecureStorage in other places
-  final storage = FlutterSecureStorage();
-  token = await storage.read(key: 'authToken');
-  if (token != null) return token;
-  
-  token = await storage.read(key: 'auth_token');
-  if (token != null) return token;
-  
-  return null; // No token found with any key
-}
+    try {
+      // First try using FlutterSecureStorage (more secure)
+      final storage = FlutterSecureStorage();
+      String? token = await storage.read(key: 'authToken');
+
+      if (token != null && token.isNotEmpty) {
+        print("Token found in secure storage");
+        return token;
+      }
+
+      // If not found in secure storage, try SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      token = prefs.getString('authToken');
+
+      if (token != null && token.isNotEmpty) {
+        print("Token found in SharedPreferences");
+
+        // Also save it to secure storage for next time
+        await storage.write(key: 'authToken', value: token);
+        return token;
+      }
+
+      print("No authentication token found in any storage");
+      return null;
+    } catch (e) {
+      print("Error retrieving auth token: $e");
+      return null;
+    }
+  }
 
   // Create headers with authentication token
   static Map<String, String> _createHeaders(String token) {
@@ -81,7 +86,8 @@ class ChallengeService {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
-        throw Exception('Failed to load user challenges: ${response.statusCode}');
+        throw Exception(
+            'Failed to load user challenges: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Error loading user challenges: $e');

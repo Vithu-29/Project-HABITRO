@@ -187,21 +187,31 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Determine if the identifier is an email or phone number
+      final isEmail = email.contains('@');
+
+      final Map<String, dynamic> requestBody = {
+        isEmail ? "email" : "phone_number": email,
+        "password": password,
+      };
+
       final response = await http.post(
         Uri.parse("${ApiConfig.baseUrl}login/"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "email": email,
-          "password": password,
-        }),
+        body: jsonEncode(requestBody),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final token = data['token'];
 
-        // Save token securely
+        // Save token in multiple locations to ensure availability
+        // 1. In FlutterSecureStorage (secure)
         await storage.write(key: 'authToken', value: token);
+
+        // 2. In SharedPreferences (for compatibility)
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('authToken', token);
 
         // Save credentials for biometric auth if remember me is checked
         if (_rememberMe) {
@@ -209,13 +219,11 @@ class _SignInScreenState extends State<SignInScreen> {
               email, password);
 
           // Also save in legacy format for compatibility
-          final prefs = await SharedPreferences.getInstance();
           await prefs.setString('saved_email', email);
           await prefs.setString('saved_password', password);
         }
 
         // Set is_signed_in flag to true
-        final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('is_signed_in', true);
 
         // Refresh biometric status
@@ -311,18 +319,32 @@ class _SignInScreenState extends State<SignInScreen> {
       if (!mounted) return;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // Set is_signed_in flag to true
+        final data = jsonDecode(response.body);
+        // Extract token from the response if it exists
+        final token = data['token'];
+        if (token != null) {
+          // Save token securely
+          await storage.write(key: 'authToken', value: token);
+
+          // Also save in SharedPreferences for better compatibility
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('authToken', token);
+        }
+
+        // Set is_signed_in flag to true regardless of token
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('is_signed_in', true);
 
         Navigator.pushReplacementNamed(context, '/home');
       } else {
+        // Improved error handling with more details
         String errorMessage = 'Failed to authenticate with server';
         try {
           final error = jsonDecode(response.body);
           errorMessage = error['error'] ?? errorMessage;
+          print("Server error response: $error");
         } catch (e) {
-          // Use default message if JSON parsing fails
+          print("Error parsing server response: $e");
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -333,9 +355,12 @@ class _SignInScreenState extends State<SignInScreen> {
       if (!mounted) return;
 
       String errorMessage = 'Google sign-in failed';
+      print("Google sign-in error: $e");
+
       if (e.toString().contains('network_error')) {
         errorMessage = 'Network error. Please check your connection.';
-      } else if (e.toString().contains('sign_in_canceled')) {
+      } else if (e.toString().contains('sign_in_canceled') ||
+          e.toString().contains('cancel')) {
         errorMessage = 'Sign-in was canceled';
       } else if (e.toString().contains('sign_in_failed')) {
         errorMessage = 'Google sign-in failed. Please try again.';
@@ -354,9 +379,17 @@ class _SignInScreenState extends State<SignInScreen> {
   void _onSocialSignIn(String provider) {
     if (provider == "Google") {
       _handleGoogleSignIn();
+    } else if (provider == "Apple") {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Apple Sign-In is not yet implemented')),
+      );
+    } else if (provider == "Facebook") {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Facebook Sign-In is not yet implemented')),
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$provider Sign-In pressed (mock logic)')),
+        SnackBar(content: Text('$provider Sign-In pressed')),
       );
     }
   }
