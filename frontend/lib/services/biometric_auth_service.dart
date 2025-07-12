@@ -312,9 +312,8 @@ class BiometricAuthService {
         final data = jsonDecode(response.body);
         final token = data['token'];
 
-        // Save new token
-        const storage = FlutterSecureStorage();
-        await storage.write(key: 'authToken', value: token);
+        // Save token in multiple locations to ensure availability
+        await _saveTokenToMultipleStorages(token);
 
         // Update session flag
         final prefs = await SharedPreferences.getInstance();
@@ -373,6 +372,22 @@ class BiometricAuthService {
         success: false,
         message: 'Authentication error: $e',
       );
+    }
+  }
+
+  // Add a helper method to save tokens consistently
+  static Future<void> _saveTokenToMultipleStorages(String token) async {
+    try {
+      // 1. Save in secure storage
+      await _secureStorage.write(key: 'authToken', value: token);
+
+      // 2. Also save in SharedPreferences for better compatibility
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('authToken', token);
+
+      print('Token saved to multiple storage locations');
+    } catch (e) {
+      print('Error saving token to multiple storages: $e');
     }
   }
 

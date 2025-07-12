@@ -323,17 +323,21 @@ class _SignInScreenState extends State<SignInScreen> {
         // Extract token from the response if it exists
         final token = data['token'];
         if (token != null) {
-          // Save token securely
+          // Save token securely in both locations
           await storage.write(key: 'authToken', value: token);
 
           // Also save in SharedPreferences for better compatibility
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('authToken', token);
-        }
 
-        // Set is_signed_in flag to true regardless of token
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('is_signed_in', true);
+          // Set is_signed_in flag to true
+          await prefs.setBool('is_signed_in', true);
+        } else {
+          print("Warning: No token found in response");
+          // Set is_signed_in flag to true regardless of token
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('is_signed_in', true);
+        }
 
         Navigator.pushReplacementNamed(context, '/home');
       } else {

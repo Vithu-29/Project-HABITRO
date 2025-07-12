@@ -5,7 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ChallengeService {
   // Update this URL to match your backend server
-  static const String baseUrl = 'http://10.10.42.10:8000/';
+  static const String baseUrl = 'http://192.168.8.101:8000/';
 
   // Get authentication token from storage
   static Future<String?> _getAuthToken() async {
@@ -16,6 +16,13 @@ class ChallengeService {
 
       if (token != null && token.isNotEmpty) {
         print("Token found in secure storage");
+
+        // Also save to SharedPreferences for redundancy
+        final prefs = await SharedPreferences.getInstance();
+        if (prefs.getString('authToken') != token) {
+          await prefs.setString('authToken', token);
+        }
+
         return token;
       }
 
@@ -29,6 +36,15 @@ class ChallengeService {
         // Also save it to secure storage for next time
         await storage.write(key: 'authToken', value: token);
         return token;
+      }
+
+      // If we still don't have a token but the user is marked as signed in,
+      // we need to handle this inconsistency
+      bool isSignedIn = prefs.getBool('is_signed_in') ?? false;
+      if (isSignedIn) {
+        print(
+            "User marked as signed in but no token found - inconsistent state");
+        // Consider forcing re-authentication here
       }
 
       print("No authentication token found in any storage");
