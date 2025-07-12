@@ -72,6 +72,15 @@
                 console.log('Error detecting face capability:', e);
               }
             }
+            
+            // Make this information available to Flutter
+            if (window.flutter_inappwebview) {
+              window.flutter_inappwebview.callHandler('updateBiometricStatus', {
+                isWebAuthnAvailable: available,
+                isFingerprintAvailable: window.isFingerprintAvailable || false,
+                isFaceIdAvailable: window.isFaceIdAvailable || false
+              });
+            }
           })
           .catch(function(error) {
             console.error('Error checking WebAuthn availability:', error);
@@ -85,6 +94,23 @@
         window.isFaceIdAvailable = false;
         console.log('WebAuthn is not supported in this browser');
       }
+      
+      // Add helper function for token management that Flutter can call
+      window.storeAuthToken = function(token) {
+        try {
+          localStorage.setItem('authToken', token);
+          sessionStorage.setItem('authToken', token);
+          console.log('Token stored in browser storage');
+          return true;
+        } catch (e) {
+          console.error('Error storing token:', e);
+          return false;
+        }
+      };
+      
+      window.getAuthToken = function() {
+        return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      };
     };
   </script>
 </head>

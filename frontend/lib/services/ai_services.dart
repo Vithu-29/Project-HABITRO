@@ -2,12 +2,13 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/habit.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AIService {
   //***********************************************************************************************************//
   //send the entered habit to analyze good or bad
 
-  static const String baseurl = 'http://10.10.42.10:8000/';
+  static const String baseurl = 'http://192.168.8.101:8000/';
   static final _storage = FlutterSecureStorage();
 
   static Map<String, String> _headers(String token) {
@@ -18,7 +19,30 @@ class AIService {
   }
 
   static Future<String?> _getToken() async {
-    return await _storage.read(key: 'authToken'); // Corrected key
+    try {
+      // First try secure storage
+      String? token = await _storage.read(key: 'authToken');
+
+      if (token != null && token.isNotEmpty) {
+        return token;
+      }
+
+      // If not found, try SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      token = prefs.getString('authToken');
+
+      if (token != null && token.isNotEmpty) {
+        // Save to secure storage for next time
+        await _storage.write(key: 'authToken', value: token);
+        return token;
+      }
+
+      print("No token found in any storage");
+      return null;
+    } catch (e) {
+      print("Error retrieving token: $e");
+      return null;
+    }
   }
 
   static Future<String> analyzeHabit(String habit) async {

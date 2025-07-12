@@ -120,15 +120,22 @@ class SignUpScreenState extends State<SignUpScreen> {
         final data = jsonDecode(response.body);
         final token = data['token'];
 
-        // Save token securely
-        await storage.write(key: 'authToken', value: token);
+        if (token != null) {
+          // Save token securely in both locations
+          await storage.write(key: 'authToken', value: token);
 
-        // Also save in SharedPreferences for better compatibility
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('authToken', token);
+          // Also save in SharedPreferences for better compatibility
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('authToken', token);
 
-        // Set is_signed_in flag to true
-        await prefs.setBool('is_signed_in', true);
+          // Set is_signed_in flag to true
+          await prefs.setBool('is_signed_in', true);
+        } else {
+          print("Warning: No token found in response");
+          // Set is_signed_in flag anyway for compatibility
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('is_signed_in', true);
+        }
 
         // Navigate to home
         Navigator.pushReplacementNamed(context, '/home');
@@ -213,15 +220,22 @@ class SignUpScreenState extends State<SignUpScreen> {
           final data = jsonDecode(response.body);
           final token = data['token'];
 
-          // Save token securely
-          await storage.write(key: 'authToken', value: token);
+          if (token != null) {
+            // Save token securely in both locations
+            await storage.write(key: 'authToken', value: token);
 
-          // Also save in SharedPreferences for better compatibility
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('authToken', token);
+            // Also save in SharedPreferences for better compatibility
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('authToken', token);
 
-          // Set is_signed_in flag to true
-          await prefs.setBool('is_signed_in', true);
+            // Set is_signed_in flag to true
+            await prefs.setBool('is_signed_in', true);
+          } else {
+            print("Warning: No token found in response");
+            // Set is_signed_in flag anyway
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setBool('is_signed_in', true);
+          }
 
           Navigator.pushReplacementNamed(context, '/home');
         } else {
