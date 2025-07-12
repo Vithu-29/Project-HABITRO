@@ -11,7 +11,7 @@ import re
 import requests
 from django.conf import settings
 from .models import CustomUser, OTPVerification
-from .serializers import RegisterSerializer, VerifyOTPSerializer, ChallengeSerializer, UserChallengeSerializer, UserChallengeHabit, JoinChallengeSerializer, UserChallenge, Challenge,ChallengeHabit
+from .serializers import RegisterSerializer, VerifyOTPSerializer, ChallengeSerializer, UserChallengeSerializer, UserChallengeHabit, JoinChallengeSerializer, UserChallenge, Challenge, ChallengeHabit
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view
 import logging
@@ -319,19 +319,8 @@ def social_login(request):
                 created = True
                 logger.info(f"New user created: {user.email}")
 
-            # Optional: Store social provider info if you have a SocialAccount model
-            # This is useful for tracking which social platforms users use
-            """
-            if hasattr(user, 'social_accounts'):
-                social_account, _ = SocialAccount.objects.get_or_create(
-                    user=user,
-                    provider=provider,
-                    defaults={
-                        'provider_id': provider_id,
-
-                    }
-                )
-            """
+            # Generate or get auth token
+            token, _ = Token.objects.get_or_create(user=user)
 
             # Log the user in
             login(request, user)
@@ -339,6 +328,7 @@ def social_login(request):
             # Prepare response
             response_data = {
                 "message": "User created successfully" if created else "Login successful",
+                "token": token.key,  # Include the token in the response
                 "user": {
                     "id": user.id,
                     "email": user.email,
@@ -355,7 +345,7 @@ def social_login(request):
     except Exception as e:
         logger.error(f"Social login error: {str(e)}", exc_info=True)
         return Response({
-            "error": "Internal server error occurred during social login"
+            "error": f"Internal server error occurred during social login: {str(e)}"
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Forgot Password View
@@ -624,119 +614,45 @@ class ResendOTPView(APIView):
             logger.error(f"Error resending OTP: {str(e)}")
             return Response({"error": f"Failed to resend OTP: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class ChallengeListView(generics.ListAPIView):
     serializer_class = ChallengeSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def get_queryset(self):
         # Exclude challenges the user has already joined
         user_challenges = UserChallenge.objects.filter(
             user=self.request.user
         ).values_list('challenge_id', flat=True)
-        
+
         return Challenge.objects.filter(is_active=True).exclude(
             id__in=user_challenges
         )
 
+
 class UserChallengeListView(generics.ListAPIView):
     serializer_class = UserChallengeSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def get_queryset(self):
         return UserChallenge.objects.filter(
             user=self.request.user,
             is_active=True
         ).prefetch_related('habits__habit')
 
-class JoinChallengeView(generics.GenericAPIView):
-    serializer_class = JoinChallengeSerializer
-    permission_classes = [IsAuthenticated]
-    
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        try:
-            challenge = Challenge.objects.get(
-                id=serializer.validated_data['challenge_id'],
-                is_active=True
-            )
-        except Challenge.DoesNotExist:
-            return Response(
-                {"error": "Challenge not found or inactive"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        # Check if user already joined this challenge
-        if UserChallenge.objects.filter(
-            user=request.user,
-            challenge=challenge
-        ).exists():
-            return Response(
-                {"error": "You have already joined this challenge"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Create user challenge
-        user_challenge = UserChallenge.objects.create(
-            user=request.user,
-            challenge=challenge
-        )
-        
-        # Create user challenge habits
-        for habit in challenge.habits.all():
-            UserChallengeHabit.objects.create(
-                user_challenge=user_challenge,
-                habit=habit
-            )
-        
-        return Response(
-            {"message": "Successfully joined challenge"},
-            status=status.HTTP_201_CREATED
-        )
-
-class UpdateChallengeHabitView(generics.GenericAPIView):
-    permission_classes = [IsAuthenticated]
-    
-    def post(self, request, habit_id, *args, **kwargs):
-        try:
-            user_habit = UserChallengeHabit.objects.get(
-                id=habit_id,
-                user_challenge__user=request.user
-            )
-        except UserChallengeHabit.DoesNotExist:
-            return Response(
-                {"error": "Habit not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        is_completed = request.data.get('is_completed', False)
-        user_habit.is_completed = is_completed
-        if is_completed:
-            user_habit.completed_date = timezone.now().date()
-        else:
-            user_habit.completed_date = None
-        user_habit.save()
-        
-        return Response(
-            {"message": "Habit status updated"},
-            status=status.HTTP_200_OK
-        )
-        
-        # Add to the existing views.py file
 
 class JoinChallengeView(generics.GenericAPIView):
     serializer_class = JoinChallengeSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
+
         challenge_id = serializer.validated_data['challenge_id']
         # New: Get selected habit IDs from request
         habit_ids = request.data.get('habit_ids', [])
-        
+
         try:
             challenge = Challenge.objects.get(
                 id=challenge_id,
@@ -747,7 +663,7 @@ class JoinChallengeView(generics.GenericAPIView):
                 {"error": "Challenge not found or inactive"},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         # Check if user already joined this challenge
         if UserChallenge.objects.filter(
             user=request.user,
@@ -757,19 +673,19 @@ class JoinChallengeView(generics.GenericAPIView):
                 {"error": "You have already joined this challenge"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         # Create user challenge
         user_challenge = UserChallenge.objects.create(
             user=request.user,
             challenge=challenge
         )
-        
+
         # Create user challenge habits only for selected habits
         if habit_ids:
             for habit_id in habit_ids:
                 try:
                     habit = ChallengeHabit.objects.get(
-                        id=habit_id, 
+                        id=habit_id,
                         challenge=challenge
                     )
                     UserChallengeHabit.objects.create(
@@ -785,7 +701,105 @@ class JoinChallengeView(generics.GenericAPIView):
                     user_challenge=user_challenge,
                     habit=habit
                 )
-        
+
+        return Response(
+            {"message": "Successfully joined the challenge"},
+            status=status.HTTP_201_CREATED
+        )
+
+
+class UpdateChallengeHabitView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, habit_id, *args, **kwargs):
+        try:
+            user_habit = UserChallengeHabit.objects.get(
+                id=habit_id,
+                user_challenge__user=request.user
+            )
+        except UserChallengeHabit.DoesNotExist:
+            return Response(
+                {"error": "Habit not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        is_completed = request.data.get('is_completed', False)
+        user_habit.is_completed = is_completed
+        if is_completed:
+            user_habit.completed_date = timezone.now().date()
+        else:
+            user_habit.completed_date = None
+        user_habit.save()
+
+        return Response(
+            {"message": "Habit status updated"},
+            status=status.HTTP_200_OK
+        )
+
+        # Add to the existing views.py file
+
+
+class JoinChallengeView(generics.GenericAPIView):
+    serializer_class = JoinChallengeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        challenge_id = serializer.validated_data['challenge_id']
+        # New: Get selected habit IDs from request
+        habit_ids = request.data.get('habit_ids', [])
+
+        try:
+            challenge = Challenge.objects.get(
+                id=challenge_id,
+                is_active=True
+            )
+        except Challenge.DoesNotExist:
+            return Response(
+                {"error": "Challenge not found or inactive"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check if user already joined this challenge
+        if UserChallenge.objects.filter(
+            user=request.user,
+            challenge=challenge
+        ).exists():
+            return Response(
+                {"error": "You have already joined this challenge"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create user challenge
+        user_challenge = UserChallenge.objects.create(
+            user=request.user,
+            challenge=challenge
+        )
+
+        # Create user challenge habits only for selected habits
+        if habit_ids:
+            for habit_id in habit_ids:
+                try:
+                    habit = ChallengeHabit.objects.get(
+                        id=habit_id,
+                        challenge=challenge
+                    )
+                    UserChallengeHabit.objects.create(
+                        user_challenge=user_challenge,
+                        habit=habit
+                    )
+                except ChallengeHabit.DoesNotExist:
+                    continue
+        else:
+            # If no habits are selected, add all habits (backward compatibility)
+            for habit in challenge.habits.all():
+                UserChallengeHabit.objects.create(
+                    user_challenge=user_challenge,
+                    habit=habit
+                )
+
         return Response(
             {"message": "Successfully joined the challenge"},
             status=status.HTTP_201_CREATED

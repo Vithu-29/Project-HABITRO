@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../api_services/challenge_service.dart';
 import 'challenge_model.dart';
 
@@ -34,48 +35,102 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
     return await storage.read(key: 'authToken');
   }
 
-Future<void> _loadChallenges() async {
-  setState(() {
-    isLoading = true;
-    error = null;
-  });
+  Future<void> _loadChallenges() async {
+    setState(() {
+      isLoading = true;
+      error = null;
+    });
 
-  try {
-    // First check if token exists
-    final token = await _getToken();
-    if (token == null) {
+    try {
+      // First check if token exists
+      final token = await _getToken();
+      if (token == null) {
+        setState(() {
+          error = "Authentication token not found. Please log in again.";
+          isLoading = false;
+        });
+
+        // Show a dialog with option to go to login screen
+        _showLoginRequiredDialog();
+        return;
+      }
+
+      // Then try to load data
+      final availableChallengesData =
+          await ChallengeService.getAvailableChallenges();
+      final myChallengesData = await ChallengeService.getUserChallenges();
+
+      // Process and use the fetched data
       setState(() {
-        error = "Authentication token not found. Please log in again.";
+        availableChallenges = availableChallengesData
+            .map((data) => Challenge.fromJson(data))
+            .toList();
+        myChallenges = myChallengesData
+            .map((data) => UserChallenge.fromJson(data))
+            .toList();
         isLoading = false;
       });
-      return;
+    } catch (e) {
+      setState(() {
+        error = e.toString();
+        isLoading = false;
+      });
+      print('Error loading challenges: $e');
+
+      // If error contains "token" or "authentication", show login dialog
+      if (e.toString().toLowerCase().contains("token") ||
+          e.toString().toLowerCase().contains("auth")) {
+        _showLoginRequiredDialog();
+      }
     }
-    
-    // Then try to load data
-    final availableChallengesData = await ChallengeService.getAvailableChallenges();
-    final myChallengesData = await ChallengeService.getUserChallenges();
-    
-    // Process and use the fetched data
-    setState(() {
-      availableChallenges = availableChallengesData.map((data) => Challenge.fromJson(data)).toList();
-      myChallenges = myChallengesData.map((data) => UserChallenge.fromJson(data)).toList();
-      isLoading = false;
-    });
-  } catch (e) {
-    setState(() {
-      error = e.toString();
-      isLoading = false;
-    });
-    print('Error loading challenges: $e');
   }
-}
+
+  void _showLoginRequiredDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text('Authentication Required'),
+        content:
+            Text('Your session has expired. Please sign in again to continue.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              // Clear any saved tokens
+              _clearTokens();
+              // Navigate to sign-in screen, replacing the current route
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/signin',
+                (route) => false,
+              );
+            },
+            child: Text('Sign In'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _clearTokens() async {
+    try {
+      final storage = FlutterSecureStorage();
+      await storage.delete(key: 'authToken');
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('authToken');
+      await prefs.setBool('is_signed_in', false);
+    } catch (e) {
+      print('Error clearing tokens: $e');
+    }
+  }
 
   void _toggleHabitSelection(int challengeId, int habitId) {
     setState(() {
       if (selectedHabits[challengeId] == null) {
         selectedHabits[challengeId] = [];
       }
-      
+
       if (selectedHabits[challengeId]!.contains(habitId)) {
         selectedHabits[challengeId]!.remove(habitId);
       } else {
@@ -88,7 +143,8 @@ Future<void> _loadChallenges() async {
     if (selectedHabits[challengeId]?.isEmpty ?? true) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select at least one habit to join the challenge'),
+          content:
+              Text('Please select at least one habit to join the challenge'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -99,9 +155,7 @@ Future<void> _loadChallenges() async {
 
     try {
       final success = await ChallengeService.joinChallenge(
-        challengeId, 
-        selectedHabits[challengeId] ?? []
-      );
+          challengeId, selectedHabits[challengeId] ?? []);
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -110,12 +164,12 @@ Future<void> _loadChallenges() async {
             backgroundColor: Colors.green,
           ),
         );
-        
+
         // Reset selections and reload data
         setState(() {
           selectedHabits[challengeId] = [];
         });
-        
+
         await _loadChallenges();
         _tabController.animateTo(1); // Switch to My Challenges tab
       } else {
@@ -140,12 +194,15 @@ Future<void> _loadChallenges() async {
 
   Future<void> _updateHabitStatus(int habitId, bool isCompleted) async {
     try {
-      final success = await ChallengeService.updateHabitStatus(habitId, isCompleted);
-      
+      final success =
+          await ChallengeService.updateHabitStatus(habitId, isCompleted);
+
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(isCompleted ? 'Habit completed!' : 'Habit marked as incomplete'),
+            content: Text(isCompleted
+                ? 'Habit completed!'
+                : 'Habit marked as incomplete'),
             backgroundColor: isCompleted ? Colors.green : Colors.orange,
             duration: Duration(seconds: 1),
           ),
@@ -248,7 +305,7 @@ Future<void> _loadChallenges() async {
         itemCount: availableChallenges.length,
         itemBuilder: (context, index) {
           final challenge = availableChallenges[index];
-          
+
           return Card(
             margin: EdgeInsets.only(bottom: 16),
             elevation: 2,
@@ -264,9 +321,11 @@ Future<void> _loadChallenges() async {
                   Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor.withOpacity(0.1),
+                          color:
+                              Theme.of(context).primaryColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -288,7 +347,7 @@ Future<void> _loadChallenges() async {
                     ],
                   ),
                   SizedBox(height: 12),
-                  
+
                   // Challenge title
                   Text(
                     challenge.title,
@@ -298,7 +357,7 @@ Future<void> _loadChallenges() async {
                     ),
                   ),
                   SizedBox(height: 8),
-                  
+
                   // Challenge description
                   Text(
                     challenge.description,
@@ -307,7 +366,7 @@ Future<void> _loadChallenges() async {
                       fontSize: 14,
                     ),
                   ),
-                  
+
                   // Habits list with checkboxes
                   if (challenge.habits.isNotEmpty) ...[
                     SizedBox(height: 16),
@@ -317,13 +376,16 @@ Future<void> _loadChallenges() async {
                     ),
                     SizedBox(height: 8),
                     ...challenge.habits.map((habit) {
-                      bool isSelected = selectedHabits[challenge.id]?.contains(habit.id) ?? false;
-                      
+                      bool isSelected =
+                          selectedHabits[challenge.id]?.contains(habit.id) ??
+                              false;
+
                       return CheckboxListTile(
                         title: Text(habit.title),
                         subtitle: Text(
                           habit.description,
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.grey[600]),
                         ),
                         value: isSelected,
                         onChanged: (bool? value) {
@@ -332,7 +394,8 @@ Future<void> _loadChallenges() async {
                         dense: true,
                         contentPadding: EdgeInsets.zero,
                         secondary: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: Colors.blue.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
@@ -348,7 +411,7 @@ Future<void> _loadChallenges() async {
                         ),
                       );
                     }).toList(),
-                    
+
                     // Join challenge button
                     SizedBox(height: 16),
                     SizedBox(
@@ -411,12 +474,12 @@ Future<void> _loadChallenges() async {
         itemBuilder: (context, index) {
           final userChallenge = myChallenges[index];
           final challenge = userChallenge.challenge;
-          final completedHabits = userChallenge.habits
-              .where((h) => h.isCompleted)
-              .length;
+          final completedHabits =
+              userChallenge.habits.where((h) => h.isCompleted).length;
           final totalHabits = userChallenge.habits.length;
-          final progress = totalHabits > 0 ? completedHabits / totalHabits : 0.0;
-          
+          final progress =
+              totalHabits > 0 ? completedHabits / totalHabits : 0.0;
+
           return Card(
             margin: EdgeInsets.only(bottom: 16),
             elevation: 2,
@@ -432,7 +495,8 @@ Future<void> _loadChallenges() async {
                   Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.green.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
@@ -457,7 +521,7 @@ Future<void> _loadChallenges() async {
                     ],
                   ),
                   SizedBox(height: 12),
-                  
+
                   // Challenge title
                   Text(
                     challenge.title,
@@ -467,7 +531,7 @@ Future<void> _loadChallenges() async {
                     ),
                   ),
                   SizedBox(height: 12),
-                  
+
                   // Progress indicator
                   LinearProgressIndicator(
                     value: progress,
@@ -483,7 +547,7 @@ Future<void> _loadChallenges() async {
                     ),
                   ),
                   SizedBox(height: 16),
-                  
+
                   // Challenge habits with checkboxes to mark completion
                   Text(
                     'My Habits:',
@@ -492,14 +556,14 @@ Future<void> _loadChallenges() async {
                   SizedBox(height: 8),
                   ...userChallenge.habits.map((userHabit) {
                     final habit = userHabit.habit;
-                    
+
                     return CheckboxListTile(
                       title: Text(
                         habit.title,
                         style: TextStyle(
-                          decoration: userHabit.isCompleted 
-                            ? TextDecoration.lineThrough 
-                            : null,
+                          decoration: userHabit.isCompleted
+                              ? TextDecoration.lineThrough
+                              : null,
                         ),
                       ),
                       subtitle: Column(
@@ -507,7 +571,8 @@ Future<void> _loadChallenges() async {
                         children: [
                           Text(
                             habit.description,
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey[600]),
                           ),
                           if (userHabit.completedDate != null)
                             Text(
@@ -524,7 +589,8 @@ Future<void> _loadChallenges() async {
                         _updateHabitStatus(userHabit.id, value ?? false);
                       },
                       secondary: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.blue.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
