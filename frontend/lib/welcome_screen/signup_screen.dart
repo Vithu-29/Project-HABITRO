@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'otp_verification_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -34,6 +35,7 @@ class SignUpScreenState extends State<SignUpScreen> {
     ],
   );
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final storage = FlutterSecureStorage(); // Add this line for token storage
 
   // Helper methods for validation
   bool _isValidEmail(String email) {
@@ -114,11 +116,21 @@ class SignUpScreenState extends State<SignUpScreen> {
       if (!mounted) return;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // Set is_signed_in flag to true
+        // Extract token from response
+        final data = jsonDecode(response.body);
+        final token = data['token'];
+
+        // Save token securely
+        await storage.write(key: 'authToken', value: token);
+
+        // Also save in SharedPreferences for better compatibility
         final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('authToken', token);
+
+        // Set is_signed_in flag to true
         await prefs.setBool('is_signed_in', true);
 
-        // Success - navigate to home
+        // Navigate to home
         Navigator.pushReplacementNamed(context, '/home');
       } else {
         // Handle backend error
@@ -126,8 +138,9 @@ class SignUpScreenState extends State<SignUpScreen> {
         try {
           final error = jsonDecode(response.body);
           errorMessage = error['error'] ?? errorMessage;
+          print("Server error: $errorMessage");
         } catch (e) {
-          // Use default message if JSON parsing fails
+          print("Error parsing response: $e");
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -138,9 +151,12 @@ class SignUpScreenState extends State<SignUpScreen> {
       if (!mounted) return;
 
       String errorMessage = 'Google sign-in failed';
+      print("Google sign-in error: $e");
+
       if (e.toString().contains('network_error')) {
         errorMessage = 'Network error. Please check your connection.';
-      } else if (e.toString().contains('sign_in_canceled')) {
+      } else if (e.toString().contains('sign_in_canceled') ||
+          e.toString().contains('cancel')) {
         errorMessage = 'Sign-in was canceled';
       } else if (e.toString().contains('sign_in_failed')) {
         errorMessage = 'Google sign-in failed. Please try again.';
@@ -193,8 +209,18 @@ class SignUpScreenState extends State<SignUpScreen> {
         if (!mounted) return;
 
         if (response.statusCode == 200 || response.statusCode == 201) {
-          // Set is_signed_in flag to true
+          // Extract token from response
+          final data = jsonDecode(response.body);
+          final token = data['token'];
+
+          // Save token securely
+          await storage.write(key: 'authToken', value: token);
+
+          // Also save in SharedPreferences for better compatibility
           final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('authToken', token);
+
+          // Set is_signed_in flag to true
           await prefs.setBool('is_signed_in', true);
 
           Navigator.pushReplacementNamed(context, '/home');

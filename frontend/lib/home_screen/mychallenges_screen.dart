@@ -5,7 +5,7 @@ import '../api_services/challenge_service.dart';
 import 'challenge_model.dart';
 
 class MyChallengesScreen extends StatefulWidget {
-  const MyChallengesScreen({Key? key}) : super(key: key);
+  const MyChallengesScreen({super.key});
 
   @override
   _MyChallengesScreenState createState() => _MyChallengesScreenState();
@@ -410,7 +410,7 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
                           ),
                         ),
                       );
-                    }).toList(),
+                    }),
 
                     // Join challenge button
                     SizedBox(height: 16),
@@ -607,7 +607,7 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
                       dense: true,
                       contentPadding: EdgeInsets.zero,
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
