@@ -6,6 +6,8 @@ import '../models/habit.dart';
 import './first.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import './edit_habit_screen.dart'; // Update the path based on your folder structure
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -162,47 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////
- void _showDeleteConfirmationDialog(String habitId) {
-  showDialog(
-    context: context,
-    builder: (BuildContext dialogContext) {
-      return AlertDialog(
-        title: const Text('Delete Habit'),
-        content: const Text('Are you sure you want to delete this habit and all its tasks?'),
-        actions: <Widget>[
-          TextButton(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.of(dialogContext).pop(),
-          ),
-          TextButton(
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-            onPressed: () async {
-              Navigator.of(dialogContext).pop(); // Close the dialog first
-
-              final currentContext = context; // capture context early
-
-              try {
-                await AIService().deleteHabit(habitId);
-                if (mounted) {
-                  _refreshHabits();
-                  ScaffoldMessenger.of(currentContext).showSnackBar(
-                    const SnackBar(content: Text('Habit deleted successfully')),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(currentContext).showSnackBar(
-                    SnackBar(content: Text('Failed to delete habit: $e')),
-                  );
-                }
-              }
-            },
-          ),
-        ],
-      );
-    },
-  );
-}
+ 
 
   ///////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -357,9 +319,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(width: 8),
                   IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _showDeleteConfirmationDialog(habit.id),
-                  ),
+  icon: const Icon(Icons.edit, color: Colors.blue),
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditHabitScreen(habit: {
+          "id": habit.id,
+          "name": habit.name,       
+          "type": habit.type                  
+        }),
+      ),
+    ).then((_) => _refreshHabits()); // Refresh after coming back
+  },
+),
+
                 ],
               ),
             ],
