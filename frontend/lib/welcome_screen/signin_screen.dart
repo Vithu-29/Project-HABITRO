@@ -572,58 +572,56 @@ class _SignInScreenState extends State<SignInScreen> {
                         ],
                       ),
                       const SizedBox(height: 24),
-                      // Biometric authentication section - always show if biometrics are enabled
-                      if (_isBiometricEnabled) ...[
-                        const SizedBox(height: 16),
-                        Row(
-                          children: const [
-                            Expanded(child: Divider()),
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 8.0),
-                              child: Text(
-                                "Use Biometrics",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
+                      // Biometric authentication section - ALWAYS show biometric options
+                      const SizedBox(height: 16),
+                      Row(
+                        children: const [
+                          Expanded(child: Divider()),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8.0),
+                            child: Text(
+                              "Use Biometrics",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
                               ),
                             ),
-                            Expanded(child: Divider()),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Always show Face ID option if biometrics are enabled
-                            GestureDetector(
-                              onTap: _isLoading
-                                  ? null
-                                  : () => _authenticateWithBiometrics(false),
-                              child: Image.asset(
-                                "assets/images/face.png",
-                                height: 40,
-                                width: 40,
-                                fit: BoxFit.contain,
-                              ),
+                          ),
+                          Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Always show Face ID option
+                          GestureDetector(
+                            onTap: _isLoading
+                                ? null
+                                : () => _authenticateWithBiometrics(false),
+                            child: Image.asset(
+                              "assets/images/face.png",
+                              height: 40,
+                              width: 40,
+                              fit: BoxFit.contain,
                             ),
-                            const SizedBox(width: 80),
-                            // Always show Fingerprint option if biometrics are enabled
-                            GestureDetector(
-                              onTap: _isLoading
-                                  ? null
-                                  : () => _authenticateWithBiometrics(true),
-                              child: Image.asset(
-                                "assets/images/finger.png",
-                                height: 40,
-                                width: 40,
-                                fit: BoxFit.contain,
-                              ),
+                          ),
+                          const SizedBox(width: 80),
+                          // Always show Fingerprint option
+                          GestureDetector(
+                            onTap: _isLoading
+                                ? null
+                                : () => _authenticateWithBiometrics(true),
+                            child: Image.asset(
+                              "assets/images/finger.png",
+                              height: 40,
+                              width: 40,
+                              fit: BoxFit.contain,
                             ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
 
                       const SizedBox(height: 16),
                       Center(
