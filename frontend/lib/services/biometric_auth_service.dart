@@ -245,12 +245,12 @@ class BiometricAuthService {
       if (isFingerprint && !hasFingerprint) {
         return BiometricAuthResult(
           success: false,
-          message: 'This device does not have fingerprint biometric',
+          message: 'This phone does not have fingerprint biometric',
         );
       } else if (!isFingerprint && !hasFaceId) {
         return BiometricAuthResult(
           success: false,
-          message: 'This device does not have face biometric',
+          message: 'This phone does not have face biometric',
         );
       }
 
@@ -352,10 +352,14 @@ class BiometricAuthService {
       String message;
       switch (e.code) {
         case auth_error.notAvailable:
-          message = 'Biometric authentication not available';
+          message = isFingerprint
+              ? 'This phone does not have fingerprint biometric'
+              : 'This phone does not have face biometric';
           break;
         case auth_error.notEnrolled:
-          message = 'No biometrics enrolled on device';
+          message = isFingerprint
+              ? 'No fingerprint enrolled on this device'
+              : 'No face biometric enrolled on this device';
           break;
         case auth_error.lockedOut:
           message = 'Biometric authentication locked due to too many attempts';
