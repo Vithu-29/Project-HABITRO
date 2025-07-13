@@ -110,12 +110,12 @@ def analyze_responses(request):
 
         # AI Payload
         payload = {
-            "model": "deepseek/deepseek-r1-zero:free",
+            "model":"deepseek/deepseek-chat-v3-0324:free",
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            "temperature": 0.5
+            "temperature": 0.8
         }
 
         headers = {
@@ -149,9 +149,19 @@ def analyze_responses(request):
 
 ###########################################################################################################
                                     ## extract tasks ##
+                                    ######################
+                                    ######################
+                                    #changed code#########
 
 def extract_tasks(text, expected_days):
     import re
+
+    def clean_text(text):
+        text = re.sub(r"[*_~`]+", "", text)
+        text = re.sub(r"[^a-zA-Z0-9\s,.'\-]", "", text)
+        text = re.sub(r"\s+", " ", text)
+        return text.strip()
+
     task_list = []
     day_pattern = re.compile(r"Day\s*(\d+):(.+?)(?=\nDay\s*\d+:|\Z)", re.DOTALL)
     task_pattern = re.compile(r"\d+\.\s*(.*?)(?=\n\d+\.|\Z)", re.DOTALL)
@@ -160,15 +170,18 @@ def extract_tasks(text, expected_days):
         tasks = task_pattern.findall(content)
         for task in tasks:
             clean_task = task.strip()
+            clean_task = re.sub(r"\*\*Day\s*\d+\:\*\*", "", clean_task)
+            clean_task = clean_task.strip()
+            clean_task = clean_text(clean_task)
             if clean_task and "repeat last task" not in clean_task.lower():
                 task_list.append({"task": clean_task, "isCompleted": False})
 
-    # Fallback: if too few tasks, just clone the last good one
     last_task = task_list[-1] if task_list else {"task": "Generic fallback task", "isCompleted": False}
     while len(task_list) < expected_days * 3:
         task_list.append(last_task)
 
     return task_list[:expected_days * 3]
+
 ###########################################################################################################
                                     ## save tasks ##
 @api_view(['POST'])
@@ -238,7 +251,7 @@ def save_tasks(request):
 class HabitsWithTodayTasks(APIView):
     @permission_classes([IsAuthenticated])
     def get(self, request):
-        habits = Habit.objects.all()
+        habits = Habit.objects.filter(user=request.user)  # Filter by current user
         serializer = HabitSerializer(habits, many=True)
         return Response(serializer.data)
 
@@ -376,3 +389,30 @@ from rewards.models import Reward  # Import the Reward model
 def get_coin_balance(request):
     reward, created = Reward.objects.get_or_create(user=request.user)
     return Response({'balance': reward.coins})  # Changed coins.balance to reward.coins
+
+#####################  Habit editing Logic #####################################################################3
+
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_habit(request, habit_id):
+    try:
+        # Convert string habit_id to UUID
+        #habit_uuid = uuid.UUID(habit_id)
+        habit = Habit.objects.get(id=habit_id, user=request.user)
+        habit.delete()  # Deletes habit AND its tasks (CASCADE)
+        return Response(
+            {'message': 'Habit and related tasks deleted successfully.'},
+            status=200
+        )
+    except (Habit.DoesNotExist):
+        return Response(
+            {'error': 'Habit not found or you don\'t have permission.'},
+            status=404
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'Server error: {str(e)}'},
+            status=500
+        )

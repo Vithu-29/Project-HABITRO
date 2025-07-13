@@ -7,7 +7,7 @@ class AIService {
   //***********************************************************************************************************//
   //send the entered habit to analyze good or bad
 
-  static const String baseurl = 'http://192.168.64.157:8000';
+  static const String baseurl = 'http://192.168.41.157:8000';
   static final _storage = FlutterSecureStorage();
 
   static Map<String, String> _headers(String token) {
@@ -387,6 +387,38 @@ class AIService {
       throw Exception('Failed to deduct coins: ${e.toString()}');
     }
   }
+
+
+
+
+  Future<void> deleteHabit(String habitId) async {
+  final token = await _getToken();
+  if (token == null) {
+    throw Exception('User not authenticated');
+  }
+
+  try {
+    final response = await http.delete(
+      Uri.parse("$baseurl/api/habits/delete/$habitId/"),
+      headers: _headers(token),
+    );
+
+    if (response.statusCode == 200) {
+      return;
+    } else if (response.statusCode == 404) {
+      throw Exception('Habit not found');
+    } else {
+      // Try to parse error message from response
+      final errorBody = jsonDecode(response.body);
+      throw Exception(errorBody['error'] ?? 'Failed to delete habit');
+    }
+  } on http.ClientException catch (e) {
+    throw Exception('Network error: ${e.message}');
+  } catch (e) {
+    throw Exception('Failed to delete habit: ${e.toString()}');
+  }
+}
+
 }
 
 //***********************************************************************************************************//

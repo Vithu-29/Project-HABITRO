@@ -70,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _addCoinsForTaskCompletion() async {
     try {
-      final newBalance = await AIService.addCoins(10);
+      final newBalance = await AIService.addCoins(100);
       setState(() => userCoins = newBalance);
     } catch (e) {
       // await CoinService.addCoins(100);
@@ -160,6 +160,51 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
   }
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////
+ void _showDeleteConfirmationDialog(String habitId) {
+  showDialog(
+    context: context,
+    builder: (BuildContext dialogContext) {
+      return AlertDialog(
+        title: const Text('Delete Habit'),
+        content: const Text('Are you sure you want to delete this habit and all its tasks?'),
+        actions: <Widget>[
+          TextButton(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.of(dialogContext).pop(),
+          ),
+          TextButton(
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            onPressed: () async {
+              Navigator.of(dialogContext).pop(); // Close the dialog first
+
+              final currentContext = context; // capture context early
+
+              try {
+                await AIService().deleteHabit(habitId);
+                if (mounted) {
+                  _refreshHabits();
+                  ScaffoldMessenger.of(currentContext).showSnackBar(
+                    const SnackBar(content: Text('Habit deleted successfully')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(currentContext).showSnackBar(
+                    SnackBar(content: Text('Failed to delete habit: $e')),
+                  );
+                }
+              }
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////
 
   @override
   Widget build(BuildContext context) {
@@ -283,69 +328,82 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget buildHabitTile(Habit habit) {
-    return Card(
-      margin: const EdgeInsets.all(8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
+  return Card(
+    margin: const EdgeInsets.all(8),
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
                   habit.name,
                   style: const TextStyle(
                       fontSize: 18, fontWeight: FontWeight.bold),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                 ),
-                Chip(
-                  label: Text(habit.type),
-                  backgroundColor: habit.type == "Good"
-                      ? const Color.fromARGB(255, 189, 249, 188)
-                      : const Color.fromARGB(255, 244, 168, 168),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ...habit.tasks.map(
-              (task) => Row(
+              ),
+              Row(
                 children: [
-                  Checkbox(
-                    value: task.isCompleted,
-                    onChanged: (bool? value) async {
-                      final wasCompleted = task.isCompleted;
-                      final willBeCompleted = value ?? false;
-
-                      await AIService()
-                          .updateTaskStatus(task.id, willBeCompleted);
-
-                      if (wasCompleted && !willBeCompleted) {
-                        await _deductCoins(10, reason: 'task_unchecked');
-                      } else if (!wasCompleted && willBeCompleted) {
-                        await _addCoinsForTaskCompletion();
-                      }
-
-                      setState(() {
-                        task.isCompleted = willBeCompleted;
-                      });
-
-                      _refreshHabits();
-                    },
+                  Chip(
+                    label: Text(habit.type),
+                    backgroundColor: habit.type == "Good"
+                        ? const Color.fromARGB(255, 189, 249, 188)
+                        : const Color.fromARGB(255, 244, 168, 168),
                   ),
-                  Expanded(child: Text(task.task)),
-                  if (task.isCompleted)
-                    const Row(
-                      children: [
-                        Icon(Icons.monetization_on, color: Colors.amber),
-                        Text("+100"),
-                      ],
-                    ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _showDeleteConfirmationDialog(habit.id),
+                  ),
                 ],
               ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...habit.tasks.map(
+            (task) => Row(
+              children: [
+                Checkbox(
+                  value: task.isCompleted,
+                  onChanged: (bool? value) async {
+                    final wasCompleted = task.isCompleted;
+                    final willBeCompleted = value ?? false;
+
+                    await AIService()
+                        .updateTaskStatus(task.id, willBeCompleted);
+
+                    if (wasCompleted && !willBeCompleted) {
+                      await _deductCoins(100, reason: 'task_unchecked');
+                    } else if (!wasCompleted && willBeCompleted) {
+                      await _addCoinsForTaskCompletion();
+                    }
+
+                    setState(() {
+                      task.isCompleted = willBeCompleted;
+                    });
+
+                    _refreshHabits();
+                  },
+                ),
+                Expanded(child: Text(task.task)),
+                if (task.isCompleted)
+                  const Row(
+                    children: [
+                      Icon(Icons.monetization_on, color: Colors.amber),
+                      Text("+100"),
+                    ],
+                  ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

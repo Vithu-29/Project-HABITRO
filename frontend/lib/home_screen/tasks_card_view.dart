@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/ai_services.dart';
 import '../components/cnav_bar.dart';
 import '../components/custom_button.dart';
-import '../services/reminder_service.dart';  // Added import
-import 'reminder_setup.dart';  // Added import
+import '../services/notification_service.dart';  // Added import
+import './reminder_setup.dart';
 
 class TasksCardView extends StatefulWidget {
   final List<Map<String, dynamic>> tasks;
@@ -73,7 +73,16 @@ class _TaskCardScreenState extends State<TasksCardView> {
       await _confirmTasks();
       return;
     }
-    print('Sending responses for regeneration: ${widget.responses}');
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+    try{
+      print('Sending responses for regeneration: ${widget.responses}');
 
     final payload = {
       ...widget.responses,
@@ -81,13 +90,22 @@ class _TaskCardScreenState extends State<TasksCardView> {
 
     regenerateCount += 1;
     final newTasks = await AIService.sendToAI(payload, regenerate: true);
+    Navigator.of(context).pop();
     if (newTasks.isNotEmpty) {
       setState(() {
         widget.tasks.clear();
         widget.tasks.addAll(newTasks);
         displayedTasks = newTasks.take(30).toList();
       });
-    }
+    }}
+    catch (e) {
+    // Close loading dialog if there's an error
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error regenerating tasks: ${e.toString()}')),
+    );
+  }
+    
   }
 
   Future<void> _saveReminderPreference(bool wantsReminder, String habitId) async {
@@ -121,10 +139,10 @@ class _TaskCardScreenState extends State<TasksCardView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Not Now'),
             style: TextButton.styleFrom(
               foregroundColor: Colors.grey[600],
             ),
+            child: const Text('Not Now'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -135,7 +153,7 @@ class _TaskCardScreenState extends State<TasksCardView> {
     );
 
     if (shouldSetReminder == true) {
-      final bool notificationsEnabled = await ReminderService.checkNotificationsEnabled();
+      final bool notificationsEnabled = await NotificationService.checkNotificationsEnabled();
       
       if (!notificationsEnabled) {
         if (mounted) {
@@ -147,7 +165,7 @@ class _TaskCardScreenState extends State<TasksCardView> {
       final result = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
-          builder: (_) => ReminderSetupScreen(
+          builder: (_) => ReminderSetupScreen (
             habitId: habitId,
             habitName: widget.responses['responses']?['habit_name'] ?? 'Your Habit',
             trackingDurationDays: habitDurationDays,

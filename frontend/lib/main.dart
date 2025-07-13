@@ -5,12 +5,15 @@ import 'package:frontend/welcome_screen/signup_screen.dart';
 import 'package:frontend/welcome_screen/signin_screen.dart';
 import 'package:frontend/welcome_screen/forgotpassword_screen.dart';
 import 'package:frontend/home_page.dart';
+import '../services/notification_service.dart'; // ✅ Import it
 
 import 'theme.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {
   await dotenv.load(fileName: ".env");
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.init();
   runApp(const MyApp());
 }
 

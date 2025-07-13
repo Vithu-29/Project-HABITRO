@@ -4,6 +4,7 @@ from .views import save_tasks
 from .views import HabitsWithTodayTasks,update_task_status
 from .views import task_completion_stats
 from .views import get_coin_balance,add_coins,deduct_coins
+from .views import delete_habit
 
 
 
@@ -18,7 +19,7 @@ urlpatterns = [
     path('coins/balance/', get_coin_balance, name='coin_balance'),
     path('coins/add/', add_coins, name='add_coins'),
     path('coins/deduct/', deduct_coins, name='deduct_coins'),
-
+    path('habits/delete/<uuid:habit_id>/', delete_habit, name='delete_habit'),
 
 
 ]
