@@ -1,6 +1,7 @@
 from decimal import Decimal
 from rest_framework.decorators import api_view,permission_classes
 from rest_framework.response import Response
+from django.db import IntegrityError, transaction
 from rest_framework import status
 from .models import Reward
 from .serializers import RewardSerializer
@@ -11,15 +12,21 @@ from rest_framework.permissions import IsAuthenticated
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_rewards(request):
-    reward, created = Reward.objects.get_or_create(
-        user=request.user,
-        defaults={
-            'coins': 100,
-            'gems': Decimal('2.0'),
-            'daily_streak': 0,
-            'max_streak': 0
-        }
-    )
+    try:
+        with transaction.atomic():
+            reward, created = Reward.objects.get_or_create(
+                user=request.user,
+                defaults={
+                    'coins': 100,
+                    'gems': Decimal('2.0'),
+                    'daily_streak': 0,
+                    'max_streak': 0
+                }
+            )
+    except IntegrityError:
+        # If race condition caused duplicate, just retrieve the existing one
+        reward = Reward.objects.get(user=request.user)
+
     serializer = RewardSerializer(reward)
     return Response(serializer.data)
     

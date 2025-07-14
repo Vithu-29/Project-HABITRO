@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ArticleService {
-  static const String baseUrl = 'http://10.10.41.83:8000/api/articles/';
+  static const String baseUrl = 'http://172.29.30.56:8000/api/articles/';
 
   Future<List<dynamic>> getArticles({String? category, String? search}) async {
     try {
