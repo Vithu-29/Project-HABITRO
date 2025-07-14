@@ -106,36 +106,30 @@ class __RewardsSectionState extends State<_RewardsSection> {
     final currentCoins = widget.rewards['coins'] as int;
     final formKey = GlobalKey<FormState>();
     int enteredCoins = 0;
-    double calculatedGems = 0;
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
+            double calculatedGems = enteredCoins / 1000;
+
             return AlertDialog(
               content: Form(
                 key: formKey,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text('1000'),
-                        Image.asset(
-                          'assets/icons/coin.png',
-                          width: 24,
-                          height: 24,
-                        ),
-                        Icon(Icons.swap_horiz),
+                        Image.asset('assets/icons/coin.png',
+                            width: 24, height: 24),
+                        const Icon(Icons.swap_horiz),
                         const Text('1'),
-                        Image.asset(
-                          'assets/icons/Diamond.png',
-                          width: 24,
-                          height: 24,
-                        ),
+                        Image.asset('assets/icons/Diamond.png',
+                            width: 24, height: 24),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -159,67 +153,25 @@ class __RewardsSectionState extends State<_RewardsSection> {
                         final coins = int.tryParse(value) ?? 0;
                         setState(() {
                           enteredCoins = coins;
-                          calculatedGems = coins / 1000;
                         });
                       },
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      'Available coins: $currentCoins',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                    ),
+                    Text('Available coins: $currentCoins',
+                        style:
+                            TextStyle(color: Colors.grey[600], fontSize: 12)),
                     const SizedBox(height: 16),
-                    Text(
-                      'You will receive: $calculatedGems gems',
-                      style: const TextStyle(fontSize: 16),
-                    ),
+                    Text('You will receive: $calculatedGems gems',
+                        style: const TextStyle(fontSize: 16)),
                   ],
                 ),
               ),
               actions: [
                 ElevatedButton(
-                  onPressed: () async {
+                  onPressed: () {
                     if (formKey.currentState!.validate()) {
-                      Navigator.pop(context); // Close dialog
-
-                      // Show loading
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (_) =>
-                            const Center(child: CircularProgressIndicator()),
-                      );
-
-                      final result =
-                          await RewardService.convertCoins(enteredCoins);
-                      Navigator.pop(context); // Dismiss loading
-
-                      if (result.containsKey('error')) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(result['error']),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      } else {
-                        // Update parent state
-                        if (mounted) {
-                          setState(() {
-                            widget.rewards['coins'] = result['coins'];
-                            widget.rewards['gems'] = result['gems'];
-                          });
-                        }
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                                'Converted $enteredCoins coins to $calculatedGems gems!'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      }
+                      Navigator.of(dialogContext)
+                          .pop(enteredCoins); // Pass value back
                     }
                   },
                   child: const Text('Convert'),
@@ -229,7 +181,46 @@ class __RewardsSectionState extends State<_RewardsSection> {
           },
         );
       },
-    );
+    ).then((enteredCoins) async {
+      if (enteredCoins == null || enteredCoins == 0) return;
+
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // Call your backend
+      final result = await RewardService.convertCoins(enteredCoins);
+
+      // Dismiss loading
+      Navigator.of(context).pop();
+
+      if (!mounted) return;
+
+      if (result.containsKey('error')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['error']),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else {
+        setState(() {
+          widget.rewards['coins'] = result['coins'];
+          widget.rewards['gems'] = result['gems'];
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Converted $enteredCoins coins to ${enteredCoins / 1000} gems!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -300,7 +291,7 @@ class __RewardsSectionState extends State<_RewardsSection> {
                     },
               style: ElevatedButton.styleFrom(
                 backgroundColor: isClaimedToday
-                    ? Colors.grey 
+                    ? Colors.grey
                     : Theme.of(context).primaryColor,
               ),
               child: Text(
