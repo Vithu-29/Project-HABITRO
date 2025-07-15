@@ -825,6 +825,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         await _deductCoins(10, reason: 'task_unchecked');
                       } else if (!wasCompleted && willBeCompleted) {
                         await _addCoinsForTaskCompletion();
+                        // Show success message for regular habit
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Habit completed successfully!'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
                       }
 
                       setState(() {
@@ -855,7 +863,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final habit = userHabit.habit;
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      color: Colors.blue.shade50,
+      // Remove blue background
+      color: Colors.white, // <-- Remove blue theme
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
@@ -868,6 +877,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 setState(() {
                   userHabit.isCompleted = value ?? false;
                 });
+                // Show success message for challenge habit
+                if (value == true) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Habit completed successfully!'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
                 _refreshHabits();
               },
             ),
@@ -880,6 +899,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
+                      // Remove blue color
+                      color: Colors.black,
                     ),
                   ),
                   Text(
@@ -888,7 +909,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   Text(
                     "Frequency: ${habit.frequency}",
-                    style: const TextStyle(fontSize: 12, color: Colors.blue),
+                    style: const TextStyle(
+                        fontSize: 12, color: Colors.black), // Remove blue color
                   ),
                   if (userHabit.isCompleted && userHabit.completedDate != null)
                     Text(
