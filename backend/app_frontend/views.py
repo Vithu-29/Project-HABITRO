@@ -16,6 +16,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view
 import logging
 from rest_framework.authtoken.models import Token
+from .models import UserChallengeHabit
 
 
 logger = logging.getLogger(__name__)
@@ -734,73 +735,4 @@ class UpdateChallengeHabitView(generics.GenericAPIView):
         return Response(
             {"message": "Habit status updated"},
             status=status.HTTP_200_OK
-        )
-
-        # Add to the existing views.py file
-
-
-class JoinChallengeView(generics.GenericAPIView):
-    serializer_class = JoinChallengeSerializer
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        challenge_id = serializer.validated_data['challenge_id']
-        # New: Get selected habit IDs from request
-        habit_ids = request.data.get('habit_ids', [])
-
-        try:
-            challenge = Challenge.objects.get(
-                id=challenge_id,
-                is_active=True
-            )
-        except Challenge.DoesNotExist:
-            return Response(
-                {"error": "Challenge not found or inactive"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        # Check if user already joined this challenge
-        if UserChallenge.objects.filter(
-            user=request.user,
-            challenge=challenge
-        ).exists():
-            return Response(
-                {"error": "You have already joined this challenge"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Create user challenge
-        user_challenge = UserChallenge.objects.create(
-            user=request.user,
-            challenge=challenge
-        )
-
-        # Create user challenge habits only for selected habits
-        if habit_ids:
-            for habit_id in habit_ids:
-                try:
-                    habit = ChallengeHabit.objects.get(
-                        id=habit_id,
-                        challenge=challenge
-                    )
-                    UserChallengeHabit.objects.create(
-                        user_challenge=user_challenge,
-                        habit=habit
-                    )
-                except ChallengeHabit.DoesNotExist:
-                    continue
-        else:
-            # If no habits are selected, add all habits (backward compatibility)
-            for habit in challenge.habits.all():
-                UserChallengeHabit.objects.create(
-                    user_challenge=user_challenge,
-                    habit=habit
-                )
-
-        return Response(
-            {"message": "Successfully joined the challenge"},
-            status=status.HTTP_201_CREATED
         )

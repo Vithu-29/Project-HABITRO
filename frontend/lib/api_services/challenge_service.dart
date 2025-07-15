@@ -137,12 +137,12 @@ class ChallengeService {
   static Future<bool> updateHabitStatus(int habitId, bool isCompleted) async {
     final token = await _getAuthToken();
     if (token == null) {
-      throw Exception('Authentication token not found');
+      return false;
     }
 
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/api/update-habit-status/$habitId/'),
+        Uri.parse('$baseUrl/api/update-habit/$habitId/'),
         headers: _createHeaders(token),
         body: json.encode({
           'is_completed': isCompleted,
@@ -151,7 +151,7 @@ class ChallengeService {
 
       return response.statusCode == 200;
     } catch (e) {
-      throw Exception('Error updating habit status: $e');
+      return false;
     }
   }
 }

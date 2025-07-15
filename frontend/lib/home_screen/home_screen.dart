@@ -4,6 +4,7 @@ import 'package:frontend/home_screen/home_app_bar.dart';
 import 'package:frontend/onboarding_content.dart';
 import '../services/ai_services.dart';
 import '../models/habit.dart';
+import '../api_services/challenge_service.dart'; // Correct import
 import './first.dart';
 import './mychallenges_screen.dart';
 import 'package:intl/intl.dart';
@@ -528,77 +529,86 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Stack(
         children: [
-          FutureBuilder<List<Habit>>(
-            future: habits,
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                if (snapshot.data!.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.max,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Image.asset(
-                          'assets/images/home_img.png',
-                          width: screenWidth * 0.9,
-                        ),
-                        const Text("You have no habits"),
-                        const Text("Add a habit by clicking (+) icon below."),
-                        const SizedBox(height: 20),
-                        // ElevatedButton(
-                        //   onPressed: () {
-                        //     Navigator.push(
-                        //       context,
-                        //       MaterialPageRoute(
-                        //         builder: (context) => FirstScreen(),
-                        //       ),
-                        //     ).then((_) => _refreshHabits());
-                        //   },
-                        //   child: const Text('Add your first habit'),
-                        // ),
-                      ],
-                    ),
-                  );
-                }
-
-                return RefreshIndicator(
-                  onRefresh: _refreshHabits,
-                  child: ListView(
-                    children: snapshot.data!
-                        .map((habit) => buildHabitTile(habit))
-                        .toList(),
-                  ),
-                );
-              } else if (snapshot.hasError) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error, color: Colors.red, size: 48),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Error loading habits',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        snapshot.error.toString(),
-                        style: const TextStyle(color: Colors.red),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _refreshHabits,
-                        child: const Text('Try Again'),
-                      ),
-                    ],
-                  ),
-                );
-              }
-              return const Center(child: CircularProgressIndicator());
+          RefreshIndicator(
+            onRefresh: () async {
+              await _refreshHabits();
             },
+            child: CustomScrollView(
+              slivers: [
+                // Regular habits section
+                SliverToBoxAdapter(
+                  child: FutureBuilder<List<Habit>>(
+                    future: habits,
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        if (snapshot.data!.isEmpty) {
+                          return Center(
+                            child: SingleChildScrollView(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                      height:
+                                          70), // <-- Add this line to push content down
+                                  Image.asset(
+                                    'assets/images/home_img.png',
+                                    width: screenWidth * 0.9,
+                                  ),
+                                  const Text("You have no habits"),
+                                  const Text(
+                                      "Add a habit by clicking (+) icon below."),
+                                  const SizedBox(height: 20),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          children: snapshot.data!
+                              .map((habit) => buildHabitTile(habit))
+                              .toList(),
+                        );
+                      } else if (snapshot.hasError) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.error,
+                                  color: Colors.red, size: 48),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Error loading habits',
+                                style: TextStyle(fontSize: 18),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                snapshot.error.toString(),
+                                style: const TextStyle(color: Colors.red),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _refreshHabits,
+                                child: const Text('Try Again'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      return const Center(child: CircularProgressIndicator());
+                    },
+                  ),
+                ),
+
+                // Add some bottom padding
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: 100),
+                ),
+              ],
+            ),
           ),
+
           Align(
             alignment: Alignment.topCenter,
             child: ConfettiWidget(
@@ -710,8 +720,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => MyChallengesScreen()),
-                  );
+                      builder: (context) => MyChallengesScreen(),
+                    ),
+                  ).then((_) =>
+                      _refreshHabits()); // Use _refreshHabits instead of _loadActiveChallenges
                 },
               ),
               const SizedBox(height: 20),
