@@ -83,8 +83,8 @@ class UserChallenge {
 class UserChallengeHabit {
   final int id;
   final ChallengeHabit habit;
-  final bool isCompleted;
-  final String? completedDate;
+  bool isCompleted;
+  String? completedDate;
 
   UserChallengeHabit({
     required this.id,

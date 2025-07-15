@@ -9,6 +9,7 @@ import './first.dart';
 import './mychallenges_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'challenge_model.dart'; // <-- Use relative import instead of ../models/challenge_model.dart
 
 class HomeScreen extends StatefulWidget {
   final bool isNewSignIn;
@@ -28,6 +29,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late Future<List<Habit>> habits;
+  late Future<List<UserChallenge>> userChallenges; // <-- Add this line
   DateTime currentDate = DateTime.now();
   DateTime selectedDate = DateTime.now();
   late ConfettiController _confettiController;
@@ -55,6 +57,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ConfettiController(duration: const Duration(seconds: 2));
     _loadCoins();
     _refreshHabits();
+    userChallenges = ChallengeService.getUserChallenges().then((data) => data
+        .map((e) => UserChallenge.fromJson(e))
+        .toList()); // <-- Add this line
 
     // Always show onboarding when user enters the screen after sign-in
     _checkSignInStatus();
@@ -496,6 +501,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final refreshedHabits = AIService().fetchHabitsWithTodayTasks();
     setState(() {
       habits = refreshedHabits;
+      userChallenges = ChallengeService.getUserChallenges().then((data) => data
+          .map((e) => UserChallenge.fromJson(e))
+          .toList()); // <-- Add this line
     });
 
     refreshedHabits.then((loadedHabits) {
@@ -565,9 +573,51 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
 
                         return Column(
-                          children: snapshot.data!
-                              .map((habit) => buildHabitTile(habit))
-                              .toList(),
+                          children: [
+                            ...snapshot.data!
+                                .map((habit) => buildHabitTile(habit))
+                                .toList(),
+                            // Challenge habits section
+                            FutureBuilder<List<UserChallenge>>(
+                              future: userChallenges,
+                              builder: (context, challengeSnapshot) {
+                                if (challengeSnapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Center(
+                                      child: CircularProgressIndicator());
+                                }
+                                if (challengeSnapshot.hasError ||
+                                    !challengeSnapshot.hasData) {
+                                  return const SizedBox();
+                                }
+                                final challengeHabits = challengeSnapshot.data!
+                                    .expand((uc) => uc.habits)
+                                    .toList();
+                                if (challengeHabits.isEmpty) {
+                                  return const SizedBox();
+                                }
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                          vertical: 8.0, horizontal: 12.0),
+                                      child: Text(
+                                        "Challenge Habits",
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blueAccent,
+                                        ),
+                                      ),
+                                    ),
+                                    ...challengeHabits.map((userHabit) =>
+                                        buildChallengeHabitTile(userHabit)),
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
                         );
                       } else if (snapshot.hasError) {
                         return Center(
@@ -791,6 +841,59 @@ class _HomeScreenState extends State<HomeScreen> {
                         Icon(Icons.monetization_on, color: Colors.amber),
                         Text("+100"),
                       ],
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildChallengeHabitTile(UserChallengeHabit userHabit) {
+    final habit = userHabit.habit;
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      color: Colors.blue.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Checkbox(
+              value: userHabit.isCompleted,
+              onChanged: (bool? value) async {
+                await ChallengeService.updateHabitStatus(
+                    userHabit.id, value ?? false);
+                setState(() {
+                  userHabit.isCompleted = value ?? false;
+                });
+                _refreshHabits();
+              },
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    habit.title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    habit.description,
+                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                  Text(
+                    "Frequency: ${habit.frequency}",
+                    style: const TextStyle(fontSize: 12, color: Colors.blue),
+                  ),
+                  if (userHabit.isCompleted && userHabit.completedDate != null)
+                    Text(
+                      "Completed: ${userHabit.completedDate}",
+                      style: const TextStyle(fontSize: 12, color: Colors.green),
                     ),
                 ],
               ),
