@@ -1,4 +1,3 @@
-
 from django.db import connections
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.exceptions import ValidationError
@@ -7,8 +6,10 @@ import random
 import string
 from datetime import datetime, timedelta
 from django.utils import timezone
+import pytz
 
 logger = logging.getLogger(__name__)
+
 
 class HabitroAdminManager:
     @staticmethod
@@ -29,30 +30,38 @@ class HabitroAdminManager:
                     [email.lower().strip()]
                 )
                 result = cursor.fetchone()
-                
+
                 if not result:
                     logger.warning(f"Admin not found: {email}")
                     return None
-                
+
                 admin_id, stored_email, stored_hash, is_active = result
-                
+
                 # Check account active status
                 if not is_active:
                     logger.warning(f"Inactive admin account: {email}")
                     raise ValidationError("Account is inactive")
-                
+
                 # Auto-hashes and compares passwords
                 if not check_password(password, stored_hash):
                     logger.warning(f"Password mismatch for: {email}")
                     return None
-                
+
+                # Update last_login to Sri Lanka time
+                srilanka_tz = pytz.timezone('Asia/Colombo')
+                now_colombo = timezone.now().astimezone(srilanka_tz)
+                with connections['habitro'].cursor() as update_cursor:
+                    update_cursor.execute(
+                        "UPDATE admin_details SET last_login = %s WHERE id = %s",
+                        [now_colombo.strftime('%Y-%m-%d %H:%M:%S'), admin_id]
+                    )
+
                 logger.info(f"Authenticated admin: {email}")
                 return admin_id
-                
+
         except Exception as e:
             logger.error(f"Authentication error: {str(e)}", exc_info=True)
             raise ValidationError("Authentication service unavailable")
-
 
     @staticmethod
     def generate_otp(request, email):
@@ -79,7 +88,7 @@ class HabitroAdminManager:
 
             logger.info(f"OTP generated for {email}: {otp}")
             return otp
-            
+
         except Exception as e:
             logger.error(f"OTP generation error: {str(e)}", exc_info=True)
             return None
@@ -90,7 +99,7 @@ class HabitroAdminManager:
         try:
             stored_otp = request.session.get('reset_otp')
             expiry_str = request.session.get('reset_otp_expiry')
-            
+
             if not stored_otp or not expiry_str:
                 logger.warning("No OTP found in session")
                 return False
@@ -103,10 +112,10 @@ class HabitroAdminManager:
             if str(stored_otp) == str(otp):
                 logger.info("OTP verified successfully")
                 return True
-                
+
             logger.warning("OTP mismatch")
             return False
-            
+
         except Exception as e:
             logger.error(f"OTP verification error: {str(e)}", exc_info=True)
             return False
@@ -130,20 +139,20 @@ class HabitroAdminManager:
                     """,
                     [hashed_password, email]
                 )
-                
+
                 if affected == 0:
                     logger.warning(f"No rows updated for {email}")
                     return False
-                
+
                 # Clear session data
                 request.session.pop('reset_otp', None)
                 request.session.pop('reset_email', None)
                 request.session.pop('reset_otp_expiry', None)
                 request.session.save()
-                
+
                 logger.info(f"Password reset successful for {email}")
                 return True
-                
+
         except Exception as e:
             logger.error(f"Password reset error: {str(e)}", exc_info=True)
             return False

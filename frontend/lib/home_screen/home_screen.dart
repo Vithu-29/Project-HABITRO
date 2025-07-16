@@ -576,7 +576,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             ...snapshot.data!
                                 .map((habit) => buildHabitTile(habit))
-                                .toList(),
+                                ,
                             // Challenge habits section
                             FutureBuilder<List<UserChallenge>>(
                               future: userChallenges,

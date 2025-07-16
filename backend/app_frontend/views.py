@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.utils import timezone
+import pytz
 from django.contrib.auth import authenticate, login
 from datetime import timedelta
 from django.db import transaction
@@ -219,8 +220,10 @@ class VerifyOTPView(generics.GenericAPIView):
 
 class LoginView(APIView):
     def post(self, request, *args, **kwargs):
-        identifier = request.data.get(
-            'email', '').strip()  # Can be email or phone
+        # Accept both email and phone_number keys
+        identifier = request.data.get('email', '').strip()
+        if not identifier:
+            identifier = request.data.get('phone_number', '').strip()
         password = request.data.get('password')
         biometric_auth = request.data.get('biometric_auth', False)
         biometric_type = request.data.get(
@@ -245,6 +248,12 @@ class LoginView(APIView):
         if not user.check_password(password):
             return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Update last_login to Sri Lanka time as naive datetime (no tzinfo)
+        srilanka_tz = pytz.timezone('Asia/Colombo')
+        now_colombo = timezone.now().astimezone(srilanka_tz).replace(tzinfo=None)
+        user.last_login = now_colombo
+        user.save(update_fields=['last_login'])
+
         # Log biometric auth attempt with specific type
         if biometric_auth:
             logger.info(
@@ -258,7 +267,9 @@ class LoginView(APIView):
             "user": {
                 "email": user.email,
                 "phone_number": user.phone_number,
-                "full_name": user.full_name
+                "full_name": user.full_name,
+                # Optionally include in response
+                "last_login": str(user.last_login)
             }
         }, status=status.HTTP_200_OK)
 
@@ -636,6 +647,7 @@ class UserChallengeListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        # Only return challenges joined by the current user
         return UserChallenge.objects.filter(
             user=self.request.user,
             is_active=True

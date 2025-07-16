@@ -35,8 +35,8 @@ INSTALLED_APPS = [
     'analyze_responses',
 ]
 
-CSRF_COOKIE_HTTPONLY = False  #########
-CSRF_COOKIE_SECURE = False    #########
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SECURE = False
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -75,12 +75,12 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
-AUTH_USER_MODEL = 'app_frontend.CustomUser' ################################
+AUTH_USER_MODEL = 'app_frontend.CustomUser'
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',  # Default backend
 ]
 # Database
-#DATABASES = {
+# DATABASES = {
 #    'default': {
 #       'ENGINE': 'django.db.backends.mysql',
 #        'NAME': config('DB_NAME'),
@@ -89,7 +89,7 @@ AUTHENTICATION_BACKENDS = [
 #       'HOST': config('DB_HOST', default='localhost'),
 #       'PORT': config('DB_PORT', default='3306'),
 #   }
-#}
+# }
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -135,14 +135,14 @@ CORS_ALLOWED_ORIGINS = []
 
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 CORS_ALLOW_CREDENTIALS = True
-#CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOW_ALL_ORIGINS = True
 
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = False
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Colombo'  #  'Asia/Colombo' Time
 USE_I18N = True
 USE_TZ = True
 
