@@ -1,3 +1,4 @@
+# Importing models
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.utils import timezone
@@ -12,13 +13,26 @@ from rest_framework.views import APIView
 from django.db.models import Sum, Count, Q
 from datetime import timedelta, date
 from collections import defaultdict
-
+from django.db.models import Count, Q
+from app_frontend.models import CustomUser
+from analyze_responses.models import Task
+from analyze_responses.models import Habit  
+from articles.models import Article
 from .models import (
-    create_user, Task, ScreenTime, DeviceUsage, UserHabit,
-    Habit, UserAnalytics, Article
+    create_user,  ScreenTime, DeviceUsage, UserHabit,
+    Habit,Task
 )
 from .serializers import ArticleSerializer
-
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import json
+from datetime import date
+from django.core.mail import send_mail
+from rest_framework.response import Response
+from rest_framework import status
+from django.conf import settings
+from rest_framework import viewsets
 
  ## Dashboard Overview-card(Homepage)
 def calculate_growth_rate(today_count, yesterday_count):
@@ -32,10 +46,11 @@ def dashboard_overview(request):
     yesterday = today - timedelta(days=1)
 
     # Total Users
-    total_users_all = create_user.objects.count()
-    new_users_today = create_user.objects.filter(created_at__date=today).count()
-    new_users_yesterday = create_user.objects.filter(created_at__date=yesterday).count()
+    total_users_all = CustomUser.objects.count()
+    new_users_today = CustomUser.objects.filter(date_joined__date=today).count()
+    new_users_yesterday = CustomUser.objects.filter(date_joined__date=yesterday).count()
     user_growth_rate = calculate_growth_rate(new_users_today, new_users_yesterday)
+
 
     # Active Users Today
     active_users_today = ScreenTime.objects.filter(date=today).count()
@@ -156,7 +171,7 @@ def recent_users(request):
 
 # user_management_list(User Management)
 from django.db.models import Count, Q
-from .models import create_user, UserHabit, Habit, ScreenTime, Task
+from .models import create_user, UserHabit, Habit, ScreenTime
 
 @api_view(['GET'])
 def user_management_list(request):
@@ -211,11 +226,7 @@ def user_management_list(request):
 
     return Response(data)
 
-from django.core.mail import send_mail
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
-from django.conf import settings
+
 
 # send_email_to_user (User Management)
 @api_view(['POST'])
@@ -321,7 +332,7 @@ def user_engagement_data(request):
 
     return Response(result)
 
-# habit_management
+# habit_management page
 from django.db.models import Count
 from .models import Habit, UserHabit
 
@@ -392,13 +403,8 @@ def habit_completed_users(request, habit_id):
     } for uh in userhabits]
 
     return Response(users)
-# dashboard/views.py
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from .models import Article
-from .serializers import ArticleSerializer
 
+# dashboard/artical/views.py
 class ArticleListCreateView(APIView):
     def get(self, request):
         articles = Article.objects.all().order_by('-date')
@@ -415,7 +421,6 @@ class ArticleListCreateView(APIView):
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from .models import Article
 import json
 from datetime import date
 
@@ -459,7 +464,6 @@ def create_article(request):
 
     return JsonResponse({"message": "Article created successfully!"}, status=201)
 from rest_framework import viewsets
-from .models import Article
 from .serializers import ArticleSerializer
 
 class ArticleViewSet(viewsets.ModelViewSet):

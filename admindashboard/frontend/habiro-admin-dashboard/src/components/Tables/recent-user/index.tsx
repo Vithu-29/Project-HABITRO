@@ -38,7 +38,7 @@ export async function RecentUsers({ className }: { className?: string }) {
           <TableBody>
             {users.map((user: any, i: number) => (
               <TableRow
-                className="h-10 text-center text-sm font-medium text-dark dark:text-white"
+                className="h-10 text-center text-sm font-medium text-dark dark:text-white "
                 key={user.email + i}
               >
                 <TableCell className="flex items-center gap-2 p-4 text-left">

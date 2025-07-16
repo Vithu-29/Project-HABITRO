@@ -14,7 +14,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='your-default-secret-key')
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=True, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS').split(',')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',')
+
 
 # Application definition
 INSTALLED_APPS = [
@@ -25,12 +26,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles', 
     'habiro_dashboard',
-    'corsheaders', 
+    'corsheaders',                
     'rest_framework',
                                                                
-   
     'app_frontend',
-    'corsheaders',
     'admin_auth',
     'quiz',
     'rewards',
@@ -40,9 +39,8 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'deepapi',
     'analyze_responses',
-    
-    
 ]
+
 
 CSRF_COOKIE_HTTPONLY = False  #########
 CSRF_COOKIE_SECURE = False    #########
@@ -59,6 +57,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'admin_auth.middleware.AdminAuthMiddleware',
+    
 ]
 
 REST_FRAMEWORK = {
@@ -160,7 +159,7 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static files
+# habirodashboard Email sending settings
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

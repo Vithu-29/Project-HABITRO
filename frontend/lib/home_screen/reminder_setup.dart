@@ -13,8 +13,8 @@ class ReminderSetupScreen extends StatefulWidget {
     required this.habitId,
     required this.habitName,
     required this.trackingDurationDays,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   _ReminderSetupScreenState createState() => _ReminderSetupScreenState();
@@ -213,10 +213,10 @@ class _ReminderSetupScreenState extends State<ReminderSetupScreen> {
             Center(
               child: ElevatedButton(
                 onPressed: _saveReminder,
-                child: const Text('Save Daily Reminder'),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(200, 50),
                 ),
+                child: const Text('Save Daily Reminder'),
               ),
             ),
           ],

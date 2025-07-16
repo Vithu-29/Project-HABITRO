@@ -8,7 +8,7 @@ urlpatterns = [
     
     # API endpoints
     path('admin_auth/', include('admin_auth.urls')), 
-    
+    path('api/', include('habiro_dashboard.urls')),
     path('api/', include('deepapi.urls')),
     path('api/', include('analyze_responses.urls')),
     # Frontend app (if needed)

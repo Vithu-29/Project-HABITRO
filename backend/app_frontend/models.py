@@ -3,7 +3,7 @@ from django.db import models
 from django.utils import timezone
 from django.core.validators import MinLengthValidator
 from datetime import timedelta
-
+from django.db.models import DurationField
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, full_name=None, password=None):
         """
@@ -47,7 +47,7 @@ class CustomUser(AbstractBaseUser):
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
-
+    active_time = models.DurationField(default=timedelta(0))
     objects = CustomUserManager()
 
     USERNAME_FIELD = 'email'

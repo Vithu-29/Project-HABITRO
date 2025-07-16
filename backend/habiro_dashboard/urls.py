@@ -1,10 +1,8 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
 from django.conf import settings
 from django.conf.urls.static import static
-from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ArticleViewSet
 from .views import (
     dashboard_overview,
     active_users_chart,
@@ -13,13 +11,11 @@ from .views import (
     user_management_list,
     send_email_to_user,
     suspend_user,
-    list_articles,
-    create_article
+    create_article,
+    ArticleListCreateView
+    
 )
-from .views import ArticleListCreateView
 router = DefaultRouter()
-router.register(r'articles', ArticleViewSet, basename='article')
-
 urlpatterns = [
     path('dashboard-overview/', dashboard_overview, name='dashboard-overview'),
     path('active-users-chart/', active_users_chart, name='active-users-chart'), 
@@ -35,8 +31,11 @@ urlpatterns = [
     path('habit-type-overview/', views.habit_type_overview),
     path('good-habit-analytics/', views.good_habit_analytics),
     path('good-habit-analytics/<int:habit_id>/users/', views.habit_completed_users),
-    path('api/', include(router.urls)),
+    path('create-article/', create_article, name='create-article'),
     path('articles/', ArticleListCreateView.as_view(), name='article-list-create'),
+
+    path('api/', include(router.urls)),
+    
 ]
 
 if settings.DEBUG:

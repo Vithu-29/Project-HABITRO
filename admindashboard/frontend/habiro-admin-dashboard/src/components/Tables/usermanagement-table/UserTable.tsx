@@ -38,7 +38,7 @@ const UserTable: React.FC<UserTableProps> = ({ users, onSelectUser }) => {
           </thead>
           <tbody >
             {filteredUsers.map((user) => (
-              <tr key={user.id} className="cursor-pointer hover:bg-gray-100" onClick={() => onSelectUser(user)}>
+              <tr key={user.id} className="cursor-pointer hover:bg-gray-10 hover:bg-gray-100/50" onClick={() => onSelectUser(user)}>
                 <td className="p-2 border">
                   <img src={user.profilePicture} alt={user.name} className="w-10 h-10 rounded-full" />
                 </td>

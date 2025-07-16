@@ -58,7 +58,7 @@ export default function BlogManagement() {
       const response = await fetch("http://localhost:8000/api/articles/", {
         method: "POST",
         body: formData,
-      });
+      }); 
 
       const resData = await response.json();
 

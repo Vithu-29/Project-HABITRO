@@ -9,7 +9,7 @@ from datetime import timedelta
 from .models import CustomUser, OTPVerification
 from .serializers import RegisterSerializer, VerifyOTPSerializer
 from rest_framework.authtoken.models import Token
-
+from django.utils.timezone import now
 #  Register View
 
 
@@ -81,26 +81,38 @@ class VerifyOTPView(generics.GenericAPIView):
 #  Login View
 
 
+from django.utils.timezone import now
+
 class LoginView(APIView):
     def post(self, request, *args, **kwargs):
         email = request.data.get('email')
         password = request.data.get('password')
 
+        # Authenticate user first
         user = authenticate(request, username=email, password=password)
 
         if user is not None:
+            #  Update last login manually
+            user.last_login = now()
+            user.save()
+
+            #  Store login time in session for active_time tracking
+            request.session['login_time'] = now().isoformat()
+
             # Generate or get existing token
             token, _ = Token.objects.get_or_create(user=user)
+
             return Response({
-                "token": token.key,  # Include token in response
+                "token": token.key,
                 "message": "Login successful",
-                "user_id": user.id,  # Optional: Include user details
+                "user_id": user.id,
                 "email": user.email
             }, status=status.HTTP_200_OK)
         else:
             return Response({
                 "error": "Invalid email or password"
             }, status=status.HTTP_400_BAD_REQUEST)
+
 
 # Forgot Password View
 class ForgotPasswordView(APIView):
@@ -190,3 +202,36 @@ class ResetPasswordView(APIView):
             return Response({"message": "Password reset successfully"}, status=status.HTTP_200_OK)
         except CustomUser.DoesNotExist:
             return Response({"error": "User does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authtoken.models import Token
+
+class LogoutView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+
+        # Get login_time from session
+        login_time_str = request.session.get("login_time")
+        if login_time_str:
+            try:
+                login_time = timezone.datetime.fromisoformat(login_time_str)
+                session_duration = timezone.now() - login_time
+                user.active_time += session_duration
+                user.save()
+            except Exception as e:
+                # Optional: log this
+                pass
+
+        # Delete the user's token (logs out)
+        Token.objects.filter(user=user).delete()
+
+        # Clear session
+        request.session.flush()
+
+        return Response({"message": "Logout successful, active time recorded."}, status=status.HTTP_200_OK)
+
