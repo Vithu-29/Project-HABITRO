@@ -55,6 +55,9 @@ export default function LoginForm() {
 
       setSuccess('Login successful! Redirecting...');
       localStorage.setItem('isAuthenticated', 'true');
+      if (data.token) {
+        localStorage.setItem('admin_token', data.token); // Store admin token for dashboard use
+      }
       setTimeout(() => router.push('/dashboard'), 1000);
       
     } catch (err) {

@@ -248,7 +248,7 @@ class LoginView(APIView):
         if not user.check_password(password):
             return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Update last_login to Sri Lanka time as naive datetime (no tzinfo)
+        #  last_login to Sri Lanka time as naive datetime (no tzinfo)
         srilanka_tz = pytz.timezone('Asia/Colombo')
         now_colombo = timezone.now().astimezone(srilanka_tz).replace(tzinfo=None)
         user.last_login = now_colombo
