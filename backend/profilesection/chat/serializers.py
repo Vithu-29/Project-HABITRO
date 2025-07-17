@@ -7,15 +7,19 @@ from .models import (
     Leaderboard,
     Notification
 )
-
-# USER PROFILE
+from django.core.files.base import ContentFile
+import random
+import string
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
+from django.core.files.storage import default_storage
 
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = [
-            'name',        # ✅ Your custom field
-            'email',       # ✅ Your custom field
+            'name',
+            'email',
             'streak',
             'total_points',
             'weekly_points',
@@ -28,21 +32,20 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['last_active']
 
-
-
-# USER
-
-
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(required=False)
+    name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile', 'name', 'is_staff']
         extra_kwargs = {
             'password': {'write_only': True},
             'email': {'required': True}
         }
+
+    def get_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}" if obj.first_name and obj.last_name else "No Name"
 
     def create(self, validated_data):
         profile_data = validated_data.pop('profile', None)
@@ -64,18 +67,15 @@ class UserSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('profile', {})
         
-        # Update base User fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # Update or create UserProfile fields
         profile = getattr(instance, 'profile', None)
         if profile:
             for attr, value in profile_data.items():
                 setattr(profile, attr, value)
 
-            # Keep username/email in sync with User model
             profile.username = instance.username
             profile.email = instance.email
             profile.save()
@@ -83,8 +83,6 @@ class UserSerializer(serializers.ModelSerializer):
             UserProfile.objects.create(user=instance, **profile_data)
 
         return instance
-
-# MINI USER (Used in chats, etc.)
 
 class MiniUserSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
@@ -97,9 +95,6 @@ class MiniUserSerializer(serializers.ModelSerializer):
         if hasattr(obj, 'profile') and obj.profile.avatar:
             return obj.profile.avatar.url
         return None
-
-
-# FRIENDSHIP
 
 class FriendshipSerializer(serializers.ModelSerializer):
     requester_username = serializers.CharField(source='requester.username', read_only=True)
@@ -123,9 +118,6 @@ class FriendshipSerializer(serializers.ModelSerializer):
     def get_receiver_avatar(self, obj):
         return getattr(obj.receiver.profile.avatar, 'url', None)
 
-
-# CHAT MESSAGES
-
 class ChatMessageSerializer(serializers.ModelSerializer):
     sender_id = serializers.PrimaryKeyRelatedField(source='sender', read_only=True)
     sender_username = serializers.CharField(source='sender.username', read_only=True)
@@ -147,15 +139,11 @@ class ChatMessageSerializer(serializers.ModelSerializer):
     def get_sender_avatar(self, obj):
         return getattr(obj.sender.profile.avatar, 'url', None)
 
-
-# LEADERBOARD
-
 class LeaderboardSerializer(serializers.ModelSerializer):
     user_id = serializers.PrimaryKeyRelatedField(source='user', read_only=True)
     username = serializers.CharField(source='user.username', read_only=True)
     avatar = serializers.SerializerMethodField()
     period_display = serializers.CharField(source='get_period_display', read_only=True)
-    avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = Leaderboard
@@ -168,14 +156,59 @@ class LeaderboardSerializer(serializers.ModelSerializer):
 
     def get_avatar(self, obj):
         try:
-            # Check if profile exists and has avatar
             if hasattr(obj.user, 'profile') and obj.user.profile.avatar:
                 return obj.user.profile.avatar.url
         except UserProfile.DoesNotExist:
             pass
         return None
 
-# NOTIFICATIONS
+    def generate_random_avatar(self, user):
+        if not hasattr(user, 'profile'):
+            user_profile = UserProfile.objects.create(user=user)
+        else:
+            user_profile = user.profile
+
+        width, height = 150, 150
+        img = Image.new('RGB', (width, height))
+
+        background_color = tuple(random.choices(range(180, 256), k=3))
+        img.paste(Image.new('RGB', (width, height), background_color))
+
+        d = ImageDraw.Draw(img)
+
+        try:
+            font = ImageFont.truetype("arial.ttf", 70)
+        except IOError:
+            font = ImageFont.load_default()
+
+        text = ''.join(random.choices(string.ascii_uppercase, k=2))
+        text_width, text_height = d.textsize(text, font=font)
+
+        position = ((width - text_width) / 2, (height - text_height) / 2)
+        text_color = tuple(random.choices(range(0, 128), k=3))
+
+        d.text(position, text, fill=text_color, font=font)
+
+        circle_radius = 70
+        circle_x = (width / 2)
+        circle_y = (height / 2)
+        circle_color = tuple(random.choices(range(0, 128), k=3))
+
+        d.ellipse([circle_x - circle_radius, circle_y - circle_radius,
+                  circle_x + circle_radius, circle_y + circle_radius], outline=circle_color, width=5)
+
+        image_io = BytesIO()
+        img.save(image_io, 'PNG')
+        image_io.seek(0)
+
+        avatar_name = f"avatars/{''.join(random.choices(string.ascii_lowercase + string.digits, k=8))}.png"
+        avatar_file = ContentFile(image_io.read(), avatar_name)
+
+        file_path = default_storage.save(avatar_name, avatar_file)
+        user_profile.avatar = file_path
+        user_profile.save()
+
+        return file_path
 
 class NotificationSerializer(serializers.ModelSerializer):
     type_display = serializers.CharField(source='get_notification_type_display', read_only=True)

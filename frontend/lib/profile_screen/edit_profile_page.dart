@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'auth_service.dart';
-import 'dart:developer';
+import 'package:logger/logger.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -14,6 +14,7 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
+  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _dobController = TextEditingController();
@@ -25,9 +26,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   File? _imageFile;
   String? _avatarUrl;
   final ImagePicker _picker = ImagePicker();
+  bool _isLoading = false;
 
-  //  Updated IP address for emulator
   final String apiUrl = 'http://10.0.2.2:8000/api/profile/me/';
+  final logger = Logger();
 
   @override
   void initState() {
@@ -47,6 +49,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   Future<void> fetchUserProfile() async {
     try {
+      logger.i('Fetching user profile...');
       final response = await http.get(
         Uri.parse(apiUrl),
         headers: {
@@ -66,50 +69,64 @@ class _EditProfilePageState extends State<EditProfilePage> {
           _phoneController.text = profile['phone_number'] ?? '';
           isPrivate = profile['is_private'] ?? false;
           selectedGender = _capitalize(profile['gender'] ?? 'Male');
-          _avatarUrl = profile['avatar'] != null
-              ? 'http://10.0.2.2:8000${profile['avatar']}'
-              : null;
+          _avatarUrl =
+              profile['avatar'] != null
+                  ? 'http://10.0.2.2:8000${profile['avatar']}'
+                  : null;
         });
       } else {
-        log(" Error fetching profile: ${response.body}");
+        logger.e('Error fetching profile: ${response.body}');
       }
     } catch (e) {
-      log(" Exception: $e");
+      logger.e('Exception: $e');
     }
   }
 
   Future<void> updateProfile() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     final uri = Uri.parse(apiUrl);
-    final request = http.MultipartRequest('PUT', uri)
-      ..headers['Authorization'] = 'Bearer ${AuthService.token}'
-      ..fields['username'] = _usernameController.text.trim()
-      ..fields['name'] = _nameController.text.trim()
-      ..fields['email'] = _emailController.text.trim()
-      ..fields['gender'] = selectedGender
-      ..fields['date_of_birth'] = _dobController.text.trim()
-      ..fields['phone_number'] = _phoneController.text.trim()
-      ..fields['is_private'] = isPrivate.toString();
+    final request =
+        http.MultipartRequest('PUT', uri)
+          ..headers['Authorization'] = 'Bearer ${AuthService.token}'
+          ..fields['username'] = _usernameController.text.trim()
+          ..fields['profile.name'] = _nameController.text.trim()
+          ..fields['profile.email'] = _emailController.text.trim()
+          ..fields['profile.gender'] = selectedGender
+          ..fields['profile.date_of_birth'] = _dobController.text.trim()
+          ..fields['profile.phone_number'] = _phoneController.text.trim()
+          ..fields['profile.is_private'] = isPrivate.toString();
 
     if (_imageFile != null) {
       request.files.add(
-        await http.MultipartFile.fromPath('avatar', _imageFile!.path),
+        await http.MultipartFile.fromPath('profile.avatar', _imageFile!.path),
       );
     }
 
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
+    try {
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
-    if (!mounted) return;
-
-    if (response.statusCode == 200) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(" Profile updated!")),
-      );
-      fetchUserProfile();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(" Failed: ${response.body}")),
-      );
+      if (response.statusCode == 200) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("✅ Profile updated!")));
+        fetchUserProfile();
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("❌ Failed: ${response.body}")));
+      }
+    } catch (e) {
+      logger.e('Error updating profile: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -136,6 +153,51 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
+  String? _validateEmail(String? value) {
+    const emailPattern =
+        r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|org|net|edu|gov|co|info|io|[a-z]{2,})$';
+    final regExp = RegExp(emailPattern);
+    if (value == null || value.isEmpty) {
+      return 'Please enter your email';
+    } else if (!regExp.hasMatch(value)) {
+      return 'Please enter a valid email (e.g., gmail.com, yahoo.com)';
+    }
+    return null;
+  }
+
+  String? _validatePhone(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your phone number';
+    }
+
+    final phoneRegExp = RegExp(r'^\d{10}$');
+    if (!phoneRegExp.hasMatch(value)) {
+      return 'Phone number must be exactly 10 digits';
+    }
+    return null;
+  }
+
+  String? _validateUsername(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Username is required';
+    }
+    return null;
+  }
+
+  String? _validateName(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Name is required';
+    }
+    return null;
+  }
+
+  void _submitForm() {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+      updateProfile();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -153,7 +215,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ),
         actions: [
           TextButton(
-            onPressed: updateProfile,
+            onPressed: _isLoading ? null : _submitForm,
             child: const Text(
               "Save",
               style: TextStyle(color: Color.fromRGBO(40, 83, 175, 1)),
@@ -171,12 +233,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 children: [
                   CircleAvatar(
                     radius: 50,
-                    backgroundImage: _imageFile != null
-                        ? FileImage(_imageFile!)
-                        : (_avatarUrl != null
-                            ? NetworkImage(_avatarUrl!)
-                            : const AssetImage('assets/default_avatar.png'))
-                            as ImageProvider,
+                    backgroundImage:
+                        _imageFile != null
+                            ? FileImage(_imageFile!)
+                            : (_avatarUrl != null
+                                    ? NetworkImage(_avatarUrl!)
+                                    : const AssetImage(
+                                      'assets/default_avatar.png',
+                                    ))
+                                as ImageProvider,
                   ),
                   GestureDetector(
                     onTap: _pickImage,
@@ -189,14 +254,46 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ],
               ),
               const SizedBox(height: 24),
-              _buildTextField("Name", _nameController, "User Example"),
-              _buildTextField("User name", _usernameController, "Username"),
-              _buildDatePickerField("Date of birth"),
-              _buildDropdownField("Gender"),
-              _buildTextField("Email", _emailController, "example@gmail.com"),
-              _buildTextField("Phone number", _phoneController, "Add number"),
-              const SizedBox(height: 20),
-              _buildSwitchField(),
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    _buildTextField(
+                      "Name",
+                      _nameController,
+                      "User Example",
+                      validator: _validateName,
+                    ),
+                    _buildTextField(
+                      "User name",
+                      _usernameController,
+                      "Username",
+                      validator: _validateUsername,
+                    ),
+                    _buildDatePickerField("Date of birth"),
+                    _buildDropdownField("Gender"),
+                    _buildTextField(
+                      "Email",
+                      _emailController,
+                      "example@gmail.com",
+                      validator: _validateEmail,
+                    ),
+                    _buildTextField(
+                      "Phone number",
+                      _phoneController,
+                      "Add number",
+                      validator: _validatePhone,
+                    ),
+                    const SizedBox(height: 20),
+                    _buildSwitchField(),
+                    if (_isLoading)
+                      const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -209,6 +306,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     TextEditingController controller,
     String hint, {
     IconData? icon,
+    String? Function(String?)? validator,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -224,12 +322,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: const TextStyle(color: Color(0xFF2853AF))),
-                TextField(
+                TextFormField(
                   controller: controller,
                   decoration: InputDecoration(
                     hintText: hint,
                     border: InputBorder.none,
                   ),
+                  validator: validator,
                 ),
               ],
             ),
@@ -269,9 +368,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
           border: InputBorder.none,
         ),
         value: selectedGender,
-        items: ['Male', 'Female', 'Other']
-            .map((gender) => DropdownMenuItem(value: gender, child: Text(gender)))
-            .toList(),
+        items:
+            ['Male', 'Female', 'Other']
+                .map(
+                  (gender) =>
+                      DropdownMenuItem(value: gender, child: Text(gender)),
+                )
+                .toList(),
         onChanged: (value) {
           setState(() {
             selectedGender = value!;

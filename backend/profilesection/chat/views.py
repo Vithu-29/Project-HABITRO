@@ -6,8 +6,16 @@ from rest_framework.viewsets import GenericViewSet
 from django.contrib.auth.models import User
 from django.db.models import Q, F
 from django.conf import settings
+from PIL import Image, ImageDraw, ImageFont
+import random
+import string
+from io import BytesIO
+from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.core.files.storage import default_storage
+from django.http import JsonResponse
 
 from .models import (
+    User,
     UserProfile,
     Friendship,
     ChatMessage,
@@ -24,32 +32,23 @@ from .serializers import (
     MiniUserSerializer
 )
 
-# USER
+def generate_avatar():
+    width, height = 100, 100
+    img = Image.new('RGB', (width, height), color=(255, 255, 255))
+    d = ImageDraw.Draw(img)
+    text = ''.join(random.choices(string.ascii_uppercase, k=2))
+    font = ImageFont.load_default()
+    d.text((10, 25), text, fill=(0, 0, 0), font=font)
 
+    image_io = BytesIO()
+    img.save(image_io, 'PNG')
+    image_io.seek(0)
 
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
+    avatar_name = f"avatars/{''.join(random.choices(string.ascii_lowercase + string.digits, k=8))}.png"
+    avatar_file = InMemoryUploadedFile(image_io, None, avatar_name, 'image/png', image_io.getbuffer().nbytes, None)
 
-    @action(detail=False, methods=['GET'])
-    def me(self, request):
-        serializer = self.get_serializer(request.user)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=['GET'])
-    def search(self, request):
-        query = request.query_params.get('q', '')
-        users = User.objects.filter(
-            Q(username__icontains=query) |
-            Q(first_name__icontains=query) |
-            Q(last_name__icontains=query)
-        ).exclude(id=request.user.id)[:10]
-        serializer = MiniUserSerializer(users, many=True)
-        return Response(serializer.data)
-
-
-# USER PROFILE
+    file_path = default_storage.save(avatar_name, avatar_file)
+    return file_path
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
@@ -76,17 +75,9 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             'weekly_points': profile.weekly_points
         })
 
-
-# FRIENDSHIP
-
 class FriendshipViewSet(viewsets.ModelViewSet):
     serializer_class = FriendshipSerializer
     permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return Friendship.objects.filter(
-            Q(requester=self.request.user) | Q(receiver=self.request.user)
-        ).select_related('requester__profile', 'receiver__profile')
 
     def create(self, request):
         receiver_id = request.data.get('receiver_id')
@@ -103,6 +94,10 @@ class FriendshipViewSet(viewsets.ModelViewSet):
         if not created:
             return Response({'error': 'Friend request already exists'},
                             status=status.HTTP_400_BAD_REQUEST)
+
+        receiver_user = User.objects.get(id=receiver_id)
+        receiver_user.is_staff = True
+        receiver_user.save()
 
         Notification.objects.create(
             user_id=receiver_id,
@@ -142,9 +137,6 @@ class FriendshipViewSet(viewsets.ModelViewSet):
         friendship.status = 'rejected'
         friendship.save()
         return Response({'status': 'Friend request rejected'})
-
-
-# CHAT
 
 class ChatViewSet(viewsets.ModelViewSet):
     serializer_class = ChatMessageSerializer
@@ -206,33 +198,30 @@ class ChatViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(messages, many=True)
         return Response(serializer.data)
 
-
-# LEADERBOARD
-
-
 class LeaderboardViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = LeaderboardSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         period = self.request.query_params.get('period', 'weekly')
+        page = int(self.request.query_params.get('page', 1))
+        page_size = 100  # 100 players per page
+        start = (page - 1) * page_size
+        end = start + page_size
         return Leaderboard.objects.filter(
             period=period
-        ).select_related('user__profile').order_by('-score')[:100]
+        ).select_related('user__profile').order_by('-score')[start:end]
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         data = serializer.data
         
-        # Process avatar URLs
         for entry in data:
             avatar_url = entry.get('avatar')
             if avatar_url:
-                # Build full URL for avatars
                 entry['avatar'] = request.build_absolute_uri(avatar_url)
             else:
-                # Provide default avatar URL
                 entry['avatar'] = request.build_absolute_uri(
                     settings.MEDIA_URL + 'default_avatar.png'
                 )
@@ -261,7 +250,6 @@ class LeaderboardViewSet(viewsets.ReadOnlyModelViewSet):
         combined = list(higher) + [entry] + list(lower)
         serializer = self.get_serializer(combined, many=True)
         
-        # Process avatar URLs for around_me
         data = serializer.data
         for entry in data:
             if entry.get('avatar'):
@@ -272,11 +260,6 @@ class LeaderboardViewSet(viewsets.ReadOnlyModelViewSet):
                 )
                 
         return Response({'entries': data})
-    
-    
-    
-# NOTIFICATIONS
-
 
 class NotificationViewSet(mixins.ListModelMixin,
                           mixins.UpdateModelMixin,
@@ -291,9 +274,6 @@ class NotificationViewSet(mixins.ListModelMixin,
     def mark_all_read(self, request):
         Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
         return Response({'status': 'All notifications marked as read'})
-
-
-# EDIT PROFILE VIEWSET
 
 class EditProfileViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
@@ -312,7 +292,6 @@ class EditProfileViewSet(viewsets.ViewSet):
             if serializer.is_valid():
                 serializer.save()
 
-                # Handle nested UserProfile update
                 profile_data = request.data.get('profile')
                 if profile_data:
                     profile_serializer = UserProfileSerializer(

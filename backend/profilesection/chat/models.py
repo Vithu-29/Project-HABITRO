@@ -1,34 +1,18 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.conf import settings  # Import Django settings
+from django.conf import settings
 
 class UserProfile(models.Model):
-    """Extended user profile with habit tracking metrics and personal details."""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
-
-    # Habit tracking fields
+    name = models.CharField(max_length=255, null=True, blank=True)
     bio = models.TextField(blank=True, null=True)
     streak = models.PositiveIntegerField(default=0)
     total_points = models.PositiveIntegerField(default=0)
     weekly_points = models.PositiveIntegerField(default=0)
     last_active = models.DateTimeField(auto_now=True)
-
-    # Profile image (optional)
-    avatar = models.ImageField(
-        upload_to='avatars/',
-        blank=True,
-        null=True,
-        default='default_avatar.png'
-    )
-
-    # Editable profile fields from Flutter
-    name = models.CharField(max_length=100, blank=True)
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True, default='default_avatar.png')
     date_of_birth = models.DateField(null=True, blank=True)
-    gender = models.CharField(
-        max_length=10,
-        choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')],
-        blank=True
-    )
+    gender = models.CharField(max_length=10, choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')], blank=True)
     email = models.EmailField(blank=True)
     phone_number = models.CharField(max_length=20, blank=True)
     is_private = models.BooleanField(default=False)
@@ -37,26 +21,20 @@ class UserProfile(models.Model):
         return f"{self.user.username}'s Profile"
 
     def update_points(self, points_to_add):
-        """Helper method to update point counters."""
         self.total_points += points_to_add
         self.weekly_points += points_to_add
         self.save()
-    
+
     def avatar_url(self):
-        """Safe method to get avatar URL with fallback"""
         if self.avatar and self.avatar.name:
             try:
-                # Return URL if file exists
                 return self.avatar.url
             except ValueError:
                 pass
-        # Fallback to default avatar
         return f"{settings.MEDIA_URL}default_avatar.png"
 
-    # REMOVED the save() override - not needed with proper default
 
 class Friendship(models.Model):
-    """Friendship model with status tracking."""
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('accepted', 'Accepted'),
@@ -78,7 +56,6 @@ class Friendship(models.Model):
 
 
 class ChatMessage(models.Model):
-    """Chat message with read status."""
     sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
     message = models.TextField()
@@ -102,7 +79,6 @@ class ChatMessage(models.Model):
 
 
 class Leaderboard(models.Model):
-    """Leaderboard with periodic scoring."""
     PERIOD_CHOICES = [
         ('daily', 'Daily'),
         ('weekly', 'Weekly'),
@@ -125,7 +101,6 @@ class Leaderboard(models.Model):
 
 
 class Notification(models.Model):
-    """User notifications (friend request, message, points)."""
     TYPE_CHOICES = [
         ('friend_request', 'Friend Request'),
         ('message', 'New Message'),
