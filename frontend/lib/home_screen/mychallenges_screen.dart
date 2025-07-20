@@ -194,10 +194,18 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
 
   Future<void> _updateHabitStatus(int habitId, bool isCompleted) async {
     try {
-      final success =
-          await ChallengeService.updateHabitStatus(habitId, isCompleted);
+      final result = await ChallengeService.updateHabitStatus(habitId, isCompleted);
 
-      if (success) {
+      if (result is Map && result.containsKey('message')) {
+        final msg = result['message'];
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg ?? ''),
+            backgroundColor: msg == "1 gem collected!" ? Colors.green : (msg == "1 gem removed!" ? Colors.orange : Colors.blue),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      } else if (result == true) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(isCompleted
@@ -207,7 +215,6 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
             duration: Duration(seconds: 1),
           ),
         );
-        await _loadChallenges(); // Refresh to show updated status
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -216,6 +223,7 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
           ),
         );
       }
+      await _loadChallenges(); // Refresh to show updated status
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -410,7 +418,7 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
                           ),
                         ),
                       );
-                    }),
+                   }),
 
                     // Join challenge button
                     SizedBox(height: 16),

@@ -300,7 +300,7 @@ class __RewardsSectionState extends State<_RewardsSection> {
                     },
               style: ElevatedButton.styleFrom(
                 backgroundColor: isClaimedToday
-                    ? Colors.grey 
+                    ? Colors.grey
                     : Theme.of(context).primaryColor,
               ),
               child: Text(

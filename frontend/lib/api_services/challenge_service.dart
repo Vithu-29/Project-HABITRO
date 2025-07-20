@@ -5,7 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ChallengeService {
   // Update this URL to match your backend server
-  static const String baseUrl = 'http://192.168.8.100:8000/';
+  static const String baseUrl = 'http://192.168.8.101:8000/';
 
   // Get authentication token from storage
   static Future<String?> _getAuthToken() async {
@@ -134,7 +134,8 @@ class ChallengeService {
   }
 
   // Update habit completion status
-  static Future<bool> updateHabitStatus(int habitId, bool isCompleted) async {
+  static Future<dynamic> updateHabitStatus(
+      int habitId, bool isCompleted) async {
     final token = await _getAuthToken();
     if (token == null) {
       return false;
@@ -149,7 +150,15 @@ class ChallengeService {
         }),
       );
 
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        // If gems and message are present, return them
+        if (data is Map && data.containsKey('gems')) {
+          return data;
+        }
+        return true;
+      }
+      return false;
     } catch (e) {
       return false;
     }

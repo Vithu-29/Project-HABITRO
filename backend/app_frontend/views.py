@@ -18,7 +18,7 @@ from rest_framework.decorators import api_view
 import logging
 from rest_framework.authtoken.models import Token
 from .models import UserChallengeHabit
-
+from rewards.models import Reward  # Add this import
 
 logger = logging.getLogger(__name__)
 
@@ -737,6 +737,8 @@ class UpdateChallengeHabitView(generics.GenericAPIView):
             )
 
         is_completed = request.data.get('is_completed', False)
+        previous_completed = user_habit.is_completed
+
         user_habit.is_completed = is_completed
         if is_completed:
             user_habit.completed_date = timezone.now().date()
@@ -744,7 +746,26 @@ class UpdateChallengeHabitView(generics.GenericAPIView):
             user_habit.completed_date = None
         user_habit.save()
 
+        # Only update gems if the state changes
+        reward, _ = Reward.objects.get_or_create(user=request.user)
+        message = None
+
+        if is_completed and not previous_completed:
+            # Only add gem if habit was not previously completed
+            reward.gems += 1
+            reward.save()
+            message = "1 gem collected!"
+        elif not is_completed and previous_completed:
+            # Only remove gem if habit was previously completed
+            if reward.gems > 0:
+                reward.gems -= 1
+                reward.save()
+            message = "1 gem removed!"
+
         return Response(
-            {"message": "Habit status updated"},
+            {
+                "message": message if message else "Habit status updated",
+                "gems": reward.gems
+            },
             status=status.HTTP_200_OK
         )
