@@ -250,7 +250,7 @@ class LoginView(APIView):
 
         #  last_login to Sri Lanka time as naive datetime (no tzinfo)
         srilanka_tz = pytz.timezone('Asia/Colombo')
-        now_colombo = timezone.now().astimezone(srilanka_tz).replace(tzinfo=None)
+        now_colombo = timezone.now().astimezone(srilanka_tz)
         user.last_login = now_colombo
         user.save(update_fields=['last_login'])
 
@@ -754,13 +754,13 @@ class UpdateChallengeHabitView(generics.GenericAPIView):
             # Only add gem if habit was not previously completed
             reward.gems += 1
             reward.save()
-            message = "1 gem collected!"
+            message = "Challenge is completed and you gain 1 gem"
         elif not is_completed and previous_completed:
             # Only remove gem if habit was previously completed
             if reward.gems > 0:
                 reward.gems -= 1
                 reward.save()
-            message = "1 gem removed!"
+            message = "Challenge is not completed and you lose 1 gem"
 
         return Response(
             {

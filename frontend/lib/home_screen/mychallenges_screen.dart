@@ -194,17 +194,94 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
 
   Future<void> _updateHabitStatus(int habitId, bool isCompleted) async {
     try {
-      final result = await ChallengeService.updateHabitStatus(habitId, isCompleted);
+      final result =
+          await ChallengeService.updateHabitStatus(habitId, isCompleted);
 
       if (result is Map && result.containsKey('message')) {
         final msg = result['message'];
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg ?? ''),
-            backgroundColor: msg == "1 gem collected!" ? Colors.green : (msg == "1 gem removed!" ? Colors.orange : Colors.blue),
-            duration: Duration(seconds: 1),
-          ),
-        );
+        if (msg.contains("gain 1 gem")) {
+          // Live happy moment: dancing emoji and confetti/tissues
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => Dialog(
+              insetPadding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned.fill(child: _ConfettiTissueAnimation()),
+                  SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 70),
+                        _DancingEmojiAnimation(),
+                        const SizedBox(height: 12),
+                        const Text('🎉 Challenge completed! You gained 1 gem!',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Awesome!'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else if (msg.contains("lose 1 gem")) {
+          // Live sad moment: animated sad face and fading gray overlay
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => Dialog(
+              insetPadding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned.fill(child: _SadOverlayAnimation()),
+                  SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0, end: 1),
+                          duration: const Duration(seconds: 1),
+                          builder: (context, value, child) {
+                            return Transform.scale(
+                              scale: 0.7 + value * 0.3,
+                              child: Opacity(
+                                opacity: value,
+                                child:
+                                    Text('😔', style: TextStyle(fontSize: 60)),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        const Text('Challenge not completed! You lost 1 gem!',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Okay'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
       } else if (result == true) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -238,7 +315,12 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Challenges'),
+        title: Text(
+          'Challenges',
+          style: TextStyle(
+            fontWeight: FontWeight.w900, // Increased boldness
+          ),
+        ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
@@ -418,7 +500,7 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
                           ),
                         ),
                       );
-                   }),
+                    }),
 
                     // Join challenge button
                     SizedBox(height: 16),
@@ -637,5 +719,304 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+}
+
+class _BalloonsAnimation extends StatefulWidget {
+  @override
+  State<_BalloonsAnimation> createState() => _BalloonsAnimationState();
+}
+
+class _BalloonsAnimationState extends State<_BalloonsAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+  final List<Color> balloonColors = [
+    Colors.red,
+    Colors.blue,
+    Colors.green,
+    Colors.orange,
+    Colors.purple
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..forward();
+    _animation = Tween<double>(begin: 1, end: -0.3).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Stack(
+          children: List.generate(balloonColors.length, (i) {
+            return Align(
+              alignment: Alignment(-0.7 + i * 0.35, _animation.value),
+              child:
+                  Icon(Icons.circle, color: balloonColors[i], size: 30 + i * 8),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
+class _RainAnimation extends StatefulWidget {
+  @override
+  State<_RainAnimation> createState() => _RainAnimationState();
+}
+
+class _RainAnimationState extends State<_RainAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+  final int drops = 12;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat();
+    _animation = Tween<double>(begin: -0.8, end: 0.8).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Stack(
+          children: List.generate(drops, (i) {
+            return Align(
+              alignment: Alignment(-0.8 + i * 0.13, _animation.value),
+              child: Icon(Icons.water_drop, color: Colors.blueAccent, size: 18),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
+class _ConfettiTissueAnimation extends StatefulWidget {
+  @override
+  State<_ConfettiTissueAnimation> createState() =>
+      _ConfettiTissueAnimationState();
+}
+
+class _ConfettiTissueAnimationState extends State<_ConfettiTissueAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+  final int pieces = 16;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..forward();
+    _animation = Tween<double>(begin: 0, end: 1).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Stack(
+          children: List.generate(pieces, (i) {
+            final angle = i * 3.14159 * 2 / pieces;
+            final radius = 80.0 * _animation.value;
+            return Positioned(
+              left: MediaQuery.of(context).size.width / 2 +
+                  radius *
+                      (0.5 * (1 + _animation.value)) *
+                      (i.isEven ? 1 : -1) *
+                      (i / pieces),
+              top: MediaQuery.of(context).size.height / 2 +
+                  radius *
+                      (0.5 * (1 + _animation.value)) *
+                      (i.isOdd ? 1 : -1) *
+                      (i / pieces),
+              child: Opacity(
+                opacity: _animation.value,
+                child: Icon(
+                  i.isEven ? Icons.circle : Icons.rectangle,
+                  color: i.isEven ? Colors.pinkAccent : Colors.amberAccent,
+                  size: 14 + (i % 3) * 4,
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
+class _SplashBalloonsAnimation extends StatefulWidget {
+  @override
+  State<_SplashBalloonsAnimation> createState() =>
+      _SplashBalloonsAnimationState();
+}
+
+class _SplashBalloonsAnimationState extends State<_SplashBalloonsAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+  final List<Color> balloonColors = [
+    Colors.redAccent,
+    Colors.blueAccent,
+    Colors.greenAccent,
+    Colors.orangeAccent,
+    Colors.purpleAccent
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..forward();
+    _animation = Tween<double>(begin: 1, end: -0.3).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Stack(
+          children: List.generate(balloonColors.length, (i) {
+            return Align(
+              alignment: Alignment(-0.7 + i * 0.35, _animation.value),
+              child: Icon(Icons.emoji_events,
+                  color: balloonColors[i], size: 32 + i * 10),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
+class _SadOverlayAnimation extends StatefulWidget {
+  @override
+  State<_SadOverlayAnimation> createState() => _SadOverlayAnimationState();
+}
+
+class _SadOverlayAnimationState extends State<_SadOverlayAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 900),
+      vsync: this,
+    )..forward();
+    _animation = Tween<double>(begin: 0.0, end: 0.5).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          color: Colors.grey.withOpacity(_animation.value),
+        );
+      },
+    );
+  }
+}
+
+class _DancingEmojiAnimation extends StatefulWidget {
+  @override
+  State<_DancingEmojiAnimation> createState() => _DancingEmojiAnimationState();
+}
+
+class _DancingEmojiAnimationState extends State<_DancingEmojiAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: -20, end: 20).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(_animation.value, 0),
+          child: Text('💃🕺', style: TextStyle(fontSize: 48)),
+        );
+      },
+    );
   }
 }
