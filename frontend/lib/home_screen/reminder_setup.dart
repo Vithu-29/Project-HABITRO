@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/notification_service.dart';
+import '../services/ai_services.dart';
 
 class ReminderSetupScreen extends StatefulWidget {
   final String habitId;
@@ -19,6 +20,7 @@ class ReminderSetupScreen extends StatefulWidget {
 
 class _ReminderSetupScreenState extends State<ReminderSetupScreen> {
   TimeOfDay? selectedTime;
+  bool isSaving = false;
 
   Future<void> _pickTime() async {
     final TimeOfDay now = TimeOfDay.now();
@@ -40,26 +42,67 @@ class _ReminderSetupScreenState extends State<ReminderSetupScreen> {
       );
       return;
     }
+    setState(() => isSaving = true);
 
-    await NotificationService.scheduleNotification(
-      id: widget.habitId.hashCode, // unique ID based on habit
-      title: '⏰ ${widget.habitName} Reminder',
-      body:
-          'Don\'t forget to work on "${widget.habitName}" today! (${widget.trackingDurationDays} day plan)',
-      hour: selectedTime!.hour,
-      minute: selectedTime!.minute,
-    );
+    try {
+      // 1. Schedule the notification locally
+      await NotificationService.scheduleNotification(
+        habitId: widget.habitId,
+        habitName: widget.habitName,
+        time: selectedTime!,
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Reminder set for ${widget.habitName} at ${selectedTime!.format(context)}',
-        ),
-      ),
-    );
+      // 2. Save the reminder settings to backend
+      final success = await AIService.updateReminderSettings(
+        habitId: widget.habitId,
+        wantsReminder: true,
+        reminderTime: '${selectedTime!.hour}:${selectedTime!.minute}',
+      );
 
-    // Return to previous screen with success result
-    Navigator.pop(context, true);
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Reminder set for ${widget.habitName} at ${selectedTime!.format(context)}',
+            ),
+          ),
+        );
+        Navigator.pop(context, true);
+      } else {
+        // If backend save failed, cancel the notification
+        await NotificationService.cancelNotification(widget.habitId);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to save reminder settings')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    } finally {
+      setState(() => isSaving = false);
+    }
+  }
+
+  Future<void> _skipReminder() async {
+    setState(() => isSaving = true);
+    
+    try {
+      // Update backend that user doesn't want reminders
+      await AIService.updateReminderSettings(
+        habitId: widget.habitId,
+        wantsReminder: false,
+        reminderTime: null,
+      );
+      
+      Navigator.pop(context, false);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    } finally {
+      setState(() => isSaving = false);
+    }
   }
 
   @override
@@ -93,10 +136,22 @@ class _ReminderSetupScreenState extends State<ReminderSetupScreen> {
               child: const Text('Pick Time'),
             ),
             const SizedBox(height: 32),
-            FilledButton(
-              onPressed: _scheduleNotification,
-              child: const Text('Schedule Reminder'),
-            ),
+            if (isSaving)
+              const CircularProgressIndicator()
+            else
+              Column(
+                children: [
+                  FilledButton(
+                    onPressed: _scheduleNotification,
+                    child: const Text('Schedule Reminder'),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: _skipReminder,
+                    child: const Text('Skip Reminder'),
+                  ),
+                ],
+              ),
           ],
         ),
       ),

@@ -4,7 +4,7 @@ from .views import save_tasks
 from .views import HabitsWithTodayTasks,update_task_status
 from .views import task_completion_stats
 from .views import get_coin_balance,add_coins,deduct_coins
-from .views import delete_habit
+from .views import delete_habit,update_reminder_settings
 
 
 
@@ -20,6 +20,8 @@ urlpatterns = [
     path('coins/add/', add_coins, name='add_coins'),
     path('coins/deduct/', deduct_coins, name='deduct_coins'),
     path('habits/delete/<uuid:habit_id>/', delete_habit, name='delete_habit'),
+    path('update_reminder_settings/', update_reminder_settings, name='update_reminder_settings'),
+
 
 
 ]

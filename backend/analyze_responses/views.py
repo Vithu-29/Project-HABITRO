@@ -1,3 +1,4 @@
+
 import json
 import requests
 from decouple import config  # Add this import
@@ -5,7 +6,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import Task,Habit
 import uuid
-from datetime import timedelta, date,datetime
+from datetime import timedelta, date,datetime,time
 from rest_framework.views import APIView
 from .serializers import HabitSerializer
 from rest_framework.response import Response
@@ -13,6 +14,7 @@ from rest_framework.decorators import api_view,permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rewards.models import  Reward  # Add Reward to imports
 
+print("Timedelta available?", timedelta(days=1))  # Should print "Timedelta available? 1 day, 0:00:00"
 
 ##from rest_framework import status
 
@@ -20,7 +22,8 @@ from rewards.models import  Reward  # Add Reward to imports
 
 
 
-###########################################################################################################
+##############################################################################Get-Command python
+#############################
                                     ## analyze response ##
 
 @api_view(['POST'])
@@ -195,16 +198,21 @@ def save_tasks(request):
             habit_name = data.get('habit_name')
             habit_type = data.get('habit_type')
             tasks = data.get('tasks', [])
+            duration_days = int(data.get('duration', 30))
 
-            print(f"Creating habit: {habit_name}, {habit_type}")  # Debug
-            print(f"With tasks: {tasks}")  # Debug
+            print(f"Parsed habit_name: {habit_name}")
+            print(f"Parsed habit_type: {habit_type}")
+            print(f"Parsed tasks count: {len(tasks)}")
+            print(f"Raw duration value: {duration_days}")
 
             # Create a new habit with a UUID
             habit = Habit.objects.create(
                 id=uuid.uuid4(),
                 name=habit_name,
                 type=habit_type,
-                user=request.user  # ✅ this links the habit to the logged-in user
+                user=request.user,  # ✅ this links the habit to the logged-in user
+                duration_days=duration_days,
+                start_date=date.today(),
             )
 
 
@@ -212,10 +220,13 @@ def save_tasks(request):
             tasks_per_day = 3
             total_days = len(tasks) // tasks_per_day
             today = date.today()
+            print(f"Total days calculated: {total_days}")
 
 
             for day in range(total_days):
                 task_date = today + timedelta(days=day)
+                print(f"Creating tasks for day {day + 1}, date {task_date}")
+
                 for i in range(tasks_per_day):
                     task_index = day * tasks_per_day + i
                     if task_index < len(tasks):
@@ -226,24 +237,54 @@ def save_tasks(request):
                             date=task_date
                         )
 
-            ###************************####
 
-            # Save new tasks
-           ## for idx, task in enumerate(tasks, start=1):
-            ##    Task.objects.create(
-             ##       habit_id=id,
-              ##      task_id=idx,
-              ##      day=((idx - 1) // 3) + 1,
-              ##      description=task.get('task'),
-              ##      is_completed=task.get('isCompleted', False)
-              ##  )
-
-            return JsonResponse({'status': 'success'}, status=201)
+            return JsonResponse({'status': 'success',
+                                  'habit_id': str(habit.id),
+                                  'duration_days': duration_days
+                                  }, status=201)
         except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"Exception in save_tasks: {e}")  
             return JsonResponse({'error': str(e)}, status=500)
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 
+
+
+
+###########################################################################################################
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_reminder_settings(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            habit_id = data.get('habit_id')
+            wants_reminder = data.get('wants_reminder', False)
+            reminder_time = data.get('reminder_time')
+            
+            try:
+                habit = Habit.objects.get(id=habit_id, user=request.user)
+                
+                habit.notification_status = wants_reminder
+                if wants_reminder and reminder_time:
+                    # Convert "HH:MM" string to time object
+                    hour, minute = map(int, reminder_time.split(':'))
+                    habit.reminder_time = time(hour=hour, minute=minute)
+                else:
+                    habit.reminder_time = None
+                
+                habit.save()
+                
+                return JsonResponse({'status': 'success'}, status=200)
+                
+            except Habit.DoesNotExist:
+                return JsonResponse({'error': 'Habit not found'}, status=404)
+                
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
 ###########################################################################################################
                                     ## save tasks ##
 

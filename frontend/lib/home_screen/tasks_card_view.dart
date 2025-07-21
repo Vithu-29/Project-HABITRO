@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/ai_services.dart';
 import '../components/cnav_bar.dart';
 import '../components/custom_button.dart';
-import '../services/notification_service.dart';  // Added import
+import '../services/notification_service.dart'; // Added import
 import './reminder_setup.dart';
 
 class TasksCardView extends StatefulWidget {
@@ -31,10 +31,12 @@ class _TaskCardScreenState extends State<TasksCardView> {
 
   Future<void> _confirmTasks() async {
     try {
-      final habitName = widget.responses['responses']?['habit_name'] as String? ?? 
-                       'default_habit_name';
-      final habitType = widget.responses['responses']?['habit_type'] as String? ?? 
-                       'default_habit_type';
+      final habitName =
+          widget.responses['responses']?['habit_name'] as String? ??
+              'default_habit_name';
+      final habitType =
+          widget.responses['responses']?['habit_type'] as String? ??
+              'default_habit_type';
       final durationStr = widget.responses['responses']?['duration'] as String?;
       final duration = int.tryParse(durationStr ?? '') ?? 30;
 
@@ -42,18 +44,20 @@ class _TaskCardScreenState extends State<TasksCardView> {
       print('Extracted habitName: $habitName');
       print('Extracted habitType: $habitType');
 
-      final success = await AIService.saveTasks(
+      final response = await AIService.saveTasks(
         habitName: habitName,
         habitType: habitType,
         tasks: widget.tasks,
+        duration: duration,
+
       );
 
-      if (success) {
+      if (response['status'] == 'success') {
+        final habitId = response['habit_id'];
+        final habitDurationDays = duration;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Tasks saved successfully!')),
         );
-        final habitId = habitName;
-        final habitDurationDays = duration;
         await _showReminderPopup(habitId, habitDurationDays);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -81,34 +85,34 @@ class _TaskCardScreenState extends State<TasksCardView> {
         child: CircularProgressIndicator(),
       ),
     );
-    try{
+    try {
       print('Sending responses for regeneration: ${widget.responses}');
 
-    final payload = {
-      ...widget.responses,
-    };
+      final payload = {
+        ...widget.responses,
+      };
 
-    regenerateCount += 1;
-    final newTasks = await AIService.sendToAI(payload, regenerate: true);
-    Navigator.of(context).pop();
-    if (newTasks.isNotEmpty) {
-      setState(() {
-        widget.tasks.clear();
-        widget.tasks.addAll(newTasks);
-        displayedTasks = newTasks.take(30).toList();
-      });
-    }}
-    catch (e) {
-    // Close loading dialog if there's an error
-    Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error regenerating tasks: ${e.toString()}')),
-    );
-  }
-    
+      regenerateCount += 1;
+      final newTasks = await AIService.sendToAI(payload, regenerate: true);
+      Navigator.of(context).pop();
+      if (newTasks.isNotEmpty) {
+        setState(() {
+          widget.tasks.clear();
+          widget.tasks.addAll(newTasks);
+          displayedTasks = newTasks.take(30).toList();
+        });
+      }
+    } catch (e) {
+      // Close loading dialog if there's an error
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error regenerating tasks: ${e.toString()}')),
+      );
+    }
   }
 
-  Future<void> _saveReminderPreference(bool wantsReminder, String habitId) async {
+  Future<void> _saveReminderPreference(
+      bool wantsReminder, String habitId) async {
     // Implement your save logic here
     print('Reminder preference saved: $wantsReminder for habit $habitId');
   }
@@ -151,35 +155,42 @@ class _TaskCardScreenState extends State<TasksCardView> {
         ],
       ),
     );
+    // final bool notificationsEnabled = 
+    //   await NotificationService.checkNotificationsEnabled();
 
     if (shouldSetReminder == true) {
-      final bool notificationsEnabled = await NotificationService.checkNotificationsEnabled();
-      
-      if (!notificationsEnabled) {
-        if (mounted) {
-          await _showNotificationsDisabledDialog(context);
-        }
-        return;
-      }
+      final bool notificationsEnabled =
+          await NotificationService.checkNotificationsEnabled();
 
-      final result = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ReminderSetupScreen (
-            habitId: habitId,
-            habitName: widget.responses['responses']?['habit_name'] ?? 'Your Habit',
-            trackingDurationDays: habitDurationDays,
-          ),
+      if (shouldSetReminder == true && notificationsEnabled) {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReminderSetupScreen(
+          habitId: habitId,
+          habitName: 
+              widget.responses['responses']?['habit_name'] ?? 'Your Habit',
+          trackingDurationDays: habitDurationDays,
         ),
-      );
+      ),
+    );
 
-      if (result == true && mounted) {
-        await _saveReminderPreference(true, habitId);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Daily reminder set!')),
-        );
-      }
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Daily reminder set!')),
+      );
     }
+  } else if (shouldSetReminder == false) {
+    // User explicitly chose "Not Now"
+    await AIService.updateReminderSettings(
+      habitId: habitId,
+      wantsReminder: false,
+      reminderTime: null,
+    );
+  } else if (!notificationsEnabled && mounted) {
+    await _showNotificationsDisabledDialog(context);
+  }
+}
   }
 
   Future<void> _showNotificationsDisabledDialog(BuildContext context) async {
@@ -233,11 +244,14 @@ class _TaskCardScreenState extends State<TasksCardView> {
               ],
             ),
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              leading: const Icon(Icons.check_circle_outline, color: Colors.green),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              leading:
+                  const Icon(Icons.check_circle_outline, color: Colors.green),
               title: Text(
                 task['task'],
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
               ),
             ),
           );

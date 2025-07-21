@@ -7,7 +7,7 @@ class AIService {
   //***********************************************************************************************************//
   //send the entered habit to analyze good or bad
 
-  static const String baseurl = 'http://192.168.41.157:8000';
+  static const String baseurl = 'http://192.168.8.243:8000';
   static final _storage = FlutterSecureStorage();
 
   static Map<String, String> _headers(String token) {
@@ -134,11 +134,12 @@ class AIService {
 
   // save the tasks in the database
 
-  static Future<bool> saveTasks({
+  static Future<Map<String, dynamic>> saveTasks({
     required String habitName,
     required String habitType,
     required List<Map<String, dynamic>>
-        tasks, // List<Map<String, dynamic>> tasks
+        tasks,
+    required int duration // List<Map<String, dynamic>> tasks
   }) async {
     final token = await _getToken();
     if (token == null) {
@@ -152,17 +153,22 @@ class AIService {
           "habit_name": habitName,
           "habit_type": habitType,
           "tasks": tasks,
+          "duration": duration,
         }),
       );
 
       print("Response status: ${response.statusCode}"); // Should be 201
       print("Response body: ${response.body}"); // Check for errors
 
-      return response.statusCode == 201;
+      if (response.statusCode == 201) {
+        return jsonDecode(
+            response.body); // ✅ Returns the full JSON including habit_id
+      } else {
+        throw Exception('Failed to save tasks: ${response.body}');
+      }
     } catch (e) {
       print("Error saving tasks: $e");
-      print(tasks);
-      return false;
+      throw Exception('Error saving tasks');
     }
   }
 
@@ -388,37 +394,66 @@ class AIService {
     }
   }
 
-
-
-
   Future<void> deleteHabit(String habitId) async {
-  final token = await _getToken();
-  if (token == null) {
-    throw Exception('User not authenticated');
-  }
-
-  try {
-    final response = await http.delete(
-      Uri.parse("$baseurl/api/habits/delete/$habitId/"),
-      headers: _headers(token),
-    );
-
-    if (response.statusCode == 200) {
-      return;
-    } else if (response.statusCode == 404) {
-      throw Exception('Habit not found');
-    } else {
-      // Try to parse error message from response
-      final errorBody = jsonDecode(response.body);
-      throw Exception(errorBody['error'] ?? 'Failed to delete habit');
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('User not authenticated');
     }
-  } on http.ClientException catch (e) {
-    throw Exception('Network error: ${e.message}');
-  } catch (e) {
-    throw Exception('Failed to delete habit: ${e.toString()}');
-  }
-}
 
+    try {
+      final response = await http.delete(
+        Uri.parse("$baseurl/api/habits/delete/$habitId/"),
+        headers: _headers(token),
+      );
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 404) {
+        throw Exception('Habit not found');
+      } else {
+        // Try to parse error message from response
+        final errorBody = jsonDecode(response.body);
+        throw Exception(errorBody['error'] ?? 'Failed to delete habit');
+      }
+    } on http.ClientException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to delete habit: ${e.toString()}');
+    }
+  }
+
+
+    // Update reminder settings in backend
+  static Future<bool> updateReminderSettings({
+    required String habitId,
+    required bool wantsReminder,
+    String? reminderTime,
+  }) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('No authentication token found');
+
+      final response = await http.post(
+        Uri.parse('$baseurl/api/update_reminder_settings/'),
+        headers: _headers(token),
+        body: json.encode({
+          'habit_id': habitId,
+          'wants_reminder': wantsReminder,
+          'reminder_time': reminderTime,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print('Failed to update reminder settings: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('Error updating reminder settings: $e');
+      return false;
+    }
+  }
 }
 
 //***********************************************************************************************************//

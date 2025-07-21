@@ -1,28 +1,26 @@
+// services/notification_services.dart
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter/material.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
   static Future<void> init() async {
-    // Init timezone
     tz.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
 
-    // Request permissions
     if (await Permission.notification.isDenied) {
       await Permission.notification.request();
     }
 
-    // Initialize plugin
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(android: androidSettings);
     await _plugin.initialize(settings);
 
-    // ✅ Create notification channel explicitly
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'habit_channel_id',
       'Habit Reminders',
@@ -34,16 +32,13 @@ class NotificationService {
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
 
-    // ✅ Fire one test notification (so Android lists the app)
-    await showTestNotification();
+    // await showTestNotification();
   }
 
   static Future<void> scheduleNotification({
-    required int id,
-    required String title,
-    required String body,
-    required int hour,
-    required int minute,
+    required String habitId,
+    required String habitName,
+    required TimeOfDay time,
   }) async {
     final now = tz.TZDateTime.now(tz.local);
     tz.TZDateTime scheduledDate = tz.TZDateTime(
@@ -51,8 +46,8 @@ class NotificationService {
       now.year,
       now.month,
       now.day,
-      hour,
-      minute,
+      time.hour,
+      time.minute,
     );
 
     if (scheduledDate.isBefore(now)) {
@@ -60,9 +55,9 @@ class NotificationService {
     }
 
     await _plugin.zonedSchedule(
-      id,
-      title,
-      body,
+      habitId.hashCode, // Use habitId hash as notification ID
+      '⏰ $habitName Reminder',
+      'Don\'t forget to work on "$habitName" today!)',
       scheduledDate,
       const NotificationDetails(
         android: AndroidNotificationDetails(
@@ -73,14 +68,14 @@ class NotificationService {
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.inexact,
-      payload: 'habit_notification',
-      matchDateTimeComponents: DateTimeComponents.time, // ✅ Repeat daily
-      
+      payload: 'habit_notification|$habitId',
+      matchDateTimeComponents: DateTimeComponents.time,
+    
     );
   }
 
-  static Future<void> cancelNotification(int id) async {
-    await _plugin.cancel(id);
+  static Future<void> cancelNotification(String habitId) async {
+    await _plugin.cancel(habitId.hashCode);
   }
 
   static Future<bool> checkNotificationsEnabled() async {
@@ -88,20 +83,27 @@ class NotificationService {
     return status.isGranted;
   }
 
-  // ✅ Used only once during app init to register the app with system
-  static Future<void> showTestNotification() async {
-    await _plugin.show(
-      9999,
-      '🔔 Setup Complete',
-      'Notifications are ready and registered.',
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'habit_channel_id',
-          'Habit Reminders',
-          importance: Importance.max,
-          priority: Priority.high,
-        ),
-      ),
-    );
-  }
+  // Future<void> _requestNotificationPermission() async {
+  //   final status = await Permission.notification.request();
+
+  //   if (status.isPermanentlyDenied) {
+  //     openAppSettings();
+  //   }
+  // }
+
+  // static Future<void> showTestNotification() async {
+  //   await _plugin.show(
+  //     9999,
+  //     '🔔 Setup Complete',
+  //     'Notifications are ready and registered.',
+  //     const NotificationDetails(
+  //       android: AndroidNotificationDetails(
+  //         'habit_channel_id',
+  //         'Habit Reminders',
+  //         importance: Importance.max,
+  //         priority: Priority.high,
+  //       ),
+  //     ),
+  //   );
+  // }
 }

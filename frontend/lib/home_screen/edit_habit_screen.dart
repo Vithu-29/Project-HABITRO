@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../services/ai_services.dart';
-import '../models/habit.dart';
+import '../services/notification_service.dart';
 
 class EditHabitScreen extends StatefulWidget {
   final Map<String, dynamic> habit;
@@ -14,13 +15,23 @@ class EditHabitScreen extends StatefulWidget {
 class _EditHabitScreenState extends State<EditHabitScreen> {
   late TimeOfDay selectedTime;
   bool isChanged = false;
+  late bool notificationStatus;
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize with current time, since no reminder_time is saved yet
-    selectedTime = TimeOfDay.now();
+    notificationStatus = widget.habit['notification_status'] ?? false;
+
+    final reminderTimeStr = widget.habit['reminder_time'];
+    if (notificationStatus && reminderTimeStr != null) {
+      final parts = reminderTimeStr.split(':');
+      final hour = int.parse(parts[0]);
+      final minute = int.parse(parts[1]);
+      selectedTime = TimeOfDay(hour: hour, minute: minute);
+    } else {
+      selectedTime = TimeOfDay.now();
+    }
   }
 
   void _showDeleteConfirmationDialog(String habitId) {
@@ -29,8 +40,7 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: const Text('Delete Habit'),
-          content: const Text(
-              'Are you sure you want to delete this habit and all its tasks?'),
+          content: const Text('Are you sure you want to delete this habit and all its tasks?'),
           actions: <Widget>[
             TextButton(
               child: const Text('Cancel'),
@@ -39,19 +49,17 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
             TextButton(
               child: const Text('Delete', style: TextStyle(color: Colors.red)),
               onPressed: () async {
-                Navigator.of(dialogContext).pop(); // Close the dialog first
-
-                final currentContext = context; // capture context early
+                Navigator.of(dialogContext).pop();
+                final currentContext = context;
 
                 try {
                   await AIService().deleteHabit(habitId);
                   if (mounted) {
                     ScaffoldMessenger.of(currentContext).showSnackBar(
-                      const SnackBar(
-                          content: Text('Habit deleted successfully')),
+                      const SnackBar(content: Text('Habit deleted successfully')),
                     );
                   }
-                   Navigator.of(context).pop(true); // <--- Trigger refresh in HomeScreen
+                  Navigator.of(context).pop(true);
                 } catch (e) {
                   if (mounted) {
                     ScaffoldMessenger.of(currentContext).showSnackBar(
@@ -87,6 +95,61 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
     );
   }
 
+  Future<void> _handleSave() async {
+    // Check notification permission before scheduling
+    if (notificationStatus) {
+      final isGranted = await NotificationService.checkNotificationsEnabled();
+      if (!isGranted) {
+        final result = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Notification Permission Disabled'),
+            content: const Text(
+                'Notifications are disabled. To receive reminders, please enable notifications in app settings.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  openAppSettings();
+                  Navigator.of(ctx).pop(true);
+                },
+                child: const Text('Open Settings'),
+              ),
+            ],
+          ),
+        );
+
+        // Exit early if user doesn't want to open settings
+        if (result != true) return;
+      }
+    }
+
+    final habit = widget.habit;
+
+    await AIService.updateReminderSettings(
+      habitId: habit['id'],
+      wantsReminder: notificationStatus,
+      reminderTime: notificationStatus
+          ? '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}'
+          : null,
+    );
+
+    if (notificationStatus) {
+      await NotificationService.scheduleNotification(
+        habitId: habit['id'],
+        habitName: habit['name'],
+        time: selectedTime,
+      );
+    } else {
+      await NotificationService.cancelNotification(habit['id']);
+    }
+
+    if (mounted) Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final habit = widget.habit;
@@ -99,22 +162,34 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
           children: [
             _readonlyField('Habit Name', habit['name']),
             if (habit['start_date'] != null && habit['end_date'] != null)
-              _readonlyField(
-                'Tracking Duration',
-                "${habit['start_date']} to ${habit['end_date']}",
-              ),
+              _readonlyField('Tracking Duration', "${habit['start_date']} to ${habit['end_date']}"),
             _readonlyField('Type', habit['type']),
             const SizedBox(height: 16),
-            ListTile(
-              title: const Text('Reminder Time',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(selectedTime.format(context)),
-              trailing: IconButton(
-                icon: const Icon(Icons.edit),
-                onPressed: _pickTime,
-              ),
+
+            SwitchListTile(
+              title: const Text('Notifications'),
+              subtitle: Text(notificationStatus ? 'Enabled' : 'Disabled'),
+              value: notificationStatus,
+              onChanged: (bool newValue) {
+                setState(() {
+                  notificationStatus = newValue;
+                  isChanged = true;
+                });
+              },
             ),
+
+            if (notificationStatus)
+              ListTile(
+                title: const Text('Reminder Time', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(selectedTime.format(context)),
+                trailing: IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: _pickTime,
+                ),
+              ),
+
             const Spacer(),
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -123,24 +198,24 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
                   child: const Text("Cancel"),
                 ),
                 ElevatedButton(
-                  onPressed: isChanged
-                      ? () {
-                          // Will add saving logic later
-                          Navigator.pop(context);
-                        }
-                      : null,
-                  child: const Text("Save"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isChanged ? const Color(0xFF2853AF) : Colors.grey,
+                    foregroundColor: Colors.white,
+                    elevation: isChanged ? 4 : 0,
+                  ),
+                  onPressed: isChanged ? _handleSave : null,
+                  child: Text(isChanged ? 'Save Changes' : 'Saved'),
                 ),
               ],
             ),
+
             const SizedBox(height: 20),
+
             TextButton(
-              onPressed: () {
-                _showDeleteConfirmationDialog(widget.habit['id']);
-              },
+              onPressed: () => _showDeleteConfirmationDialog(habit['id']),
               child: const Text(
                 "Delete Habit",
-                style: TextStyle(color: Colors.red),
+                style: TextStyle(color: Color(0xFFF44336)),
               ),
             ),
           ],

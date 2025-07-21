@@ -327,7 +327,10 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context) => EditHabitScreen(habit: {
           "id": habit.id,
           "name": habit.name,       
-          "type": habit.type                  
+          "type": habit.type,
+          "notification_status": habit.notificationStatus,  // or habit['notification_status']
+          "reminder_time": habit.reminderTime,
+
         }),
       ),
     ).then((_) => _refreshHabits()); // Refresh after coming back

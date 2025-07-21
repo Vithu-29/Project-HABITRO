@@ -17,7 +17,7 @@ class HabitSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Habit
-        fields = ['id', 'name', 'type', 'tasks']
+        fields = ['id', 'name', 'type', 'tasks', 'notification_status', 'reminder_time']
 
     def get_tasks(self, habit):
         today = date.today()

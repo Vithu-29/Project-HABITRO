@@ -44,3 +44,28 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# Python cache
+__pycache__/
+*.pyc
+
+# Android build
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+.DS_Store
+build/
+android/app/.cxx/
+*.log
+
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+*.lock
+
+
