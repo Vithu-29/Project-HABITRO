@@ -55,8 +55,9 @@ export default function LoginForm() {
 
       setSuccess('Login successful! Redirecting...');
       localStorage.setItem('isAuthenticated', 'true');
-      setTimeout(() => router.push('/dashboard'), 1000);
-      
+      // Redirect to root, which will then redirect to appropriate page
+      setTimeout(() => router.push('/home'), 1000);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
     } finally {
@@ -119,7 +120,7 @@ export default function LoginForm() {
               Remember Me
             </label>
           </div>
-          <Link 
+          <Link
             href="/ForgotPassword"
             className="text-sm text-[#2853AF] hover:text-[#1d4299] font-medium"
           >

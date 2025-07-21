@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
-import RichTextEditor from "../../components/blog-management/RichTextEditor";
+import RichTextEditor from "../../../components/blog-management/RichTextEditor";
 import "@/components/blog-management/RichTextEditor.css";
 
 interface Article {

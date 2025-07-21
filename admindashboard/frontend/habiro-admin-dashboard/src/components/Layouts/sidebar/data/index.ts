@@ -55,7 +55,7 @@ export const NAV_DATA = [
       {
         title: "Logout",
         icon: Icons.Authentication,
-         url: "/auth/sign-in",
+         url: "/login",
          items:[],
       },
     ],

@@ -7,52 +7,34 @@ import random
 import string
 from datetime import datetime, timedelta
 from django.utils import timezone
-
+from app_frontend.models import CustomUser  # Adjust this import path if needed
+import logging
 logger = logging.getLogger(__name__)
 
 class HabitroAdminManager:
     @staticmethod
     def authenticate(email, password):
         """
-        Verify email/password against admin_details table
-        Returns admin_id if valid, None otherwise
+        Verify email/password against CustomUser model
+        Returns user ID if valid, None otherwise
         """
         try:
-            with connections['habitro'].cursor() as cursor:
-                # Get id, email, password, is_active
-                cursor.execute(
-                    """
-                    SELECT id, email, password, is_active 
-                    FROM admin_details 
-                    WHERE email = %s
-                    """,
-                    [email.lower().strip()]
-                )
-                result = cursor.fetchone()
-                
-                if not result:
-                    logger.warning(f"Admin not found: {email}")
-                    return None
-                
-                admin_id, stored_email, stored_hash, is_active = result
-                
-                # Check account active status
-                if not is_active:
-                    logger.warning(f"Inactive admin account: {email}")
-                    raise ValidationError("Account is inactive")
-                
-                # Auto-hashes and compares passwords
-                if not check_password(password, stored_hash):
-                    logger.warning(f"Password mismatch for: {email}")
-                    return None
-                
+            user = CustomUser.objects.get(email=email.strip().lower(), is_admin=True, is_active=True)
+            
+            if check_password(password, user.password):
                 logger.info(f"Authenticated admin: {email}")
-                return admin_id
-                
+                return user.id
+            else:
+                logger.warning(f"Password mismatch for: {email}")
+                return None
+
+        except CustomUser.DoesNotExist:
+            logger.warning(f"Admin not found: {email}")
+            return None
+
         except Exception as e:
             logger.error(f"Authentication error: {str(e)}", exc_info=True)
             raise ValidationError("Authentication service unavailable")
-
 
     @staticmethod
     def generate_otp(request, email):

@@ -2,9 +2,9 @@ import { UsedDevices } from "@/components/Charts/used-devices";
 import { RecentUsers } from "@/components/Tables/recent-user";
 import { createTimeFrameExtractor } from "@/utils/timeframe-extractor";
 import { Suspense } from "react";
-import { OverviewCardsGroup } from "../../components/overview-cards";
-import { OverviewCardsSkeleton } from "../../components/overview-cards/skeleton";
-
+import { OverviewCardsGroup } from "../../../components/overview-cards";
+import { OverviewCardsSkeleton } from "../../../components/overview-cards/skeleton";
+import AuthWrapper from '@/components/AuthProvider';
 import { CampaignVisitors } from "@/components/Charts/active-user";
 type PropsType = {
   searchParams: Promise<{
@@ -17,7 +17,7 @@ export default async function Home({ searchParams }: PropsType) {
   const extractTimeFrame = createTimeFrameExtractor(selected_time_frame);
 
   return (
-    <>
+    <AuthWrapper>
 
       <Suspense fallback={<OverviewCardsSkeleton />}>
         <OverviewCardsGroup />
@@ -40,6 +40,6 @@ export default async function Home({ searchParams }: PropsType) {
 
       </div>
 
-    </>
+    </AuthWrapper>
   );
 }

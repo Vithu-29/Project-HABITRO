@@ -4,5 +4,6 @@
     "java.configuration.updateBuildConfiguration": "automatic",
     "java.project.sourcePaths": [
         "admindashboard/frontend/habiro-admin-dashboard"
-    ]
+    ],
+    "cmake.sourceDirectory": "D:/Habiro final/Project-HABITRO/frontend/linux"
 }
