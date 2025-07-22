@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view,permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rewards.models import  Reward  # Add Reward to imports
+import re
 
 print("Timedelta available?", timedelta(days=1))  # Should print "Timedelta available? 1 day, 0:00:00"
 
@@ -49,7 +50,11 @@ def analyze_responses(request):
         duration_str = responses.get("duration", "1")
 
         try:
-            days_to_quit = int(duration_str)
+            match = re.search(r'\d+', duration_str)
+            if match:
+                days_to_quit = int(match.group())
+            else:
+                days_to_quit = 1  
         except (ValueError, TypeError):
             days_to_quit = 1
         print(days_to_quit)
@@ -157,7 +162,7 @@ def analyze_responses(request):
                                     #changed code#########
 
 def extract_tasks(text, expected_days):
-    import re
+    
 
     def clean_text(text):
         text = re.sub(r"[*_~`]+", "", text)
