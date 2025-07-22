@@ -14,20 +14,53 @@ class HabitInputScreen extends StatefulWidget {
 
 class _HabitInputScreenState extends State<HabitInputScreen> {
   final _habitController = TextEditingController();
-
+  String? _errorText;
   bool _isLoading = false;
+
+  bool _isNonsense(String input, {String? field}) {
+    input = input.trim();
+
+    if (input.isEmpty) return true;
+
+    // Handle duration separately (only 2-digit numbers allowed)
+    if (field == "duration") {
+      final num = int.tryParse(input);
+      return num == null || num < 10 || num > 99;
+    }
+    // Only digits
+    if (RegExp(r'^\d+$').hasMatch(input)) return true;
+
+    // Reject pure emojis or emoji-heavy input
+    final emojiRegex = RegExp(
+      r'^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F|\p{Emoji_Modifier_Base})+$',
+      unicode: true,
+    );
+    if (emojiRegex.hasMatch(input)) return true;
+
+    // Reject if all characters are punctuation
+    if (RegExp(r'^[^\w\s]+$').hasMatch(input)) return true;
+
+    // Reject repeated characters (e.g., "aaaaaaa", "!!!!!!!")
+    if (RegExp(r'^(.)\1{4,}$').hasMatch(input)) return true;
+
+    // Reject too short or meaningless strings
+    if (input.length < 4 && input.split(' ').length < 2) return true;
+
+    return false;
+  }
 
   void _sendHabit() async {
     final habit = _habitController.text.trim();
-    if (habit.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Please enter a Habit before proceeding."),
-        duration: Duration(seconds: 2),
-      ),
-    );
-    return;
-  }
+    if (habit.isEmpty || _isNonsense(habit)) {
+      setState(() {
+        _errorText = "Please enter a valid and meaningful habit.";
+      });
+      return;
+    } else {
+      setState(() {
+        _errorText = null;
+      });
+    }
 
     setState(() {
       _isLoading = true;
@@ -43,18 +76,16 @@ class _HabitInputScreenState extends State<HabitInputScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder:
-              (context) =>
-                  BuildScreen(habit: habit, classification: classification),
+          builder: (context) =>
+              BuildScreen(habit: habit, classification: classification),
         ),
       );
     } else if (classification == "Bad") {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder:
-              (context) =>
-                  QuitScreen(habit: habit, classification: classification),
+          builder: (context) =>
+              QuitScreen(habit: habit, classification: classification),
         ),
       );
     } else {
@@ -75,7 +106,6 @@ class _HabitInputScreenState extends State<HabitInputScreen> {
           Navigator.pop(context);
         },
       ),
-    
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -105,7 +135,18 @@ class _HabitInputScreenState extends State<HabitInputScreen> {
                     decoration: InputDecoration(
                       hintText: "Enter here",
                       border: InputBorder.none,
+                      errorText: _errorText,
                     ),
+                    onChanged: (text) {
+                      // Only validate after minimum length to avoid annoying users
+                      if (text.length > 3 || text.isEmpty) {
+                        setState(() {
+                          _errorText = _isNonsense(text)
+                              ? "Please enter a valid habit"
+                              : null;
+                        });
+                      }
+                    },
                   ),
                 ),
               ],
@@ -128,13 +169,12 @@ class _HabitInputScreenState extends State<HabitInputScreen> {
 
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child:
-                _isLoading
-                    ? Center(child: CircularProgressIndicator()) // Show spinner
-                    : CustomButton(
-                      buttonText: 'Continue',
-                      onPressed: _sendHabit,
-                    ),
+            child: _isLoading
+                ? Center(child: CircularProgressIndicator()) // Show spinner
+                : CustomButton(
+                    buttonText: 'Continue',
+                    onPressed: _sendHabit,
+                  ),
           ),
         ],
       ),

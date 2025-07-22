@@ -25,6 +25,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
   late final List<Map<String, String>> _allQuestions;
   late final List<String?> _answers;
   late final int _coreLength;
+  String? _errorText;
 
   int _currentQuestionIndex = 0;
   final _answerController = TextEditingController();
@@ -89,38 +90,87 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
     _answers = List.filled(_allQuestions.length, null);
   }
 
+  bool _isNonsense(String input, {String? field}) {
+    input = input.trim();
+
+    if (input.isEmpty) return true;
+
+    // Handle duration separately (only 2-digit numbers allowed)
+  if (field == "duration") {
+    final num = int.tryParse(input);
+    return num == null || num < 10 || num > 99;
+  }
+    // Only digits
+    if (RegExp(r'^\d+$').hasMatch(input)) return true;
+
+    // Reject pure emojis or emoji-heavy input
+    final emojiRegex = RegExp(
+      r'^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F|\p{Emoji_Modifier_Base})+$',
+      unicode: true,
+    );
+    if (emojiRegex.hasMatch(input)) return true;
+
+    // Reject if all characters are punctuation
+    if (RegExp(r'^[^\w\s]+$').hasMatch(input)) return true;
+
+    // Reject repeated characters (e.g., "aaaaaaa", "!!!!!!!")
+    if (RegExp(r'^(.)\1{4,}$').hasMatch(input)) return true;
+
+    // Reject too short or meaningless strings
+    if (input.length < 4 && input.split(' ').length < 2) return true;
+
+    return false;
+  }
+
   void _nextQuestion() {
     final answer = _answerController.text.trim();
+    final fieldKey = _allQuestions[_currentQuestionIndex]["key"];
+
     if (answer.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Please enter an answer before proceeding."),
-        duration: Duration(seconds: 2),
-      ),
-    );
-    return;
-  }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please enter an answer before proceeding."),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    if (_isNonsense(answer, field: fieldKey)) {
+      setState(() {
+        _errorText = "Please enter a valid answer";
+      });
+      return;
+    }
 
     setState(() {
       _answers[_currentQuestionIndex] = answer;
       _answerController.clear();
+      _errorText = null;
       _currentQuestionIndex++;
     });
   }
 
   void _submitAnswers() async {
     final answer = _answerController.text.trim();
+    final fieldKey = _allQuestions[_currentQuestionIndex]["key"];
     if (answer.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Please enter an answer before submitting."),
-        duration: Duration(seconds: 2),
-      ),
-    );
-    return;
-  }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please enter an answer before submitting."),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    if (_isNonsense(answer, field: fieldKey)) {
+      setState(() {
+        _errorText = "Please enter a valid answer";
+      });
+      return;
+    }
 
     _answers[_currentQuestionIndex] = answer;
+    _errorText = null;
 
     // Show loading dialog
     showDialog(
@@ -209,71 +259,97 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
         title: 'Made With AI',
         onBackPressed: () => Navigator.pop(context),
       ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  "Question ${_currentQuestionIndex + 1} / ${_allQuestions.length}",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  _allQuestions[_currentQuestionIndex]["question"] ?? "",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 20),
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 14.0,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color.fromARGB(255, 227, 235, 252),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: TextField(
-                    controller: _answerController,
-                    decoration: const InputDecoration(
-                      hintText: "Your answer",
-                      border: InputBorder.none,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            "Question ${_currentQuestionIndex + 1} / ${_allQuestions.length}",
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            _allQuestions[_currentQuestionIndex]["question"] ??
+                                "",
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 20),
+                          ),
+                          const SizedBox(height: 20),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                              vertical: 14.0,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color.fromARGB(255, 227, 235, 252),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: TextField(
+                              controller: _answerController,
+                              onChanged: (text) {
+                                final fieldKey =
+                                    _allQuestions[_currentQuestionIndex]["key"];
+                                setState(() {
+                                  _errorText =
+                                      _isNonsense(text, field: fieldKey)
+                                          ? "Please enter a valid answer"
+                                          : null;
+                                });
+                              },
+                              decoration: InputDecoration(
+                                hintText: "Your answer",
+                                border: InputBorder.none,
+                                errorText: _errorText,
+                              ),
+                              maxLines: null,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    maxLines: null,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Text(
-                  '"Answer honestly—it helps build a plan that works best for you."',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16, color: Colors.grey),
+                    Expanded(
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: Text(
+                            '"Answer honestly—it helps build a plan that works best for you."',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                fontSize: 16, color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: CustomButton(
+                        buttonText: isLastQuestion ? "Submit" : "Next",
+                        onPressed:
+                            isLastQuestion ? _submitAnswers : _nextQuestion,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: CustomButton(
-              buttonText: isLastQuestion ? "Submit" : "Next",
-              onPressed: isLastQuestion ? _submitAnswers : _nextQuestion,
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

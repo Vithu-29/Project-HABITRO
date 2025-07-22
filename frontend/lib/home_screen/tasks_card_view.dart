@@ -4,6 +4,7 @@ import '../components/cnav_bar.dart';
 import '../components/custom_button.dart';
 import '../services/notification_service.dart'; // Added import
 import './reminder_setup.dart';
+import './home_screen.dart';
 
 class TasksCardView extends StatefulWidget {
   final List<Map<String, dynamic>> tasks;
@@ -49,7 +50,6 @@ class _TaskCardScreenState extends State<TasksCardView> {
         habitType: habitType,
         tasks: widget.tasks,
         duration: duration,
-
       );
 
       if (response['status'] == 'success') {
@@ -155,42 +155,53 @@ class _TaskCardScreenState extends State<TasksCardView> {
         ],
       ),
     );
-    // final bool notificationsEnabled = 
+    // final bool notificationsEnabled =
     //   await NotificationService.checkNotificationsEnabled();
 
     if (shouldSetReminder == true) {
+      await NotificationService.init(); //  Initialize only when needed
       final bool notificationsEnabled =
           await NotificationService.checkNotificationsEnabled();
 
       if (shouldSetReminder == true && notificationsEnabled) {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ReminderSetupScreen(
-          habitId: habitId,
-          habitName: 
-              widget.responses['responses']?['habit_name'] ?? 'Your Habit',
-          trackingDurationDays: habitDurationDays,
-        ),
-      ),
-    );
+        final result = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ReminderSetupScreen(
+              habitId: habitId,
+              habitName:
+                  widget.responses['responses']?['habit_name'] ?? 'Your Habit',
+              trackingDurationDays: habitDurationDays,
+            ),
+          ),
+        );
 
-    if (result == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Daily reminder set!')),
-      );
+        if (result == true && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Daily reminder set!')),
+          );
+        }
+      } else if (shouldSetReminder == false) {
+        // User explicitly chose "Not Now"
+        await AIService.updateReminderSettings(
+          habitId: habitId,
+          wantsReminder: false,
+          reminderTime: null,
+        );
+        // Navigate to HomeScreen
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+                builder: (_) =>
+                    const HomeScreen()), // Replace with your actual HomeScreen
+            (route) => false, // Removes all previous routes
+          );
+        }
+      } else if (!notificationsEnabled && mounted) {
+        await _showNotificationsDisabledDialog(context);
+      }
     }
-  } else if (shouldSetReminder == false) {
-    // User explicitly chose "Not Now"
-    await AIService.updateReminderSettings(
-      habitId: habitId,
-      wantsReminder: false,
-      reminderTime: null,
-    );
-  } else if (!notificationsEnabled && mounted) {
-    await _showNotificationsDisabledDialog(context);
-  }
-}
   }
 
   Future<void> _showNotificationsDisabledDialog(BuildContext context) async {
