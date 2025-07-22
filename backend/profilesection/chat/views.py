@@ -1,18 +1,20 @@
 from rest_framework import viewsets, status, mixins
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.viewsets import GenericViewSet
-from django.contrib.auth.models import User
-from django.db.models import Q, F
-from django.conf import settings
+from rest_framework import generics, permissions
 from PIL import Image, ImageDraw, ImageFont
 import random
 import string
 from io import BytesIO
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.files.storage import default_storage
+from rest_framework.views import APIView
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.viewsets import GenericViewSet
 from django.http import JsonResponse
+from django.contrib.auth.models import User
+from django.db.models import Q, F
+from django.conf import settings
 
 from .models import (
     User,
@@ -33,23 +35,68 @@ from .serializers import (
 )
 
 def generate_avatar():
+    """Generate a random avatar image."""
     width, height = 100, 100
     img = Image.new('RGB', (width, height), color=(255, 255, 255))
     d = ImageDraw.Draw(img)
-    text = ''.join(random.choices(string.ascii_uppercase, k=2))
-    font = ImageFont.load_default()
-    d.text((10, 25), text, fill=(0, 0, 0), font=font)
+    text = ''.join(random.choices(string.ascii_uppercase, k=2))  # Random text
+    d.text((10, 25), text, fill=(0, 0, 0))
 
+    # Save the image to a BytesIO object
     image_io = BytesIO()
     img.save(image_io, 'PNG')
     image_io.seek(0)
 
+    # Save the image as a file in the media folder
     avatar_name = f"avatars/{''.join(random.choices(string.ascii_lowercase + string.digits, k=8))}.png"
     avatar_file = InMemoryUploadedFile(image_io, None, avatar_name, 'image/png', image_io.getbuffer().nbytes, None)
 
+    # Save it to Django's media storage
     file_path = default_storage.save(avatar_name, avatar_file)
     return file_path
 
+class AppearanceSettingsView(generics.RetrieveUpdateAPIView):
+    serializer_class = UserProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        # Return the UserProfile for the current logged-in user
+        return self.request.user.profile
+    
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = User.objects.filter(is_staff=True)  # Only non-staff users, adjust as needed
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['GET'])
+    def me(self, request):
+        """Return the current user's information."""
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['GET'])
+    def search(self, request):
+        """Search users by username (or other fields)."""
+        query = request.query_params.get('q', '')
+        if query:
+            # Example: search by username containing the query, excluding staff
+            users = User.objects.filter(username__icontains=query, is_staff=False)
+            serializer = UserSerializer(users, many=True)
+            return Response(serializer.data)
+        return Response({"error": "Please provide a 'q' query parameter to search."},
+                        status=400)
+
+# USER - To fetch the list of users (friends)
+class UserList(APIView):
+    permission_classes = [IsAuthenticated]  # Ensure the user is authenticated
+
+    def get(self, request):
+        # Fetch only users marked as staff in the backend
+        staff_users = User.objects.filter(is_staff=False)  # Fetch non-staff users
+        serializer = UserSerializer(staff_users, many=True)  # Serialize the users
+        return Response(serializer.data)  # Return the serialized data
+
+# USER PROFILE
 class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
@@ -75,6 +122,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             'weekly_points': profile.weekly_points
         })
 
+# FRIENDSHIP
 class FriendshipViewSet(viewsets.ModelViewSet):
     serializer_class = FriendshipSerializer
     permission_classes = [IsAuthenticated]
@@ -85,6 +133,7 @@ class FriendshipViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Cannot send friend request to yourself'},
                             status=status.HTTP_400_BAD_REQUEST)
 
+        # Check if friendship already exists
         friendship, created = Friendship.objects.get_or_create(
             requester=request.user,
             receiver_id=receiver_id,
@@ -95,10 +144,12 @@ class FriendshipViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Friend request already exists'},
                             status=status.HTTP_400_BAD_REQUEST)
 
+        # Update the receiver's is_staff value to 1
         receiver_user = User.objects.get(id=receiver_id)
         receiver_user.is_staff = True
         receiver_user.save()
 
+        # Send notification to the receiver about the new friend request
         Notification.objects.create(
             user_id=receiver_id,
             notification_type='friend_request',
@@ -106,6 +157,7 @@ class FriendshipViewSet(viewsets.ModelViewSet):
             related_id=friendship.id
         )
 
+        # Return the friendship data
         serializer = self.get_serializer(friendship)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -138,6 +190,7 @@ class FriendshipViewSet(viewsets.ModelViewSet):
         friendship.save()
         return Response({'status': 'Friend request rejected'})
 
+# CHAT
 class ChatViewSet(viewsets.ModelViewSet):
     serializer_class = ChatMessageSerializer
     permission_classes = [IsAuthenticated]
@@ -198,6 +251,7 @@ class ChatViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(messages, many=True)
         return Response(serializer.data)
 
+# LEADERBOARD
 class LeaderboardViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = LeaderboardSerializer
     permission_classes = [IsAuthenticated]
@@ -217,50 +271,24 @@ class LeaderboardViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         data = serializer.data
         
+        # Process avatar URLs and save avatars if not present
         for entry in data:
             avatar_url = entry.get('avatar')
             if avatar_url:
+                # Build full URL for avatars
                 entry['avatar'] = request.build_absolute_uri(avatar_url)
             else:
-                entry['avatar'] = request.build_absolute_uri(
-                    settings.MEDIA_URL + 'default_avatar.png'
-                )
+                # Check if the user has a profile avatar, if not, generate and save one
+                user_profile = entry.get('user', {}).get('profile', None)
+                if user_profile and not user_profile.get('avatar'):
+                    avatar_path = generate_avatar()
+                    user_profile.avatar = avatar_path
+                    user_profile.save()
+                    entry['avatar'] = request.build_absolute_uri(settings.MEDIA_URL + avatar_path)
         
         return Response(data)
 
-    @action(detail=False, methods=['GET'])
-    def around_me(self, request):
-        period = request.query_params.get('period', 'weekly')
-
-        try:
-            entry = Leaderboard.objects.get(user=request.user, period=period)
-        except Leaderboard.DoesNotExist:
-            return Response({'error': 'Not on leaderboard'}, status=404)
-
-        higher = Leaderboard.objects.filter(
-            period=period, 
-            score__gt=entry.score
-        ).order_by('score')[:5]
-        
-        lower = Leaderboard.objects.filter(
-            period=period, 
-            score__lt=entry.score
-        ).order_by('-score')[:5]
-
-        combined = list(higher) + [entry] + list(lower)
-        serializer = self.get_serializer(combined, many=True)
-        
-        data = serializer.data
-        for entry in data:
-            if entry.get('avatar'):
-                entry['avatar'] = request.build_absolute_uri(entry['avatar'])
-            else:
-                entry['avatar'] = request.build_absolute_uri(
-                    settings.MEDIA_URL + 'default_avatar.png'
-                )
-                
-        return Response({'entries': data})
-
+# NOTIFICATIONS
 class NotificationViewSet(mixins.ListModelMixin,
                           mixins.UpdateModelMixin,
                           GenericViewSet):
@@ -275,6 +303,7 @@ class NotificationViewSet(mixins.ListModelMixin,
         Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
         return Response({'status': 'All notifications marked as read'})
 
+# EDIT PROFILE VIEWSET
 class EditProfileViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
@@ -292,6 +321,7 @@ class EditProfileViewSet(viewsets.ViewSet):
             if serializer.is_valid():
                 serializer.save()
 
+                # Handle nested UserProfile update
                 profile_data = request.data.get('profile')
                 if profile_data:
                     profile_serializer = UserProfileSerializer(

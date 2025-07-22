@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'auth_service.dart';
-import 'package:logger/logger.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -14,7 +13,7 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
-  final _formKey = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>(); // Form key for validation
   final _nameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _dobController = TextEditingController();
@@ -26,10 +25,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   File? _imageFile;
   String? _avatarUrl;
   final ImagePicker _picker = ImagePicker();
-  bool _isLoading = false;
+  bool _isLoading = false; // Track loading state
 
-  final String apiUrl = 'http://10.0.2.2:8000/api/profile/me/';
-  final logger = Logger();
+  final String apiUrl = 'http://127.0.0.1:8000/api/profile/me/';
 
   @override
   void initState() {
@@ -47,9 +45,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     super.dispose();
   }
 
+  // Fetch user profile data
   Future<void> fetchUserProfile() async {
     try {
-      logger.i('Fetching user profile...');
       final response = await http.get(
         Uri.parse(apiUrl),
         headers: {
@@ -71,20 +69,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
           selectedGender = _capitalize(profile['gender'] ?? 'Male');
           _avatarUrl =
               profile['avatar'] != null
-                  ? 'http://10.0.2.2:8000${profile['avatar']}'
+                  ? 'http://127.0.0.1:8000${profile['avatar']}'
                   : null;
         });
       } else {
-        logger.e('Error fetching profile: ${response.body}');
+        print("❌ Error fetching profile: ${response.body}");
       }
     } catch (e) {
-      logger.e('Exception: $e');
+      print("❌ Exception: $e");
     }
   }
 
+  // Update user profile data
   Future<void> updateProfile() async {
     setState(() {
-      _isLoading = true;
+      _isLoading = true; // Show loading indicator
     });
 
     final uri = Uri.parse(apiUrl);
@@ -99,6 +98,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ..fields['profile.phone_number'] = _phoneController.text.trim()
           ..fields['profile.is_private'] = isPrivate.toString();
 
+    // Attach avatar if it exists
     if (_imageFile != null) {
       request.files.add(
         await http.MultipartFile.fromPath('profile.avatar', _imageFile!.path),
@@ -110,26 +110,25 @@ class _EditProfilePageState extends State<EditProfilePage> {
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
-        if (!mounted) return;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text("✅ Profile updated!")));
-        fetchUserProfile();
+        fetchUserProfile(); // Refresh the profile after update
       } else {
-        if (!mounted) return;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("❌ Failed: ${response.body}")));
       }
     } catch (e) {
-      logger.e('Error updating profile: $e');
+      print('Error updating profile: $e');
     } finally {
       setState(() {
-        _isLoading = false;
+        _isLoading = false; // Hide loading indicator after request is finished
       });
     }
   }
 
+  // Pick an image for the avatar
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
@@ -139,6 +138,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
+  // Date picker for Date of Birth
   Future<void> _selectDateOfBirth() async {
     final initialDate =
         DateTime.tryParse(_dobController.text) ?? DateTime(2000);
@@ -153,6 +153,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
+  // Validate email format using regex
   String? _validateEmail(String? value) {
     const emailPattern =
         r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|org|net|edu|gov|co|info|io|[a-z]{2,})$';
@@ -165,11 +166,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return null;
   }
 
+  // Validate phone number (must be exactly 10 digits)
   String? _validatePhone(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter your phone number';
     }
 
+    // Regex to ensure the phone number is exactly 10 digits and valid
     final phoneRegExp = RegExp(r'^\d{10}$');
     if (!phoneRegExp.hasMatch(value)) {
       return 'Phone number must be exactly 10 digits';
@@ -177,6 +180,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return null;
   }
 
+  // Validate username (it must not be empty)
   String? _validateUsername(String? value) {
     if (value == null || value.isEmpty) {
       return 'Username is required';
@@ -184,6 +188,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return null;
   }
 
+  // Validate name (it must not be empty)
   String? _validateName(String? value) {
     if (value == null || value.isEmpty) {
       return 'Name is required';
@@ -191,10 +196,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return null;
   }
 
+  // Validate the form and send the update
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      updateProfile();
+      updateProfile(); // Call the update profile function if form is valid
     }
   }
 
@@ -215,7 +221,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ),
         actions: [
           TextButton(
-            onPressed: _isLoading ? null : _submitForm,
+            onPressed:
+                _isLoading ? null : _submitForm, // Disable button while loading
             child: const Text(
               "Save",
               style: TextStyle(color: Color.fromRGBO(40, 83, 175, 1)),
@@ -228,6 +235,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
+              // Avatar image or default avatar if no image
               Stack(
                 alignment: Alignment.bottomRight,
                 children: [
@@ -255,7 +263,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
               const SizedBox(height: 24),
               Form(
-                key: _formKey,
+                key: _formKey, // Form key for validation
                 child: Column(
                   children: [
                     _buildTextField(
@@ -301,6 +309,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
+  // Text field widget with validation
   Widget _buildTextField(
     String label,
     TextEditingController controller,
@@ -339,6 +348,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
+  // Date picker field for DOB
   Widget _buildDatePickerField(String label) {
     return GestureDetector(
       onTap: _selectDateOfBirth,
@@ -353,6 +363,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
+  // Dropdown field for gender selection
   Widget _buildDropdownField(String label) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -384,6 +395,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
+  // Switch for private profile
   Widget _buildSwitchField() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -408,6 +420,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
+  // Capitalize the first letter of gender
   String _capitalize(String input) {
     if (input.isEmpty) return input;
     return input[0].toUpperCase() + input.substring(1).toLowerCase();

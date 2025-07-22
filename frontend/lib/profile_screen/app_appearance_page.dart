@@ -1,51 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'settings_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AppAppearancePage extends StatefulWidget {
   const AppAppearancePage({super.key});
 
   @override
-  State<AppAppearancePage> createState() => _AppAppearancePageState();
+  _AppAppearancePageState createState() => _AppAppearancePageState();
 }
 
 class _AppAppearancePageState extends State<AppAppearancePage> {
-  String _selectedTheme = 'Light';
-  String _selectedLanguage = 'English';
-  String _selectedFontSize = 'Normal';
+  Future<String?> getAuthToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('auth_token');
+  }
 
-  void _showOptionsDialog(
-    String title,
-    List<String> options,
-    String current,
-    Function(String) onSelected,
-  ) {
-    showDialog(
-      context: context,
-      builder:
-          (_) => AlertDialog(
-            title: Text('Select $title'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children:
-                  options.map((option) {
-                    return ListTile(
-                      title: Text(option),
-                      leading: Radio<String>(
-                        value: option,
-                        groupValue: current,
-                        onChanged: (value) {
-                          Navigator.pop(context);
-                          if (value != null) onSelected(value);
-                        },
-                      ),
-                    );
-                  }).toList(),
-            ),
-          ),
-    );
+  String themeLabel(ThemePreference pref) {
+    switch (pref) {
+      case ThemePreference.light:
+        return 'Light';
+      case ThemePreference.dark:
+        return 'Dark';
+      case ThemePreference.system:
+        return 'System';
+    }
+  }
+
+  String fontLabel(FontSizePreference pref) {
+    switch (pref) {
+      case FontSizePreference.small:
+        return 'Small';
+      case FontSizePreference.medium:
+        return 'Normal';
+      case FontSizePreference.large:
+        return 'Large';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final settings = Provider.of<SettingsProvider>(context);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -66,43 +62,85 @@ class _AppAppearancePageState extends State<AppAppearancePage> {
           _AppearanceSettingTile(
             icon: Icons.color_lens,
             title: 'Theme',
-            value: _selectedTheme,
-            onTap: () {
+            value: themeLabel(settings.themePref),
+            onTap: () async {
+              String? authToken = await getAuthToken();
+              if (!mounted) return;
+
               _showOptionsDialog(
+                context,
                 'Theme',
-                ['Light', 'Dark', 'System'],
-                _selectedTheme,
-                (val) => setState(() => _selectedTheme = val),
-              );
-            },
-          ),
-          _AppearanceSettingTile(
-            icon: Icons.language,
-            title: 'App Language',
-            value: _selectedLanguage,
-            onTap: () {
-              _showOptionsDialog(
-                'Language',
-                ['English', 'Español', 'Français'],
-                _selectedLanguage,
-                (val) => setState(() => _selectedLanguage = val),
+                ThemePreference.values.map(themeLabel).toList(),
+                themeLabel(settings.themePref),
+                (String selected) {
+                  final idx = ThemePreference.values.indexWhere((e) => themeLabel(e) == selected);
+                  if (idx != -1) {
+                    final newPref = ThemePreference.values[idx];
+                    if (authToken != null) {
+                      settings.updateTheme(newPref, authToken);
+                    }
+                  }
+                },
               );
             },
           ),
           _AppearanceSettingTile(
             icon: Icons.format_size,
             title: 'Font Size',
-            value: _selectedFontSize,
-            onTap: () {
+            value: fontLabel(settings.fontPref),
+            onTap: () async {
+              String? authToken = await getAuthToken();
+              if (!mounted) return;
+
               _showOptionsDialog(
+                context,
                 'Font Size',
-                ['Small', 'Normal', 'Large'],
-                _selectedFontSize,
-                (val) => setState(() => _selectedFontSize = val),
+                FontSizePreference.values.map(fontLabel).toList(),
+                fontLabel(settings.fontPref),
+                (String selected) {
+                  final idx = FontSizePreference.values.indexWhere((e) => fontLabel(e) == selected);
+                  if (idx != -1) {
+                    final newPref = FontSizePreference.values[idx];
+                    if (authToken != null) {
+                      settings.updateFontSize(newPref, authToken);
+                    }
+                  }
+                },
               );
             },
           ),
         ],
+      ),
+    );
+  }
+
+  void _showOptionsDialog(
+    BuildContext context,
+    String title,
+    List<String> options,
+    String current,
+    Function(String) onSelected,
+  ) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Select $title'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: options.map((option) {
+            return ListTile(
+              title: Text(option),
+              leading: Radio<String>(
+                value: option,
+                groupValue: current,
+                onChanged: (value) {
+                  Navigator.pop(context);
+                  if (value != null) onSelected(value);
+                },
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -126,7 +164,7 @@ class _AppearanceSettingTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
-        color: Color.fromRGBO(232, 239, 255, 1),
+        color: const Color.fromRGBO(232, 239, 255, 1),
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [
           BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(2, 2)),

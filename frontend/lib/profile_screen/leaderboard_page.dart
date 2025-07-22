@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'auth_service.dart';
-import 'dart:developer';
 
 class LeaderboardPage extends StatefulWidget {
   const LeaderboardPage({super.key});
@@ -82,7 +81,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
         }
       }
     } catch (e) {
-      log("Error fetching current user rank: $e");
+      print("Error fetching current user rank: $e");
     }
   }
 
@@ -144,6 +143,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
             'Monthly': 'monthly',
             'All Time': 'all_time',
           }[newPeriod]!;
+
       currentPage = 1;
       top3Users.clear();
     });

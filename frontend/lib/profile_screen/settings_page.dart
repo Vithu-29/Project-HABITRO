@@ -7,6 +7,61 @@ import 'notification_settings_page.dart';
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
+  void _showHelpDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Help & Support'),
+          content: Text(
+            'Welcome to HABITRO Help & Support!\n\n'
+            'If you are facing any issues with the app or need assistance with any features, please refer to the following support options:\n\n'
+            '1. Visit our FAQ section: Find answers to common questions about using HABITRO.\n'
+            '2. Contact Support: Reach out to our support team via email for further assistance.\n'
+            '3. Tutorials: Explore step-by-step guides for getting the most out of HABITRO.\n\n'
+            'If you need any additional support, feel free to contact us directly. We are here to help you achieve your goals!',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('About'),
+          content: Text(
+            'HABITRO is a comprehensive habit management platform designed to help individuals build positive habits, minimize negative ones, and maintain discipline through habit tracking, personalized analytics, and gamification.\n\n'
+            'Key Features:\n'
+            '1. **Habit Tracking**: Track your habits and set goals for daily progress.\n'
+            '2. **Gamification**: Earn rewards, badges, and maintain streaks to stay motivated.\n'
+            '3. **Personalized Feedback**: Receive actionable insights to improve your habits.\n'
+            '4. **Admin Portal**: For managing user data and configuring system settings.\n\n'
+            'Our goal is to empower users to make lasting, positive changes in their lives by bridging the gap between habit intention and action. With real-time insights and engaging elements, HABITRO motivates users to stay consistent and achieve personal growth.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = [
@@ -14,8 +69,16 @@ class SettingsPage extends StatelessWidget {
       {'icon': Icons.remove_red_eye, 'label': 'App Appearance'},
       {'icon': Icons.notifications_none, 'label': 'Notifications'},
       {'icon': Icons.link, 'label': 'Linked Accounts'},
-      {'icon': Icons.support_agent, 'label': 'Help & Support'},
-      {'icon': Icons.info_outline, 'label': 'About'},
+      {
+        'icon': Icons.support_agent,
+        'label': 'Help & Support',
+        'onTap': () => _showHelpDialog(context),
+      },
+      {
+        'icon': Icons.info_outline,
+        'label': 'About',
+        'onTap': () => _showAboutDialog(context),
+      },
     ];
 
     return Scaffold(
@@ -50,43 +113,51 @@ class SettingsPage extends StatelessWidget {
                   leading: Icon(item['icon'] as IconData),
                   title: Text(item['label'] as String),
                   trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: () {
-                    switch (item['label']) {
-                      case 'Account & Security':
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AccountSecurityPage(),
-                          ),
-                        );
-                        break;
-                      case 'App Appearance':
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AppAppearancePage(),
-                          ),
-                        );
-                        break;
-                      case 'Notifications':
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder:
-                                (context) => const NotificationSettingsPage(),
-                          ),
-                        );
-                        break;
-                      case 'Linked Accounts':
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const LinkedAccountsPage(),
-                          ),
-                        );
-                        break;
-                    }
-                  },
+                  onTap:
+                      item['onTap'] != null
+                          ? item['onTap'] as Function()
+                          : () {
+                            switch (item['label']) {
+                              case 'Account & Security':
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) =>
+                                            const AccountSecurityPage(),
+                                  ),
+                                );
+                                break;
+                              case 'App Appearance':
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => const AppAppearancePage(),
+                                  ),
+                                );
+                                break;
+                              case 'Notifications':
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) =>
+                                            const NotificationSettingsPage(),
+                                  ),
+                                );
+                                break;
+                              case 'Linked Accounts':
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => const LinkedAccountsPage(),
+                                  ),
+                                );
+                                break;
+                            }
+                          },
                 ),
               ),
             );

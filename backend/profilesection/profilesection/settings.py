@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     # ✅ Your custom app
     'chat',
     'corsheaders',
+    'profilesection',
 ]
 
 MIDDLEWARE = [
@@ -43,7 +44,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -72,11 +72,11 @@ WSGI_APPLICATION = 'profilesection.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('habitroo'),
-        'USER': config('root'),
-        'PASSWORD': config('@vithu'),
-        'HOST': config('localhost', default='localhost'),
-        'PORT': config('3306', default=3306, cast=int),
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST', default='localhost'),
+        'PORT': config('DB_PORT', default=3306, cast=int),
     }
 }
 
