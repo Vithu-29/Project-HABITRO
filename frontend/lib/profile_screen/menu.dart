@@ -1,8 +1,59 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'settings_provider.dart';
 import 'leaderboard_page.dart';
 import 'settings_page.dart';
 import 'challenges_page.dart';
 import 'edit_profile_page.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final settingsProvider = SettingsProvider();
+  await settingsProvider.loadFromLocal();
+  final String? authToken = await getSavedAuthToken();
+
+  if (authToken != null) {
+    await settingsProvider.fetchFromBackend(authToken);
+  }
+
+  runApp(
+    ChangeNotifierProvider<SettingsProvider>.value(
+      value: settingsProvider,
+      child: const MyApp(),
+    ),
+  );
+}
+
+Future<String?> getSavedAuthToken() async {
+  return null;
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<SettingsProvider>(
+      builder: (context, settings, child) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          themeMode: settings.themeMode,
+          theme: ThemeData.light(),
+          darkTheme: ThemeData.dark(),
+          builder: (context, child) {
+            return MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaleFactor: settings.fontScale),
+              child: child!,
+            );
+          },
+          home: const MenuPage(),
+        );
+      },
+    );
+  }
+}
 
 class MenuPage extends StatelessWidget {
   const MenuPage({super.key});
@@ -29,13 +80,20 @@ class MenuPage extends StatelessWidget {
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Stack(
                   children: [
                     const Center(
                       child: Text(
                         'Menu',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
                       ),
                     ),
                   ],
@@ -55,24 +113,50 @@ class MenuPage extends StatelessWidget {
                       children: [
                         const CircleAvatar(
                           radius: 40,
-                          backgroundImage: NetworkImage("https://via.placeholder.com/150"),
+                          backgroundImage: NetworkImage(
+                            "https://via.placeholder.com/150",
+                          ),
                         ),
                         const SizedBox(height: 10),
-                        const Text("Name", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color.fromRGBO(40, 83, 175, 1))),
-                        const Text("@username", style: TextStyle(color: Colors.black)),
+                        const Text(
+                          "Name",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color.fromRGBO(40, 83, 175, 1),
+                          ),
+                        ),
+                        const Text(
+                          "@username",
+                          style: TextStyle(color: Colors.black),
+                        ),
                         const SizedBox(height: 10),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: const [
                             Column(
                               children: [
-                                Text("12", style: TextStyle(fontWeight: FontWeight.bold, color: Color.fromRGBO(40, 83, 175, 1), fontSize: 18)),
+                                Text(
+                                  "12",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Color.fromRGBO(40, 83, 175, 1),
+                                    fontSize: 18,
+                                  ),
+                                ),
                                 Text("Habit Following"),
                               ],
                             ),
                             Column(
                               children: [
-                                Text("88%", style: TextStyle(fontWeight: FontWeight.bold, color: Color.fromRGBO(40, 83, 175, 1), fontSize: 18)),
+                                Text(
+                                  "88%",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Color.fromRGBO(40, 83, 175, 1),
+                                    fontSize: 18,
+                                  ),
+                                ),
                                 Text("Success Rate"),
                               ],
                             ),
@@ -103,7 +187,13 @@ class MenuPage extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: const [
-                    Text("Achievements", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(
+                      "Achievements",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     Text("View All", style: TextStyle(color: Colors.blue)),
                   ],
                 ),
@@ -128,7 +218,10 @@ class MenuPage extends StatelessWidget {
                         children: [
                           const Icon(Icons.emoji_events, color: Colors.orange),
                           const SizedBox(height: 5),
-                          Text(index % 2 == 0 ? "Quiz Master" : "7 Perfect Days", textAlign: TextAlign.center),
+                          Text(
+                            index % 2 == 0 ? "Quiz Master" : "7 Perfect Days",
+                            textAlign: TextAlign.center,
+                          ),
                         ],
                       ),
                     );
@@ -140,9 +233,39 @@ class MenuPage extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Column(
                   children: [
-                    MenuButton(icon: Icons.leaderboard, title: "Leader Board", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => LeaderboardPage()))),
-                    MenuButton(icon: Icons.flag, title: "Challenges", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChallengesPage()))),
-                    MenuButton(icon: Icons.settings, title: "Settings", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsPage()))),
+                    MenuButton(
+                      icon: Icons.leaderboard,
+                      title: "Leader Board",
+                      onTap:
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => LeaderboardPage(),
+                            ),
+                          ),
+                    ),
+                    MenuButton(
+                      icon: Icons.flag,
+                      title: "Challenges",
+                      onTap:
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ChallengesPage(),
+                            ),
+                          ),
+                    ),
+                    MenuButton(
+                      icon: Icons.settings,
+                      title: "Settings",
+                      onTap:
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SettingsPage(),
+                            ),
+                          ),
+                    ),
                   ],
                 ),
               ),
@@ -183,7 +306,13 @@ class MenuButton extends StatelessWidget {
             Icon(icon, size: 24),
             const SizedBox(width: 16),
             Expanded(
-              child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
             const Icon(Icons.arrow_forward_ios, size: 16),
           ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'auth_service.dart';
+import 'package:logger/logger.dart';
 
 class LeaderboardPage extends StatefulWidget {
   const LeaderboardPage({super.key});
@@ -20,6 +21,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
   int currentPage = 1;
   int totalPages = 20;
   Map<String, dynamic>? currentUserGlobal;
+  final logger = Logger();
 
   @override
   void initState() {
@@ -55,6 +57,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
         errorMessage = 'Profile Exception: $e';
         isLoading = false;
       });
+      logger.e('Profile Exception: $e');
     }
   }
 
@@ -81,7 +84,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
         }
       }
     } catch (e) {
-      print("Error fetching current user rank: $e");
+      logger.e("Error fetching current user rank: $e");
     }
   }
 
@@ -131,6 +134,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
         errorMessage = 'Error: $e';
         isLoading = false;
       });
+      logger.e("Error fetching leaderboard: $e");
     }
   }
 

@@ -1,46 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'settings_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-class AppAppearancePage extends StatefulWidget {
+class AppAppearancePage extends StatelessWidget {
   const AppAppearancePage({super.key});
-
-  @override
-  _AppAppearancePageState createState() => _AppAppearancePageState();
-}
-
-class _AppAppearancePageState extends State<AppAppearancePage> {
-  Future<String?> getAuthToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
-  }
-
-  String themeLabel(ThemePreference pref) {
-    switch (pref) {
-      case ThemePreference.light:
-        return 'Light';
-      case ThemePreference.dark:
-        return 'Dark';
-      case ThemePreference.system:
-        return 'System';
-    }
-  }
-
-  String fontLabel(FontSizePreference pref) {
-    switch (pref) {
-      case FontSizePreference.small:
-        return 'Small';
-      case FontSizePreference.medium:
-        return 'Normal';
-      case FontSizePreference.large:
-        return 'Large';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsProvider>(context);
+
+    String themeLabel(ThemePreference pref) {
+      switch (pref) {
+        case ThemePreference.light: return 'Light';
+        case ThemePreference.dark: return 'Dark';
+        case ThemePreference.system: return 'System';
+      }
+    }
+    String fontLabel(FontSizePreference pref) {
+      switch (pref) {
+        case FontSizePreference.small: return 'Small';
+        case FontSizePreference.medium: return 'Normal';
+        case FontSizePreference.large: return 'Large';
+      }
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -63,10 +45,7 @@ class _AppAppearancePageState extends State<AppAppearancePage> {
             icon: Icons.color_lens,
             title: 'Theme',
             value: themeLabel(settings.themePref),
-            onTap: () async {
-              String? authToken = await getAuthToken();
-              if (!mounted) return;
-
+            onTap: () {
               _showOptionsDialog(
                 context,
                 'Theme',
@@ -76,22 +55,18 @@ class _AppAppearancePageState extends State<AppAppearancePage> {
                   final idx = ThemePreference.values.indexWhere((e) => themeLabel(e) == selected);
                   if (idx != -1) {
                     final newPref = ThemePreference.values[idx];
-                    if (authToken != null) {
-                      settings.updateTheme(newPref, authToken);
-                    }
+                    settings.updateTheme(newPref, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzc5OTQxMTM5LCJpYXQiOjE3NDg0MDUxMzksImp0aSI6IjFjMzE5YTQyNWZmYjRjNTk4NmFiZjI0Zjg3NjQ3N2Y2IiwidXNlcl9pZCI6MX0.jXVGeAkPmh6SIR3gBfz9UzfrXP8_GPENbfF7-Aoxdag"); // <-- use your token here
                   }
                 },
               );
             },
           ),
+          
           _AppearanceSettingTile(
             icon: Icons.format_size,
             title: 'Font Size',
             value: fontLabel(settings.fontPref),
-            onTap: () async {
-              String? authToken = await getAuthToken();
-              if (!mounted) return;
-
+            onTap: () {
               _showOptionsDialog(
                 context,
                 'Font Size',
@@ -101,9 +76,7 @@ class _AppAppearancePageState extends State<AppAppearancePage> {
                   final idx = FontSizePreference.values.indexWhere((e) => fontLabel(e) == selected);
                   if (idx != -1) {
                     final newPref = FontSizePreference.values[idx];
-                    if (authToken != null) {
-                      settings.updateFontSize(newPref, authToken);
-                    }
+                    settings.updateFontSize(newPref, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzc5OTQxMTM5LCJpYXQiOjE3NDg0MDUxMzksImp0aSI6IjFjMzE5YTQyNWZmYjRjNTk4NmFiZjI0Zjg3NjQ3N2Y2IiwidXNlcl9pZCI6MX0.jXVGeAkPmh6SIR3gBfz9UzfrXP8_GPENbfF7-Aoxdag");
                   }
                 },
               );
