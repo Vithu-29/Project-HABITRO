@@ -8,6 +8,7 @@ import '../components/standard_app_bar.dart';
 import '../services/ai_services.dart';
 
 class ReportScreen extends StatefulWidget {
+class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
 
   @override

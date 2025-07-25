@@ -15,7 +15,7 @@ import 'firebase_options.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:provider/provider.dart';
 
-Future<void> main() async {
+Future<void> main() async{
   await dotenv.load(fileName: ".env");
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -53,6 +53,7 @@ class MyApp extends StatelessWidget {
         '/signup': (context) => SignUpScreen(),
         '/signin': (context) => SignInScreen(),
         '/home': (context) => HomePage(),
+        '/forgot-password': (context) => ForgotPasswordScreen(),
         '/forgot-password': (context) => ForgotPasswordScreen(),
       },
     );

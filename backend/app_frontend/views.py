@@ -5,7 +5,12 @@ from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.utils import timezone
 from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login
 from datetime import timedelta
+from django.db import transaction
+import re
+import requests
+from django.conf import settings
 from django.db import transaction
 import re
 import requests
@@ -15,8 +20,81 @@ from .serializers import RegisterSerializer, VerifyOTPSerializer, ChallengeSeria
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view
 import logging
+from .serializers import RegisterSerializer, VerifyOTPSerializer, ChallengeSerializer, UserChallengeSerializer, UserChallengeHabit, JoinChallengeSerializer, UserChallenge, Challenge, ChallengeHabit
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view
+import logging
 from rest_framework.authtoken.models import Token
 
+
+logger = logging.getLogger(__name__)
+
+
+def format_phone_number(phone):
+    """For text.lk: returns 947XXXXXXXX (no +) or None if invalid."""
+    phone = normalize_phone_number(phone)
+    if phone and phone.startswith('+947'):
+        return phone[1:]
+    return None
+
+
+def validate_phone_number(phone_number):
+    """Returns True if phone_number is +947XXXXXXXX or 07XXXXXXXX (after normalization)."""
+    if not phone_number:
+        return False
+    if phone_number.startswith('+947') and len(phone_number) == 12 and phone_number[1:].isdigit():
+        return True
+    return False
+
+
+def normalize_phone_number(phone):
+    phone = phone.strip()
+    if phone.startswith('+947') and len(phone) == 12:
+        return phone
+    elif phone.startswith('07') and len(phone) == 10:
+        return '+94' + phone[1:]
+    return None
+
+
+def send_sms_via_textlk(phone_number, message):
+    if not all([settings.TEXT_LK_API_KEY, settings.TEXT_LK_SENDER_ID]):
+        logger.error("SMS not sent - text.lk credentials not configured")
+        return False
+    try:
+        # Check if we have a normalized phone number (+947 format)
+        if phone_number.startswith('+947') and len(phone_number) == 12:
+            formatted_phone = phone_number[1:]  # Remove '+' -> 947XXXXXXXX
+        else:
+            # Normalize other formats
+            normalized_phone = normalize_phone_number(phone_number)
+            if not normalized_phone:
+                logger.error(f"Invalid phone number format: {phone_number}")
+                return False
+            formatted_phone = normalized_phone[1:]
+
+        logger.info(f"Sending SMS to {formatted_phone}")
+        payload = {
+            'api_token': settings.TEXT_LK_API_KEY,
+            'sender_id': settings.TEXT_LK_SENDER_ID,
+            'recipient': formatted_phone,
+            'message': message
+        }
+        headers = {'Content-Type': 'application/json'}
+        response = requests.post(
+            "https://app.text.lk/api/http/sms/send",
+            json=payload,
+            headers=headers,
+            timeout=10
+        )
+        logger.info(
+            f"Text.lk response: {response.status_code} - {response.text}")
+        response.raise_for_status()
+        logger.info(f"SMS sent successfully to {formatted_phone}")
+        return True
+    except Exception as e:
+        logger.error(f"Exception sending SMS: {e}")
+        return False
+# Register View
 
 logger = logging.getLogger(__name__)
 
