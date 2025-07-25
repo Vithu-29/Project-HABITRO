@@ -104,7 +104,7 @@ DATABASES = {
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             'ssl':{
-                'ca': BASE_DIR.joinpath('certs', 'BaltimoreCyberTrustRoot.crt.pem').as_posix(),
+                'ca': BASE_DIR.joinpath('certs', 'DigiCertGlobalRootCA.crt.pem').as_posix(),
             },
         },
     }
