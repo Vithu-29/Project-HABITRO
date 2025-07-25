@@ -24,7 +24,7 @@ export function UserInfo() {
   const handleLogout = () => {
     setIsOpen(false);
    
-    router.push("/login"); 
+    router.push("/logout"); 
   };
 
   return (
@@ -55,7 +55,6 @@ export function UserInfo() {
           </figcaption>
         </figure>
       </DropdownTrigger>
-
       <DropdownContent
         className="border border-stroke bg-white shadow-md dark:border-dark-3 dark:bg-gray-dark min-[230px]:min-w-[17.5rem]"
         align="end"

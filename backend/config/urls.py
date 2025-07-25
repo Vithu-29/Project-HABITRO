@@ -20,6 +20,7 @@ urlpatterns = [
     path('game/', include('game.urls')),
     path('achievements/', include('achievements.urls')),
     path('', include('articles.urls')),
+    path('api/articles/', include('articles.urls')),
 ]
 
 if settings.DEBUG:

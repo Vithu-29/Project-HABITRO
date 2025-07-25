@@ -29,3 +29,9 @@ class ArticleDetailView(generics.RetrieveAPIView):
         article.views += 1
         article.save()
         return self.retrieve(request, *args, **kwargs)
+from rest_framework.parsers import MultiPartParser, FormParser
+
+class ArticleCreateView(generics.CreateAPIView):
+    queryset = Article.objects.all()
+    serializer_class = ArticleSerializer
+    parser_classes = (MultiPartParser, FormParser)
