@@ -19,7 +19,7 @@ class HabitroAdminManager:
         Returns admin_id if valid, None otherwise
         """
         try:
-            with connections['habitro'].cursor() as cursor:
+            with connections['default'].cursor() as cursor:
                 # Get id, email, password, is_active
                 cursor.execute(
                     """
@@ -50,7 +50,7 @@ class HabitroAdminManager:
                 # Update last_login to Sri Lanka time
                 srilanka_tz = pytz.timezone('Asia/Colombo')
                 now_colombo = timezone.now().astimezone(srilanka_tz)
-                with connections['habitro'].cursor() as update_cursor:
+                with connections['default'].cursor() as update_cursor:
                     update_cursor.execute(
                         "UPDATE admin_details SET last_login = %s WHERE id = %s",
                         [now_colombo.strftime('%Y-%m-%d %H:%M:%S'), admin_id]
@@ -71,7 +71,7 @@ class HabitroAdminManager:
             otp = ''.join(random.choices(string.digits, k=6))
             expiry_time = timezone.now() + timedelta(minutes=10)
 
-            with connections['habitro'].cursor() as cursor:
+            with connections['default'].cursor() as cursor:
                 cursor.execute(
                     "SELECT id FROM admin_details WHERE email = %s",
                     [email]
@@ -130,7 +130,7 @@ class HabitroAdminManager:
                 return False
 
             hashed_password = make_password(new_password)
-            with connections['habitro'].cursor() as cursor:
+            with connections['default'].cursor() as cursor:
                 affected = cursor.execute(
                     """
                     UPDATE admin_details 

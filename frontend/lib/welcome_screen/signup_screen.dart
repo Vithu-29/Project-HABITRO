@@ -530,38 +530,51 @@ class SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
+                      // Replace "Sign up with" row with "or"
                       Row(
                         children: const [
                           Expanded(child: Divider()),
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 8.0),
-                            child: Text("Sign up with"),
+                            child: Text("or"),
                           ),
                           Expanded(child: Divider()),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _socialButton(
-                            'assets/images/google.png',
-                            _isLoading ? () {} : _handleGoogleSignIn,
-                          ),
-                          const SizedBox(width: 38),
-                          _socialButton(
-                            'assets/images/apple.png',
-                            () => ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Apple sign-in clicked')),
+                      // Google button with image on left and text on right
+                      Center(
+                        child: GestureDetector(
+                          onTap: _isLoading ? null : _handleGoogleSignIn,
+                          child: Container(
+                            height: 50,
+                            padding: const EdgeInsets.symmetric(horizontal: 18),
+                            decoration: BoxDecoration(
+                              color:
+                                  Colors.grey[300], // Increased gray intensity
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Image.asset(
+                                  'assets/images/google.png',
+                                  height: 28,
+                                  width: 28,
+                                ),
+                                const SizedBox(width: 14),
+                                const Text(
+                                  'Continue with Google',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 38),
-                          _socialButton(
-                            'assets/images/facebook.png',
-                            _isLoading ? () {} : _handleFacebookSignIn,
-                          ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 24),
                       Center(

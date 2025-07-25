@@ -1,6 +1,6 @@
 // lib/api_services/api_constants.dart
 class ApiConstants {
-  static const String baseUrl = 'https://192.168.8.101:8000/';
+  static const String baseUrl = 'https://192.168.8.103:8000/';
   
   // Habit endpoints
   static const String getHabits = '$baseUrl/habits/';

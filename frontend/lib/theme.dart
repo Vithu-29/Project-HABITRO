@@ -11,8 +11,8 @@ class AppColors {
 final ThemeData lightTheme = ThemeData(
   brightness: Brightness.light,
   scaffoldBackgroundColor: AppColors.bgcolor,
-  colorScheme: ColorScheme.light(
-    primary: AppColors.primary,
-    secondary: AppColors.secondary,
+  colorScheme: ColorScheme.light(                       
+    primary: AppColors.primary,                     
+    secondary: AppColors.secondary,           
   ),
 );

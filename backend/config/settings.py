@@ -4,7 +4,7 @@ Django settings for config project.
 
 from pathlib import Path
 from decouple import config
-
+import os
 # Build paths
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -33,6 +33,9 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'deepapi',
     'analyze_responses',
+    'cloudinary',
+    'cloudinary_storage',
+    
 ]
 
 CSRF_COOKIE_HTTPONLY = False
@@ -100,17 +103,11 @@ DATABASES = {
         'PORT': config('DB_PORT', default='3306'),
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'ssl':{
+                'ca': BASE_DIR.joinpath('certs', 'BaltimoreCyberTrustRoot.crt.pem').as_posix(),
+            },
         },
-    },
-    'habitro': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='3306'),
     }
-
 }
 
 # Password validation
@@ -186,6 +183,8 @@ if DEBUG:
         r"^http://127\.0\.0\.1:\d+$",
     ]
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 LOGGING = {
     'version': 1,
@@ -205,4 +204,13 @@ LOGGING = {
             'level': 'DEBUG',
         },
     },
+}
+
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': config('CLOUDINARY_API_KEY'),
+    'API_SECRET': config('CLOUDINARY_API_SECRET'),
 }

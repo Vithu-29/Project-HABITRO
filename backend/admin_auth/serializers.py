@@ -3,6 +3,8 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 import re
 import logging
+from django.db import connections
+from django.contrib.auth.hashers import check_password
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +39,7 @@ class AdminLoginSerializer(serializers.Serializer):
             })
 
         try:
-            with connections['habitro'].cursor() as cursor:
+            with connections['default'].cursor() as cursor:
                 cursor.execute(
                     """
                     SELECT id, email, password, g_active, 
