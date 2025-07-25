@@ -1,4 +1,3 @@
-# Register your models here.
 from django.contrib import admin
 from .models import UserProfile, Friendship, ChatMessage, Leaderboard, Notification
 from .models import User
@@ -10,5 +9,5 @@ admin.site.register(Leaderboard)
 admin.site.register(Notification)
 
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('name', 'username')  # Display name and username in the list view
+    list_display = ('name', 'username') 
     search_fields = ('name', 'username')

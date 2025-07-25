@@ -11,32 +11,37 @@ class AppAppearancePage extends StatelessWidget {
 
     String themeLabel(ThemePreference pref) {
       switch (pref) {
-        case ThemePreference.light: return 'Light';
-        case ThemePreference.dark: return 'Dark';
-        case ThemePreference.system: return 'System';
+        case ThemePreference.light:
+          return 'Light';
+        case ThemePreference.dark:
+          return 'Dark';
+        case ThemePreference.system:
+          return 'System';
       }
     }
+
     String fontLabel(FontSizePreference pref) {
       switch (pref) {
-        case FontSizePreference.small: return 'Small';
-        case FontSizePreference.medium: return 'Normal';
-        case FontSizePreference.large: return 'Large';
+        case FontSizePreference.small:
+          return 'Small';
+        case FontSizePreference.medium:
+          return 'Normal';
+        case FontSizePreference.large:
+          return 'Large';
       }
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color.fromRGBO(0, 0, 0, 1)),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
         centerTitle: true,
-        title: const Text(
-          'App Appearance',
-          style: TextStyle(color: Colors.black),
-        ),
+        title: const Text('App Appearance'),
+        foregroundColor: Theme.of(context).colorScheme.onBackground,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -52,16 +57,17 @@ class AppAppearancePage extends StatelessWidget {
                 ThemePreference.values.map(themeLabel).toList(),
                 themeLabel(settings.themePref),
                 (String selected) {
-                  final idx = ThemePreference.values.indexWhere((e) => themeLabel(e) == selected);
+                  final idx = ThemePreference.values.indexWhere(
+                    (e) => themeLabel(e) == selected,
+                  );
                   if (idx != -1) {
                     final newPref = ThemePreference.values[idx];
-                    settings.updateTheme(newPref, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzc5OTQxMTM5LCJpYXQiOjE3NDg0MDUxMzksImp0aSI6IjFjMzE5YTQyNWZmYjRjNTk4NmFiZjI0Zjg3NjQ3N2Y2IiwidXNlcl9pZCI6MX0.jXVGeAkPmh6SIR3gBfz9UzfrXP8_GPENbfF7-Aoxdag"); // <-- use your token here
+                    settings.updateTheme(newPref, "your-token-here");
                   }
                 },
               );
             },
           ),
-          
           _AppearanceSettingTile(
             icon: Icons.format_size,
             title: 'Font Size',
@@ -73,10 +79,12 @@ class AppAppearancePage extends StatelessWidget {
                 FontSizePreference.values.map(fontLabel).toList(),
                 fontLabel(settings.fontPref),
                 (String selected) {
-                  final idx = FontSizePreference.values.indexWhere((e) => fontLabel(e) == selected);
+                  final idx = FontSizePreference.values.indexWhere(
+                    (e) => fontLabel(e) == selected,
+                  );
                   if (idx != -1) {
                     final newPref = FontSizePreference.values[idx];
-                    settings.updateFontSize(newPref, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzc5OTQxMTM5LCJpYXQiOjE3NDg0MDUxMzksImp0aSI6IjFjMzE5YTQyNWZmYjRjNTk4NmFiZjI0Zjg3NjQ3N2Y2IiwidXNlcl9pZCI6MX0.jXVGeAkPmh6SIR3gBfz9UzfrXP8_GPENbfF7-Aoxdag");
+                    settings.updateFontSize(newPref, "your-token-here");
                   }
                 },
               );
@@ -96,25 +104,27 @@ class AppAppearancePage extends StatelessWidget {
   ) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text('Select $title'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: options.map((option) {
-            return ListTile(
-              title: Text(option),
-              leading: Radio<String>(
-                value: option,
-                groupValue: current,
-                onChanged: (value) {
-                  Navigator.pop(context);
-                  if (value != null) onSelected(value);
-                },
-              ),
-            );
-          }).toList(),
-        ),
-      ),
+      builder:
+          (_) => AlertDialog(
+            title: Text('Select $title'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children:
+                  options.map((option) {
+                    return ListTile(
+                      title: Text(option),
+                      leading: Radio<String>(
+                        value: option,
+                        groupValue: current,
+                        onChanged: (value) {
+                          Navigator.pop(context);
+                          if (value != null) onSelected(value);
+                        },
+                      ),
+                    );
+                  }).toList(),
+            ),
+          ),
     );
   }
 }
@@ -137,10 +147,14 @@ class _AppearanceSettingTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
-        color: const Color.fromRGBO(232, 239, 255, 1),
+        color: Theme.of(context).colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(2, 2)),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.onBackground.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(2, 2),
+          ),
         ],
       ),
       child: ListTile(

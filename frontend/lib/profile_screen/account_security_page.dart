@@ -5,52 +5,79 @@ class AccountSecurityPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: const Text(
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        title: Text(
           'Account & Security',
-          style: TextStyle(color: Color.fromRGBO(0, 0, 0, 1)),
+          style: TextStyle(
+            color:
+                theme.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black,
+          ),
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(
+            Icons.arrow_back,
+            color:
+                theme.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildOptionTile(Icons.fingerprint, 'Biometric ID'),
-          _buildOptionTile(Icons.face, 'Face ID'),
-          _buildOptionTile(Icons.lock_outline, 'Change Password'),
+          _buildOptionTile(context, Icons.fingerprint, 'Biometric ID'),
+          _buildOptionTile(context, Icons.face, 'Face ID'),
+          _buildOptionTile(context, Icons.lock_outline, 'Change Password'),
           const SizedBox(height: 20),
-          _buildDeleteTile(),
+          _buildDeleteTile(context),
         ],
       ),
     );
   }
 
-  Widget _buildOptionTile(IconData icon, String title) {
+  Widget _buildOptionTile(BuildContext context, IconData icon, String title) {
+    final theme = Theme.of(context);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Color.fromRGBO(232, 239, 255, 1),
+        color: theme.colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.onBackground.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(2, 2),
+          ),
+        ],
       ),
       child: ListTile(
-        leading: Icon(icon),
-        title: Text(title),
-        trailing: const Icon(Icons.arrow_forward_ios),
+        leading: Icon(icon, color: theme.iconTheme.color),
+        title: Text(
+          title,
+          style: TextStyle(color: theme.textTheme.bodyMedium?.color),
+        ),
+        trailing: Icon(Icons.arrow_forward_ios, color: theme.iconTheme.color),
       ),
     );
   }
 
-  Widget _buildDeleteTile() {
+  Widget _buildDeleteTile(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
       decoration: BoxDecoration(
-        color: Color.fromRGBO(232, 239, 255, 1),
+        color: theme.colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(16),
       ),
       child: const ListTile(

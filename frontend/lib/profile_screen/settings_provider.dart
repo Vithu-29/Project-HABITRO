@@ -8,7 +8,7 @@ enum ThemePreference { light, dark, system }
 enum FontSizePreference { small, medium, large }
 
 class SettingsProvider extends ChangeNotifier {
-  ThemePreference _themePref = ThemePreference.system;
+  ThemePreference _themePref = ThemePreference.light;
   FontSizePreference _fontPref = FontSizePreference.medium;
 
   ThemePreference get themePref => _themePref;
@@ -41,15 +41,13 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> loadFromLocal() async {
     final prefs = await SharedPreferences.getInstance();
-
     if (prefs.containsKey(_themeKey)) {
       final themeString = prefs.getString(_themeKey);
       _themePref = ThemePreference.values.firstWhere(
         (e) => e.toString().endsWith(themeString!),
-        orElse: () => ThemePreference.system,
+        orElse: () => ThemePreference.light,
       );
     }
-
     if (prefs.containsKey(_fontKey)) {
       final fontString = prefs.getString(_fontKey);
       _fontPref = FontSizePreference.values.firstWhere(
@@ -57,7 +55,6 @@ class SettingsProvider extends ChangeNotifier {
         orElse: () => FontSizePreference.medium,
       );
     }
-
     notifyListeners();
   }
 
@@ -73,25 +70,22 @@ class SettingsProvider extends ChangeNotifier {
       url,
       headers: {'Authorization': 'Bearer $authToken'},
     );
-
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       final themeStr = data['theme_preference'] as String?;
+      final fontStr = data['font_size_preference'] as String?;
       if (themeStr != null) {
         _themePref = ThemePreference.values.firstWhere(
           (e) => e.toString().endsWith(themeStr),
-          orElse: () => ThemePreference.system,
+          orElse: () => ThemePreference.light,
         );
       }
-
-      final fontStr = data['font_size_preference'] as String?;
       if (fontStr != null) {
         _fontPref = FontSizePreference.values.firstWhere(
           (e) => e.toString().endsWith(fontStr),
           orElse: () => FontSizePreference.medium,
         );
       }
-
       await _saveToLocal();
       notifyListeners();
     }
@@ -99,16 +93,13 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> updateTheme(ThemePreference newPref, String authToken) async {
     if (_themePref == newPref) return;
-
     _themePref = newPref;
     notifyListeners();
-    await _saveToLocal();
-
+    _saveToLocal();
     final url = Uri.parse('http://127.0.0.1:8000/api/appearance/');
     final body = json.encode({
       "theme_preference": newPref.toString().split('.').last,
     });
-
     await http.patch(
       url,
       headers: {
@@ -119,18 +110,18 @@ class SettingsProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> updateFontSize(FontSizePreference newPref, String authToken) async {
+  Future<void> updateFontSize(
+    FontSizePreference newPref,
+    String authToken,
+  ) async {
     if (_fontPref == newPref) return;
-
     _fontPref = newPref;
     notifyListeners();
-    await _saveToLocal();
-
+    _saveToLocal();
     final url = Uri.parse('http://127.0.0.1:8000/api/appearance/');
     final body = json.encode({
       "font_size_preference": newPref.toString().split('.').last,
     });
-
     await http.patch(
       url,
       headers: {

@@ -81,18 +81,25 @@ class SettingsPage extends StatelessWidget {
       },
     ];
 
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.appBarTheme.backgroundColor,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color.fromRGBO(0, 0, 0, 1)),
+          icon: Icon(
+            Icons.arrow_back,
+            color: theme.brightness == Brightness.dark ? Colors.white : Colors.black,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         centerTitle: true,
-        title: const Text(
+        title: Text(
           'Settings',
-          style: TextStyle(color: Color.fromRGBO(0, 0, 0, 1)),
+          style: TextStyle(
+            color: theme.brightness == Brightness.dark ? Colors.white : Colors.black,
+          ),
         ),
       ),
       body: Column(
@@ -106,58 +113,61 @@ class SettingsPage extends StatelessWidget {
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Color.fromRGBO(232, 239, 255, 1),
+                  color: theme.brightness == Brightness.dark
+                      ? theme.colorScheme.primaryContainer
+                      : const Color.fromRGBO(232, 239, 255, 1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: ListTile(
-                  leading: Icon(item['icon'] as IconData),
-                  title: Text(item['label'] as String),
+                  leading: Icon(
+                    item['icon'] as IconData,
+                    color: theme.iconTheme.color,
+                  ),
+                  title: Text(
+                    item['label'] as String,
+                    style: TextStyle(
+                      color: theme.textTheme.bodyMedium?.color,
+                    ),
+                  ),
                   trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap:
-                      item['onTap'] != null
-                          ? item['onTap'] as Function()
-                          : () {
-                            switch (item['label']) {
-                              case 'Account & Security':
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) =>
-                                            const AccountSecurityPage(),
-                                  ),
-                                );
-                                break;
-                              case 'App Appearance':
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) => const AppAppearancePage(),
-                                  ),
-                                );
-                                break;
-                              case 'Notifications':
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) =>
-                                            const NotificationSettingsPage(),
-                                  ),
-                                );
-                                break;
-                              case 'Linked Accounts':
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) => const LinkedAccountsPage(),
-                                  ),
-                                );
-                                break;
-                            }
-                          },
+                  onTap: item['onTap'] != null
+                      ? item['onTap'] as Function()
+                      : () {
+                          switch (item['label']) {
+                            case 'Account & Security':
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const AccountSecurityPage(),
+                                ),
+                              );
+                              break;
+                            case 'App Appearance':
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const AppAppearancePage(),
+                                ),
+                              );
+                              break;
+                            case 'Notifications':
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const NotificationSettingsPage(),
+                                ),
+                              );
+                              break;
+                            case 'Linked Accounts':
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const LinkedAccountsPage(),
+                                ),
+                              );
+                              break;
+                          }
+                        },
                 ),
               ),
             );
@@ -167,7 +177,9 @@ class SettingsPage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Container(
               decoration: BoxDecoration(
-                color: Color.fromRGBO(232, 239, 255, 1),
+                color: theme.brightness == Brightness.dark
+                    ? theme.colorScheme.primaryContainer
+                    : const Color.fromRGBO(232, 239, 255, 1),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: ListTile(
@@ -192,69 +204,68 @@ class SettingsPage extends StatelessWidget {
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder:
-          (_) => Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Logout',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color.fromRGBO(255, 56, 56, 1),
+                ),
+              ),
+              const Divider(height: 24),
+              const Text(
+                'Are you sure want to logout?',
+                style: TextStyle(
+                  color: Color.fromRGBO(40, 83, 175, 1),
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  const Text(
-                    'Logout',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color.fromRGBO(255, 56, 56, 1),
-                    ),
-                  ),
-                  const Divider(height: 24),
-                  const Text(
-                    'Are you sure want to logout?',
-                    style: TextStyle(
-                      color: Color.fromRGBO(40, 83, 175, 1),
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color.fromRGBO(217, 217, 217, 1),
-                          foregroundColor: Color.fromRGBO(0, 0, 0, 1),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color.fromRGBO(217, 217, 217, 1),
+                      foregroundColor: Color.fromRGBO(0, 0, 0, 1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color.fromRGBO(40, 83, 175, 1),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Logged out')),
-                          );
-                        },
-                        child: const Text('Yes,Logout'),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color.fromRGBO(40, 83, 175, 1),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    ],
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Logged out')),
+                      );
+                    },
+                    child: const Text('Yes,Logout'),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
+        ),
+      ),
     );
   }
 }

@@ -56,7 +56,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
           'Content-Type': 'application/json',
         },
       );
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final profile = data['profile'] ?? {};
@@ -88,7 +87,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     setState(() {
       _isLoading = true;
     });
-
     final uri = Uri.parse(apiUrl);
     final request =
         http.MultipartRequest('PUT', uri)
@@ -100,17 +98,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ..fields['profile.date_of_birth'] = _dobController.text.trim()
           ..fields['profile.phone_number'] = _phoneController.text.trim()
           ..fields['profile.is_private'] = isPrivate.toString();
-
     if (_imageFile != null) {
       request.files.add(
         await http.MultipartFile.fromPath('profile.avatar', _imageFile!.path),
       );
     }
-
     try {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-
       if (response.statusCode == 200) {
         if (!mounted) return;
         ScaffoldMessenger.of(
@@ -174,7 +169,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (value == null || value.isEmpty) {
       return 'Please enter your phone number';
     }
-
     final phoneRegExp = RegExp(r'^\d{10}$');
     if (!phoneRegExp.hasMatch(value)) {
       return 'Phone number must be exactly 10 digits';
@@ -317,7 +311,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color.fromRGBO(232, 239, 255, 1),
+        color:
+            Theme.of(context).brightness == Brightness.dark
+                ? Color.fromRGBO(40, 83, 175, 1)
+                : Color.fromRGBO(232, 239, 255, 1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -326,11 +323,31 @@ class _EditProfilePageState extends State<EditProfilePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(color: Color(0xFF2853AF))),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
+                  ),
+                ),
                 TextFormField(
                   controller: controller,
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
+                  ),
                   decoration: InputDecoration(
                     hintText: hint,
+                    hintStyle: TextStyle(
+                      color:
+                          Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white70
+                              : Colors.grey,
+                    ),
                     border: InputBorder.none,
                   ),
                   validator: validator,
@@ -338,7 +355,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ],
             ),
           ),
-          if (icon != null) Icon(icon, size: 20, color: Colors.grey),
+          if (icon != null)
+            Icon(
+              icon,
+              size: 20,
+              color:
+                  Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white70
+                      : Colors.grey,
+            ),
         ],
       ),
     );
@@ -363,13 +388,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color.fromRGBO(232, 239, 255, 1),
+        color:
+            Theme.of(context).brightness == Brightness.dark
+                ? Color.fromRGBO(40, 83, 175, 1)
+                : Color.fromRGBO(232, 239, 255, 1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: DropdownButtonFormField<String>(
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: Color(0xFF2853AF)),
+          labelStyle: TextStyle(
+            color:
+                Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black,
+          ),
           border: InputBorder.none,
         ),
         value: selectedGender,
@@ -385,6 +418,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
             selectedGender = value!;
           });
         },
+        style: TextStyle(
+          color:
+              Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black,
+        ),
       ),
     );
   }
@@ -393,13 +432,25 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color.fromRGBO(232, 239, 255, 1),
+        color:
+            Theme.of(context).brightness == Brightness.dark
+                ? Color.fromRGBO(40, 83, 175, 1)
+                : Color.fromRGBO(232, 239, 255, 1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text("Switch to private", style: TextStyle(fontSize: 16)),
+          Text(
+            "Switch to private",
+            style: TextStyle(
+              fontSize: 16,
+              color:
+                  Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black,
+            ),
+          ),
           Switch(
             value: isPrivate,
             onChanged: (value) {

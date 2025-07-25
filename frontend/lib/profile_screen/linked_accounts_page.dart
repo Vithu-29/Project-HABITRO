@@ -12,18 +12,16 @@ class LinkedAccountsPage extends StatelessWidget {
     ];
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
         centerTitle: true,
-        title: const Text(
-          'Linked Accounts',
-          style: TextStyle(color: Colors.black),
-        ),
+        title: const Text('Linked Accounts'),
+        foregroundColor: Theme.of(context).colorScheme.onBackground,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -34,13 +32,15 @@ class LinkedAccountsPage extends StatelessWidget {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: const Color.fromRGBO(232, 239, 255, 1),
+                    color: Theme.of(context).colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [
+                    boxShadow: [
                       BoxShadow(
-                        color: Colors.black12,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onBackground.withOpacity(0.1),
                         blurRadius: 4,
-                        offset: Offset(2, 2),
+                        offset: const Offset(2, 2),
                       ),
                     ],
                   ),
@@ -52,8 +52,8 @@ class LinkedAccountsPage extends StatelessWidget {
                       style: TextStyle(
                         color:
                             isLinked
-                                ? const Color.fromRGBO(40, 83, 175, 1)
-                                : const Color.fromRGBO(0, 0, 238, 1),
+                                ? Theme.of(context).colorScheme.secondary
+                                : Theme.of(context).colorScheme.primary,
                         fontWeight:
                             isLinked ? FontWeight.normal : FontWeight.bold,
                       ),

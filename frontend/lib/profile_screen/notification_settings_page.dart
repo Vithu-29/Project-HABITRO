@@ -16,16 +16,14 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        foregroundColor: Theme.of(context).colorScheme.onBackground,
         centerTitle: true,
-        title: const Text(
-          'Notifications',
-          style: TextStyle(color: Color.fromRGBO(0, 0, 0, 1)),
-        ),
+        title: const Text('Notifications'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -35,29 +33,26 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           children: [
             _buildNotificationTile(
               title: 'App Notifications',
-              description:
-                  'Notifications about daily tasks, challenges and rewards.',
+              description: 'Notifications about daily tasks, challenges, and rewards.',
               value: appNotifications,
               onChanged: (val) => setState(() => appNotifications = val),
-              color: const Color.fromRGBO(232, 239, 255, 1),
+              activeColor: Color.fromRGBO(5, 240, 83, 1),
             ),
             const SizedBox(height: 16),
             _buildNotificationTile(
               title: 'Email Notifications',
-              description:
-                  'Receive updates via email about new tasks and rewards.',
+              description: 'Receive updates via email about new tasks and rewards.',
               value: emailNotifications,
               onChanged: (val) => setState(() => emailNotifications = val),
-              color: const Color.fromRGBO(232, 239, 255, 1),
+              activeColor: Color.fromRGBO(5, 240, 83, 1),
             ),
             const SizedBox(height: 16),
             _buildNotificationTile(
               title: 'Newsletter',
-              description:
-                  'Be the first to know about new challenges and features.',
+              description: 'Be the first to know about new challenges and features.',
               value: newsletter,
               onChanged: (val) => setState(() => newsletter = val),
-              color: const Color.fromRGBO(232, 239, 255, 1),
+              activeColor: Color.fromRGBO(5, 240, 83, 1),
             ),
           ],
         ),
@@ -70,15 +65,19 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     required String description,
     required bool value,
     required ValueChanged<bool> onChanged,
-    required Color color,
+    required Color activeColor,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: color,
+        color: Theme.of(context).colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(2, 2)),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.onBackground.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(2, 2),
+          ),
         ],
       ),
       child: Row(
@@ -98,7 +97,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: const TextStyle(color: Colors.black54),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onBackground.withOpacity(0.6),
+                  ),
                 ),
               ],
             ),
@@ -106,10 +107,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: Colors.lightGreenAccent,
-            activeTrackColor: Colors.indigo,
-            inactiveThumbColor: Colors.indigo,
-            inactiveTrackColor: Colors.white,
+            activeColor: activeColor,
+            activeTrackColor: Theme.of(context).colorScheme.primary,
+            inactiveThumbColor: Theme.of(context).colorScheme.primary,
+            inactiveTrackColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
           ),
         ],
       ),

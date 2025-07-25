@@ -1,20 +1,17 @@
 from django.db import models
-from django.contrib.auth.models import User  # Import Django's built-in User model
-from django.conf import settings  # Import Django settings
+from django.contrib.auth.models import User
+from django.conf import settings
 
 class UserProfile(models.Model):
-    """Extended user profile with habit tracking metrics and personal details."""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
-    name = models.CharField(max_length=255, null=True, blank=True)  # Name field
+    name = models.CharField(max_length=255, null=True, blank=True)
 
-    # Habit tracking fields
     bio = models.TextField(blank=True, null=True)
     streak = models.PositiveIntegerField(default=0)
     total_points = models.PositiveIntegerField(default=0)
     weekly_points = models.PositiveIntegerField(default=0)
     last_active = models.DateTimeField(auto_now=True)
 
-    # Profile image (optional)
     avatar = models.ImageField(
         upload_to='avatars/',
         blank=True,
@@ -22,7 +19,6 @@ class UserProfile(models.Model):
         default='default_avatar.png'
     )
 
-    # Editable profile fields from Flutter
     date_of_birth = models.DateField(null=True, blank=True)
     gender = models.CharField(
         max_length=10,
@@ -50,13 +46,11 @@ class UserProfile(models.Model):
         return f"{self.user.username}'s Profile"
 
     def update_points(self, points_to_add):
-        """Helper method to update point counters."""
         self.total_points += points_to_add
         self.weekly_points += points_to_add
         self.save()
 
     def avatar_url(self):
-        """Safe method to get avatar URL with fallback"""
         if self.avatar and self.avatar.name:
             try:
                 return self.avatar.url
@@ -65,7 +59,6 @@ class UserProfile(models.Model):
         return f"{settings.MEDIA_URL}default_avatar.png"
 
 class Friendship(models.Model):
-    """Friendship model with status tracking."""
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('accepted', 'Accepted'),
@@ -86,7 +79,6 @@ class Friendship(models.Model):
         return f"{self.requester.username} → {self.receiver.username} ({self.status})"
 
 class ChatMessage(models.Model):
-    """Chat message with read status."""
     sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
     message = models.TextField()
@@ -109,7 +101,6 @@ class ChatMessage(models.Model):
             self.save()
 
 class Leaderboard(models.Model):
-    """Leaderboard with periodic scoring."""
     PERIOD_CHOICES = [
         ('daily', 'Daily'),
         ('weekly', 'Weekly'),
@@ -131,7 +122,6 @@ class Leaderboard(models.Model):
         return f"{self.user.username} ({self.period}): {self.score} points (Rank {self.rank})"
 
 class Notification(models.Model):
-    """User notifications (friend request, message, points)."""
     TYPE_CHOICES = [
         ('friend_request', 'Friend Request'),
         ('message', 'New Message'),
