@@ -55,7 +55,7 @@ class AccountSecurityPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.onBackground.withOpacity(0.1),
+            color: theme.colorScheme.onSurface.withOpacity(0.1),
             blurRadius: 4,
             offset: const Offset(2, 2),
           ),

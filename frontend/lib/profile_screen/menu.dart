@@ -37,9 +37,11 @@ class MyApp extends StatelessWidget {
       builder: (context, settings, child) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          themeMode: settings.themeMode == ThemeMode.dark
-              ? ThemeMode.dark
-              : ThemeMode.light,
+          themeMode:
+              settings.themeMode == ThemeMode.dark
+                  ? ThemeMode.dark
+                  : ThemeMode.light,
+
           theme: ThemeData.light().copyWith(
             scaffoldBackgroundColor: Colors.white,
             textTheme: const TextTheme(
@@ -56,6 +58,7 @@ class MyApp extends StatelessWidget {
               style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
             ),
           ),
+
           darkTheme: ThemeData.dark().copyWith(
             scaffoldBackgroundColor: Colors.black,
             textTheme: const TextTheme(
@@ -75,6 +78,7 @@ class MyApp extends StatelessWidget {
             ),
             buttonTheme: ButtonThemeData(buttonColor: Colors.blueGrey[700]),
           ),
+
           builder: (context, child) {
             return MediaQuery(
               data: MediaQuery.of(
@@ -83,6 +87,7 @@ class MyApp extends StatelessWidget {
               child: child!,
             );
           },
+
           home: const MenuPage(),
         );
       },

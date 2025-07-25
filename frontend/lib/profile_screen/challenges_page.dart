@@ -5,11 +5,14 @@ class ChallengesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Challenges'),
-        backgroundColor: Colors.white,
-        foregroundColor: Color.fromRGBO(0, 0, 0, 1),
+        centerTitle: true,
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        foregroundColor: theme.textTheme.bodyLarge?.color,
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),

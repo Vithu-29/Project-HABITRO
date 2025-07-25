@@ -41,7 +41,7 @@ class AppAppearancePage extends StatelessWidget {
         ),
         centerTitle: true,
         title: const Text('App Appearance'),
-        foregroundColor: Theme.of(context).colorScheme.onBackground,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -151,7 +151,7 @@ class _AppearanceSettingTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.onBackground.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
             blurRadius: 4,
             offset: const Offset(2, 2),
           ),
