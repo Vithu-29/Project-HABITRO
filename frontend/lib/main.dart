@@ -54,7 +54,6 @@ class MyApp extends StatelessWidget {
         '/signin': (context) => SignInScreen(),
         '/home': (context) => HomePage(),
         '/forgot-password': (context) => ForgotPasswordScreen(),
-        '/forgot-password': (context) => ForgotPasswordScreen(),
       },
     );
   }
