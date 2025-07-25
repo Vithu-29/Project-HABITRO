@@ -3,6 +3,7 @@
 import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import Cookies from 'js-cookie';
 
 export default function CodeVerificationForm() {
   const [code, setCode] = useState(['', '', '', '', '', '']);
@@ -14,6 +15,7 @@ export default function CodeVerificationForm() {
   const searchParams = useSearchParams();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const email = searchParams.get('email') || '';
+
 
   const handleCodeChange = (index: number, value: string) => {
     if (/^\d*$/.test(value) && value.length <= 1) {
@@ -36,6 +38,7 @@ export default function CodeVerificationForm() {
     }
   };
 
+  
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     const fullCode = code.join('');
@@ -50,24 +53,34 @@ export default function CodeVerificationForm() {
     setSuccess('');
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/admin_auth/verify-otp/', {
+
+      // First ensure we have a CSRF token
+    await fetch('http://localhost:8000/admin_auth/csrf/', {
+      credentials: 'include',
+    });
+      
+      const response = await fetch('http://localhost:8000/admin_auth/verify-otp/', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'},
+          'Content-Type': 'application/json',
+          'X-CSRFToken': Cookies.get("csrftoken")??""
+        },
         credentials: 'include',  // This is crucial for sending cookies
         body: JSON.stringify({ 
           otp: fullCode,
-          email: email.toLowerCase().trim()
         })
       });
-      
 
-
+      if (response.status === 400) {
       const data = await response.json();
-      
+      throw new Error(data.error || 'Invalid OTP');
+    }
+
+    
       if (!response.ok) {
-        throw new Error(data.error || 'Invalid or expired OTP');
-      }
+      throw new Error('Verification failed');
+    }
+
 
       setSuccess('Verification successful! Redirecting...');
       setTimeout(() => router.push('/ResetPassword'), 1000);
@@ -83,10 +96,11 @@ export default function CodeVerificationForm() {
     setError('');
     
     try {
-      const response = await fetch('http://127.0.0.1:8000/admin_auth/forgot-password/', {
+      const response = await fetch('http://localhost:8000/admin_auth/forgot-password/',{
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRFToken': Cookies.get("csrftoken")??""
         },
         credentials: 'include',
         body: JSON.stringify({ email: email.toLowerCase().trim() })

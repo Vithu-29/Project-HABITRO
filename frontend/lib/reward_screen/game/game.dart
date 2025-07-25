@@ -62,7 +62,7 @@ class Game {
         card1.state = CardState.guessed;
         card2.state = CardState.guessed;
 
-        if (await Vibration.hasVibrator() ?? false) {
+        if (await Vibration.hasVibrator()) {
           Vibration.vibrate(duration: 150);
         }
 

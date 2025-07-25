@@ -5,7 +5,9 @@ import 'package:frontend/api_services/achievement_service.dart';
 import 'package:frontend/reward_screen/achievements_page.dart';
 
 class Achievements extends StatefulWidget {
-  const Achievements({super.key});
+  final VoidCallback? onRefresh;
+  final bool showViewAll;
+  const Achievements({super.key, this.onRefresh, this.showViewAll = true});
 
   @override
   State<Achievements> createState() => _AchievementsState();
@@ -50,44 +52,55 @@ class _AchievementsState extends State<Achievements> {
                   color: Colors.black,
                 ),
               ),
-              Stack(
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
+              if (widget.showViewAll)
+                Stack(
+                  children: [
+                    TextButton(
+                      onPressed: () async {
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => AchievementsPage()));
-                    },
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: Size(0, 0),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: Text(
-                      'View All',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Theme.of(context).colorScheme.primary,
+                            builder: (context) => AchievementsPage(
+                              onAchievementClaimed: () {
+                                _fetchAchievements();
+                                if (widget.onRefresh != null) {
+                                  widget.onRefresh!();
+                                }
+                              },
+                            ),
+                          ),
+                        );
+                        await _fetchAchievements();
+                      },
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                    ),
-                  ),
-                  if (hasUnclaimed)
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
+                      child: Text(
+                        'View All',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
-                ],
-              ),
+                    if (hasUnclaimed)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
             ],
           ),
         ),
@@ -105,8 +118,7 @@ class _AchievementsState extends State<Achievements> {
                     return AchievementCard(
                       title: userAchievement['achievement']['title'] ??
                           'No Title', // Handle null case
-                      imageUrl:
-                          "${AchievementService.baseUrl}${userAchievement['achievement']['image']}",
+                      imageUrl: userAchievement['achievement']['image'],
                       unlocked: userAchievement['unlocked'] ?? false,
                       isCollected: userAchievement['is_collected'] ?? false,
                     );

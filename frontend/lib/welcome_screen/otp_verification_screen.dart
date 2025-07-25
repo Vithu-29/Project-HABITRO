@@ -7,13 +7,16 @@ import 'package:frontend/api_config.dart';
 import 'package:frontend/welcome_screen/resetpassword_screen.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
-  final String email; // Email of the user
-  final bool isForgotPassword; // Determines the flow (signup or forgot password)
+  final String? email;
+  final String? phone;
+  final bool
+      isForgotPassword; // Determines the flow (signup or forgot password)
 
   const OTPVerificationScreen({
     super.key,
-    required this.email,
+    this.email,
     required this.isForgotPassword,
+    this.phone,
   });
 
   @override
@@ -23,13 +26,17 @@ class OTPVerificationScreen extends StatefulWidget {
 class OTPVerificationScreenState extends State<OTPVerificationScreen> {
   final TextEditingController _otpController = TextEditingController();
   bool _isLoading = false;
+  bool _isResending = false;
 
   Future<void> _verifyOtp() async {
     setState(() => _isLoading = true);
 
     final body = {
-      "email": widget.email.trim().toLowerCase(),
-      "otp": _otpController.text.trim(),
+      if (widget.email != null && widget.email!.isNotEmpty)
+        'email': widget.email!,
+      if (widget.phone != null && widget.phone!.isNotEmpty)
+        'phone_number': widget.phone!,
+      'otp': _otpController.text.trim(),
     };
 
     print(
@@ -61,7 +68,8 @@ class OTPVerificationScreenState extends State<OTPVerificationScreen> {
             context,
             MaterialPageRoute(
               builder: (context) => ResetPasswordScreen(
-                email: widget.email, // Pass the user's email
+                email: widget.email ?? '',
+                phone: widget.phone ?? '',
               ),
             ),
           );
@@ -81,6 +89,46 @@ class OTPVerificationScreenState extends State<OTPVerificationScreen> {
       );
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _resendOtp() async {
+    if (_isResending) return;
+
+    setState(() => _isResending = true);
+
+    try {
+      final body = {
+        if (widget.email != null && widget.email!.isNotEmpty)
+          'email': widget.email!,
+        if (widget.phone != null && widget.phone!.isNotEmpty)
+          'phone_number': widget.phone!,
+        'is_forgot_password': widget.isForgotPassword,
+      };
+
+      final response = await http.post(
+        Uri.parse("${ApiConfig.baseUrl}resend-otp/"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['message'] ?? 'OTP resent successfully')),
+        );
+      } else {
+        final error = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error['error'] ?? 'Failed to resend OTP')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An error occurred: $e')),
+      );
+    } finally {
+      setState(() => _isResending = false);
     }
   }
 
@@ -105,7 +153,7 @@ class OTPVerificationScreenState extends State<OTPVerificationScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'We sent a code to ${widget.email}',
+              'We sent a code to ${widget.email != null && widget.email!.isNotEmpty ? widget.email : (widget.phone ?? '')}',
               style: const TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 24),
@@ -138,18 +186,28 @@ class OTPVerificationScreenState extends State<OTPVerificationScreen> {
             ),
             const SizedBox(height: 16),
             TextButton(
-              onPressed: () {
-                // OPTIONAL: implement resend OTP later if needed
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content:
-                          Text('Resend code functionality not implemented')),
-                );
-              },
-              child: const Text(
-                'Didn’t receive the code yet? Resend code',
-                style: TextStyle(color: Colors.blue),
-              ),
+              onPressed: _isResending ? null : _resendOtp,
+              child: _isResending
+                  ? const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.blue,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text('Resending...',
+                            style: TextStyle(color: Colors.grey)),
+                      ],
+                    )
+                  : const Text(
+                      'Didn’t receive the code yet? Resend code',
+                      style: TextStyle(color: Colors.blue),
+                    ),
             ),
           ],
         ),
