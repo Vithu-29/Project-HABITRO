@@ -27,8 +27,17 @@ class Habit {
   final String name;
   final String type;
   final List<Task> tasks;
+  final bool? notificationStatus; 
+  final String? reminderTime;     
 
-  Habit({required this.id, required this.name, required this.type, required this.tasks});
+  Habit({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.tasks,
+    this.notificationStatus,
+    this.reminderTime,
+  });
 
   factory Habit.fromJson(Map<String, dynamic> json) {
     var tasksFromJson = json['tasks'] as List;
@@ -39,14 +48,17 @@ class Habit {
       name: json['name'],
       type: json['type'],
       tasks: taskList,
+      notificationStatus: json['notification_status'],
+      reminderTime: json['reminder_time'],
     );
   }
-  //////////////////////////////////////////////////////
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
     'type': type,
     'tasks': tasks.map((task) => task.toJson()).toList(),
+    'notification_status': notificationStatus,
+    'reminder_time': reminderTime,
   };
-  //////////////////////////////////////////////////////
 }

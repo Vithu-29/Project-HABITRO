@@ -1,9 +1,5 @@
 {
     "dart.previewFlutterUiGuides": true,
     "dart.previewFlutterUiGuidesCustomTracking": true,
-    "java.configuration.updateBuildConfiguration": "automatic",
-    "java.project.sourcePaths": [
-        "admindashboard/frontend/habiro-admin-dashboard"
-    ],
-    "cmake.sourceDirectory": "D:/Habiro final/Project-HABITRO/frontend/linux"
+    "java.configuration.updateBuildConfiguration": "interactive"
 }

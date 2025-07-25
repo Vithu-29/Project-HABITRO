@@ -1,13 +1,15 @@
+// ignore_for_file: avoid_print
+
 import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/habit.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AIService {
   //***********************************************************************************************************//
-  //send the entered habit to analyze good or bad
-
-  static const String baseurl = 'http://192.168.198.223:8000';
+  static final String baseurl = dotenv.get('BASE_URL');
   static final _storage = FlutterSecureStorage();
 
   static Map<String, String> _headers(String token) {
@@ -18,9 +20,33 @@ class AIService {
   }
 
   static Future<String?> _getToken() async {
-    return await _storage.read(key: 'authToken'); // Corrected key
+    try {
+      // First try secure storage
+      String? token = await _storage.read(key: 'authToken');
+
+      if (token != null && token.isNotEmpty) {
+        return token;
+      }
+
+      // If not found, try SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      token = prefs.getString('authToken');
+
+      if (token != null && token.isNotEmpty) {
+        // Save to secure storage for next time
+        await _storage.write(key: 'authToken', value: token);
+        return token;
+      }
+
+      print("No token found in any storage");
+      return null;
+    } catch (e) {
+      print("Error retrieving token: $e");
+      return null;
+    }
   }
 
+  //send the entered habit to analyze good or bad
   static Future<String> analyzeHabit(String habit) async {
     final token = await _getToken();
     if (token == null) {
@@ -134,12 +160,12 @@ class AIService {
 
   // save the tasks in the database
 
-  static Future<bool> saveTasks({
-    required String habitName,
-    required String habitType,
-    required List<Map<String, dynamic>>
-        tasks, // List<Map<String, dynamic>> tasks
-  }) async {
+  static Future<Map<String, dynamic>> saveTasks(
+      {required String habitName,
+      required String habitType,
+      required List<Map<String, dynamic>> tasks,
+      required int duration // List<Map<String, dynamic>> tasks
+      }) async {
     final token = await _getToken();
     if (token == null) {
       throw Exception('No token found');
@@ -152,17 +178,22 @@ class AIService {
           "habit_name": habitName,
           "habit_type": habitType,
           "tasks": tasks,
+          "duration": duration,
         }),
       );
 
       print("Response status: ${response.statusCode}"); // Should be 201
       print("Response body: ${response.body}"); // Check for errors
 
-      return response.statusCode == 201;
+      if (response.statusCode == 201) {
+        return jsonDecode(
+            response.body); // ✅ Returns the full JSON including habit_id
+      } else {
+        throw Exception('Failed to save tasks: ${response.body}');
+      }
     } catch (e) {
       print("Error saving tasks: $e");
-      print(tasks);
-      return false;
+      throw Exception('Error saving tasks');
     }
   }
 
@@ -206,16 +237,55 @@ class AIService {
     );
   }
 
-  //////////////////////////////////////////////////////////////////////
-
-  static Future<Map<String, dynamic>> getCompletionStats(String range) async {
+  // Method to fetch habits
+  static Future<List<Map<String, dynamic>>> getHabits() async {
     final token = await _getToken();
     if (token == null) {
       throw Exception('No token found');
     }
     try {
       final response = await http.get(
-        Uri.parse("$baseurl/api/task_completion_stats/?range=$range"),
+        Uri.parse("$baseurl/api/get_habits/"),
+        headers: _headers(token),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        throw Exception('Failed to load habits');
+      }
+    } catch (e) {
+      print("Error fetching habits: $e");
+      throw Exception('Failed to load habits');
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////
+
+  // Update stats method to support filtering
+  static Future<Map<String, dynamic>> getCompletionStats(
+    String range, {
+    String? habitType,
+    String? habitId,
+  }) async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('No token found');
+    }
+    try {
+      // Build URL with query parameters
+      String url = "$baseurl/api/task_completion_stats/?range=$range";
+
+      if (habitType != null) {
+        url += "&habit_type=$habitType";
+      }
+      if (habitId != null) {
+        url += "&habit_id=$habitId";
+      }
+
+      final response = await http.get(
+        Uri.parse(url),
         headers: _headers(token),
       );
 
@@ -385,6 +455,66 @@ class AIService {
     } catch (e) {
       print('Error deducting coins: $e');
       throw Exception('Failed to deduct coins: ${e.toString()}');
+    }
+  }
+
+  Future<void> deleteHabit(String habitId) async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final response = await http.delete(
+        Uri.parse("$baseurl/api/habits/delete/$habitId/"),
+        headers: _headers(token),
+      );
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 404) {
+        throw Exception('Habit not found');
+      } else {
+        // Try to parse error message from response
+        final errorBody = jsonDecode(response.body);
+        throw Exception(errorBody['error'] ?? 'Failed to delete habit');
+      }
+    } on http.ClientException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to delete habit: ${e.toString()}');
+    }
+  }
+
+  // Update reminder settings in backend
+  static Future<bool> updateReminderSettings({
+    required String habitId,
+    required bool wantsReminder,
+    String? reminderTime,
+  }) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('No authentication token found');
+
+      final response = await http.post(
+        Uri.parse('$baseurl/api/update_reminder_settings/'),
+        headers: _headers(token),
+        body: json.encode({
+          'habit_id': habitId,
+          'wants_reminder': wantsReminder,
+          'reminder_time': reminderTime,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print('Failed to update reminder settings: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('Error updating reminder settings: $e');
+      return false;
     }
   }
 }

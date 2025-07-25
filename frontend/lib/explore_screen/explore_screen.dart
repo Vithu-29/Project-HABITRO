@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/api_services/article_service.dart';
+import 'package:frontend/components/article_shimmer.dart';
 import 'package:frontend/components/standard_app_bar.dart';
+import 'package:frontend/explore_screen/article_detail_screen.dart';
+import 'package:frontend/theme.dart';
 
 class ExploreScreen extends StatelessWidget {
   const ExploreScreen({super.key});
@@ -26,24 +29,46 @@ class ExplorePageState extends State<ExplorePage> {
   final TextEditingController _searchController = TextEditingController();
   String selectedCategory = 'All';
   List<dynamic> articles = [];
+  List<String> categories = ['All'];
   bool isLoading = true;
+  bool isCategoryLoading = true;
 
-  final List<String> categories = [
-    'All',
-    'Personal Development',
-    'Productivity',
-    'Technology',
-    'Health and Fitness',
-    'Mental Well-Being',
-  ];
+  static List<dynamic>? cachedArticles;
 
   @override
   void initState() {
     super.initState();
+    _loadCategories();
     _loadArticles();
   }
 
-  Future<void> _loadArticles() async {
+  Future<void> _loadCategories() async {
+    try {
+      final backendCategories = await _articleService.getCategories();
+      setState(() {
+        categories = ['All', ...backendCategories];
+        isCategoryLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Category fetch error: $e");
+      setState(() => isCategoryLoading = false);
+    }
+  }
+
+  Future<void> _loadArticles({bool forceReload = false}) async {
+    if (!forceReload &&
+        cachedArticles != null &&
+        selectedCategory == 'All' &&
+        _searchController.text.isEmpty) {
+      setState(() {
+        articles = cachedArticles!;
+        isLoading = false;
+      });
+      return;
+    }
+
+    setState(() => isLoading = true);
+
     try {
       final data = await _articleService.getArticles(
         category: selectedCategory,
@@ -51,6 +76,9 @@ class ExplorePageState extends State<ExplorePage> {
       );
       setState(() {
         articles = data;
+        if (selectedCategory == 'All' && _searchController.text.isEmpty) {
+          cachedArticles = data;
+        }
         isLoading = false;
       });
     } catch (e) {
@@ -72,17 +100,21 @@ class ExplorePageState extends State<ExplorePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Column(
-            children: [
-              _buildSearchBar(),
-              const SizedBox(height: 16),
-              _buildCategoryChips(),
-              const SizedBox(height: 16),
-              Expanded(child: _buildArticleList()),
-            ],
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                children: [
+                  _buildSearchBar(),
+                  const SizedBox(height: 16),
+                  _buildCategoryChips(),
+                  const SizedBox(height: 16),
+                  Expanded(child: _buildArticleList()),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
@@ -94,44 +126,59 @@ class ExplorePageState extends State<ExplorePage> {
       decoration: InputDecoration(
         hintText: 'Search',
         prefixIcon: const Icon(Icons.search),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide.none,
-        ),
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: Theme.of(context).colorScheme.secondary,
         contentPadding: const EdgeInsets.symmetric(horizontal: 20),
         enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: const BorderSide(color: Colors.blue),
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.primary, width: 0.1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.primary, width: 0.1),
+        ),
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: const BorderSide(color: Colors.blue, width: 2),
-      ),
-      ),
-      onChanged: (value) => _loadArticles(),
+      onChanged: (value) => _loadArticles(forceReload: true),
     );
   }
 
   Widget _buildCategoryChips() {
+    if (isCategoryLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return SizedBox(
       height: 40,
-      child: ListView.builder(
+      child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: categories.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final category = categories[index];
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(category),
-              selected: selectedCategory == category,
-              onSelected: (selected) => setState(() {
-                selectedCategory = selected ? category : 'All';
-                _loadArticles();
-              }),
+          final isSelected = selectedCategory == category;
+
+          return ChoiceChip(
+            label: Text(
+              category,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.black,
+              ),
             ),
+            selected: isSelected,
+            selectedColor: Theme.of(context).colorScheme.primary,
+            backgroundColor: const Color(0xFFD9D9D9),
+            checkmarkColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            onSelected: (selected) {
+              if (selected) {
+                setState(() => selectedCategory = category);
+                _loadArticles(forceReload: true);
+              }
+            },
           );
         },
       ),
@@ -139,8 +186,16 @@ class ExplorePageState extends State<ExplorePage> {
   }
 
   Widget _buildArticleList() {
-    if (isLoading) return const Center(child: CircularProgressIndicator());
-    if (articles.isEmpty) return const Center(child: Text('No articles found'));
+    if (isLoading) {
+      return ListView.builder(
+        itemCount: 6,
+        itemBuilder: (context, index) => const ArticleShimmerCard(),
+      );
+    }
+
+    if (articles.isEmpty) {
+      return const Center(child: Text('No articles found'));
+    }
 
     return ListView.builder(
       itemCount: articles.length,
@@ -149,9 +204,12 @@ class ExplorePageState extends State<ExplorePage> {
         return InkWell(
           onTap: () => _navigateToArticleDetail(article['id']),
           child: Card(
+            margin: const EdgeInsets.only(bottom: 10),
+            elevation: 0,
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (article['image'] != null)
                     ClipRRect(
@@ -168,14 +226,43 @@ class ExplorePageState extends State<ExplorePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(article['category'] ?? '',
-                            style: TextStyle(color: Colors.grey[600])),
-                        Text(article['title'],
-                            style: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold)),
-                        Text('${article['date']} • ${article['views']} views',
-                            style: TextStyle(color: Colors.grey[600])),
-                      ]),
+                        Text(
+                          article['category'] ?? '',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: AppColors.greyText),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          article['title'],
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold,color: AppColors.primary),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(
+                              '${article?['date']}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: AppColors.greyText),
+                            ),
+                            const Spacer(),
+                            Text(
+                              '${article?['views']} views',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: AppColors.greyText),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -183,68 +270,6 @@ class ExplorePageState extends State<ExplorePage> {
           ),
         );
       },
-    );
-  }
-}
-
-class ArticleDetailScreen extends StatefulWidget {
-  final int articleId;
-
-  const ArticleDetailScreen({super.key, required this.articleId});
-
-  @override
-  State<ArticleDetailScreen> createState() => _ArticleDetailScreenState();
-}
-
-class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
-  final ArticleService _articleService = ArticleService();
-  Map<String, dynamic>? article;
-  bool isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadArticleDetails();
-  }
-
-  Future<void> _loadArticleDetails() async {
-    try {
-      final data = await _articleService.getArticleDetails(widget.articleId);
-      setState(() {
-        article = data;
-        isLoading = false;
-      });
-    } catch (e) {
-      debugPrint(e.toString());
-      setState(() => isLoading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Article')),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (article?['image'] != null)
-                      Image.network(article!['image']),
-                    const SizedBox(height: 16),
-                    Text(article?['title'] ?? '',
-                        style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: 8),
-                    Text('${article?['date']} • ${article?['views']} views'),
-                    const SizedBox(height: 16),
-                    Text(article?['content'] ?? ''),
-                  ],
-                ),
-              ),
-            ),
     );
   }
 }

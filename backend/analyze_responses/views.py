@@ -5,7 +5,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import Task,Habit
 import uuid
-from datetime import timedelta, date,datetime
+from datetime import time, timedelta, date,datetime
 from rest_framework.views import APIView
 from .serializers import HabitSerializer
 from rest_framework.response import Response
@@ -195,16 +195,21 @@ def save_tasks(request):
             habit_name = data.get('habit_name')
             habit_type = data.get('habit_type')
             tasks = data.get('tasks', [])
+            duration_days = int(data.get('duration', 30))
 
-            print(f"Creating habit: {habit_name}, {habit_type}")  # Debug
-            print(f"With tasks: {tasks}")  # Debug
+            print(f"Parsed habit_name: {habit_name}")
+            print(f"Parsed habit_type: {habit_type}")
+            print(f"Parsed tasks count: {len(tasks)}")
+            print(f"Raw duration value: {duration_days}")
 
             # Create a new habit with a UUID
             habit = Habit.objects.create(
                 id=uuid.uuid4(),
                 name=habit_name,
                 type=habit_type,
-                user=request.user  # ✅ this links the habit to the logged-in user
+                user=request.user,  # ✅ this links the habit to the logged-in user
+                duration_days=duration_days,
+                start_date=date.today(),
             )
 
 
@@ -212,10 +217,13 @@ def save_tasks(request):
             tasks_per_day = 3
             total_days = len(tasks) // tasks_per_day
             today = date.today()
+            print(f"Total days calculated: {total_days}")
 
 
             for day in range(total_days):
                 task_date = today + timedelta(days=day)
+                print(f"Creating tasks for day {day + 1}, date {task_date}")
+
                 for i in range(tasks_per_day):
                     task_index = day * tasks_per_day + i
                     if task_index < len(tasks):
@@ -226,26 +234,51 @@ def save_tasks(request):
                             date=task_date
                         )
 
-            ###************************####
 
-            # Save new tasks
-           ## for idx, task in enumerate(tasks, start=1):
-            ##    Task.objects.create(
-             ##       habit_id=id,
-              ##      task_id=idx,
-              ##      day=((idx - 1) // 3) + 1,
-              ##      description=task.get('task'),
-              ##      is_completed=task.get('isCompleted', False)
-              ##  )
-
-            return JsonResponse({'status': 'success'}, status=201)
+            return JsonResponse({'status': 'success',
+                                  'habit_id': str(habit.id),
+                                  'duration_days': duration_days
+                                  }, status=201)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"Exception in save_tasks: {e}")  
+            return JsonResponse({'error': str(e)}, status=500)
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+###########################################################################################################
+                                    ## save tasks ##
+                                    
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_reminder_settings(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            habit_id = data.get('habit_id')
+            wants_reminder = data.get('wants_reminder', False)
+            reminder_time = data.get('reminder_time')
+            
+            try:
+                habit = Habit.objects.get(id=habit_id, user=request.user)
+                
+                habit.notification_status = wants_reminder
+                if wants_reminder and reminder_time:
+                    # Convert "HH:MM" string to time object
+                    hour, minute = map(int, reminder_time.split(':'))
+                    habit.reminder_time = time(hour=hour, minute=minute)
+                else:
+                    habit.reminder_time = None
+                
+                habit.save()
+                
+                return JsonResponse({'status': 'success'}, status=200)
+                
+            except Habit.DoesNotExist:
+                return JsonResponse({'error': 'Habit not found'}, status=404)
+                
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
     return JsonResponse({'error': 'Invalid request method'}, status=405)
-
-
-###########################################################################################################
-                                    ## save tasks ##
 
 
 class HabitsWithTodayTasks(APIView):
@@ -274,23 +307,41 @@ def update_task_status(request, task_id):
 
 from django.utils import timezone
 
+# Add this new endpoint to get habits
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_habits(request):
+    habits = Habit.objects.filter(user=request.user).values('id', 'name', 'type')
+    return Response(list(habits))
 
+# Update the stats endpoint to support habit filtering
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def task_completion_stats(request):
     time_range = request.GET.get('range', 'daily')
+    habit_type = request.GET.get('habit_type')
+    habit_id = request.GET.get('habit_id')
+    
     now = timezone.now()
-
     stats = []
     labels = []
     task_counts = []
 
+    # Create base queryset
+    tasks = Task.objects.filter(habit_id__user=request.user)
+    
+    # Apply habit filters
+    if habit_type:
+        tasks = tasks.filter(habit_id__type=habit_type)
+    if habit_id:
+        tasks = tasks.filter(habit_id__id=habit_id)
+
     if time_range == 'daily':
         for i in range(7):
             date = now - timedelta(days=6 - i)
-            tasks = Task.objects.filter(date=date.date())
-            completed = tasks.filter(isCompleted=True).count()
-            total = tasks.count()
+            date_tasks = tasks.filter(date=date.date())
+            completed = date_tasks.filter(isCompleted=True).count()
+            total = date_tasks.count()
 
             stats.append((completed / total) * 100 if total > 0 else 0)
             task_counts.append(completed)
@@ -304,9 +355,9 @@ def task_completion_stats(request):
                 month += 12
                 year -= 1
 
-            tasks = Task.objects.filter(date__year=year, date__month=month)
-            completed = tasks.filter(isCompleted=True).count()
-            total = tasks.count()
+            month_tasks = tasks.filter(date__year=year, date__month=month)
+            completed = month_tasks.filter(isCompleted=True).count()
+            total = month_tasks.count()
 
             stats.append((completed / total) * 100 if total > 0 else 0)
             task_counts.append(completed)
@@ -320,9 +371,9 @@ def task_completion_stats(request):
     elif time_range == 'yearly':
         for i in range(5):
             year = now.year - 4 + i
-            tasks = Task.objects.filter(date__year=year)
-            completed = tasks.filter(isCompleted=True).count()
-            total = tasks.count()
+            year_tasks = tasks.filter(date__year=year)
+            completed = year_tasks.filter(isCompleted=True).count()
+            total = year_tasks.count()
 
             stats.append((completed / total) * 100 if total > 0 else 0)
             task_counts.append(completed)
@@ -389,3 +440,62 @@ from rewards.models import Reward  # Import the Reward model
 def get_coin_balance(request):
     reward, created = Reward.objects.get_or_create(user=request.user)
     return Response({'balance': reward.coins})  # Changed coins.balance to reward.coins
+    
+# Add to habit/views.py
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_profile_stats(request):
+    from profileandchat.models import UserProfile
+    from django.utils import timezone
+    from django.db.models import Count, Q
+    
+    try:
+        # Get user profile
+        profile = UserProfile.objects.get(user=request.user)
+        habit_count = Habit.objects.filter(user=request.user).count()
+        
+        # Calculate completion rate
+        today = timezone.now().date()
+        tasks = Task.objects.filter(
+            habit_id__user=request.user,
+            date__lte=today
+        )
+        total_tasks = tasks.count()
+        completed_tasks = tasks.filter(isCompleted=True).count()
+        
+        completion_rate = 0
+        if total_tasks > 0:
+            completion_rate = round((completed_tasks / total_tasks) * 100, 2)
+        
+        return Response({
+            'full_name': profile.full_name,
+            'profile_pic_url': str(profile.profile_pic) if profile.profile_pic else None,
+            'habit_following_count': habit_count,
+            'completion_rate': completion_rate
+        })
+        
+    except UserProfile.DoesNotExist:
+        return Response({'error': 'Profile not found'}, status=404)
+    
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_habit(request, habit_id):
+    try:
+        # Convert string habit_id to UUID
+        #habit_uuid = uuid.UUID(habit_id)
+        habit = Habit.objects.get(id=habit_id, user=request.user)
+        habit.delete()  # Deletes habit AND its tasks (CASCADE)
+        return Response(
+            {'message': 'Habit and related tasks deleted successfully.'},
+            status=200
+        )
+    except (Habit.DoesNotExist):
+        return Response(
+            {'error': 'Habit not found or you don\'t have permission.'},
+            status=404
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'Server error: {str(e)}'},
+            status=500
+        )

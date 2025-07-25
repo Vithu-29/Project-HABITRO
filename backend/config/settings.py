@@ -12,10 +12,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Security
 SECRET_KEY = config('SECRET_KEY', default='your-default-secret-key')
-SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',')
 
+ASGI_APPLICATION = 'config.asgi.application'
 
 # Application definition
 INSTALLED_APPS = [
@@ -39,8 +39,11 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'deepapi',
     'analyze_responses',
+    'profileandchat',
+    'channels',
+    'cloudinary',
+    'cloudinary_storage',
 ]
-
 
 CSRF_COOKIE_HTTPONLY = False  #########
 CSRF_COOKIE_SECURE = False    #########
@@ -98,20 +101,11 @@ CORS_ALLOW_CREDENTIALS = True
 ALLOWED_HOSTS = ['*']
 WSGI_APPLICATION = 'config.wsgi.application'
 AUTH_USER_MODEL = 'app_frontend.CustomUser' ################################
+AUTH_USER_MODEL = 'app_frontend.CustomUser' ################################
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',  # Default backend
 ]
-# Database
-#DATABASES = {
-#    'default': {
-#       'ENGINE': 'django.db.backends.mysql',
-#        'NAME': config('DB_NAME'),
-#       'USER': config('DB_USER'),
-#       'PASSWORD': config('DB_PASSWORD'),
-#       'HOST': config('DB_HOST', default='localhost'),
-#       'PORT': config('DB_PORT', default='3306'),
-#   }
-#}
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -122,6 +116,9 @@ DATABASES = {
         'PORT': config('DB_PORT', default='3306'),
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'ssl': {
+                'ca': BASE_DIR.joinpath('certs', 'DigiCertGlobalRootCA.crt.pem').as_posix(),
+            },
         },
     },
 }
@@ -148,7 +145,7 @@ CORS_ALLOWED_ORIGINS = []
 
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = True
+#CORS_ALLOW_ALL_ORIGINS = True
 
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = False
@@ -179,6 +176,14 @@ EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 
+# Text.lk SMS Gateway Settings
+TEXT_LK_API_KEY = config('TEXT_LK_API_KEY')
+TEXT_LK_SENDER_ID = config('TEXT_LK_SENDER_ID')
+
+# Text.lk SMS Gateway Settings
+TEXT_LK_API_KEY = config('TEXT_LK_API_KEY')
+TEXT_LK_SENDER_ID = config('TEXT_LK_SENDER_ID')
+
 # Session settings
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 1800
@@ -198,3 +203,37 @@ import os
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        'app_frontend': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': config('CLOUDINARY_API_KEY'),
+    'API_SECRET': config('CLOUDINARY_API_SECRET'),
+}

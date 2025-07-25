@@ -19,19 +19,37 @@ class HabitroAdminManager:
         Returns user ID if valid, None otherwise
         """
         try:
-            user = CustomUser.objects.get(email=email.strip().lower(), is_admin=True, is_active=True)
-            
-            if check_password(password, user.password):
+            with connections['default'].cursor() as cursor:
+                # Get id, email, password, is_active
+                cursor.execute(
+                    """
+                    SELECT id, email, password, is_active 
+                    FROM admin_details 
+                    WHERE email = %s
+                    """,
+                    [email.lower().strip()]
+                )
+                result = cursor.fetchone()
+                
+                if not result:
+                    logger.warning(f"Admin not found: {email}")
+                    return None
+                
+                admin_id, stored_email, stored_hash, is_active = result
+                
+                # Check account active status
+                if not is_active:
+                    logger.warning(f"Inactive admin account: {email}")
+                    raise ValidationError("Account is inactive")
+                
+                # Auto-hashes and compares passwords
+                if not check_password(password, stored_hash):
+                    logger.warning(f"Password mismatch for: {email}")
+                    return None
+                
                 logger.info(f"Authenticated admin: {email}")
-                return user.id
-            else:
-                logger.warning(f"Password mismatch for: {email}")
-                return None
-
-        except CustomUser.DoesNotExist:
-            logger.warning(f"Admin not found: {email}")
-            return None
-
+                return admin_id
+                
         except Exception as e:
             logger.error(f"Authentication error: {str(e)}", exc_info=True)
             raise ValidationError("Authentication service unavailable")
@@ -44,7 +62,7 @@ class HabitroAdminManager:
             otp = ''.join(random.choices(string.digits, k=6))
             expiry_time = timezone.now() + timedelta(minutes=10)
 
-            with connections['habitro'].cursor() as cursor:
+            with connections['default'].cursor() as cursor:
                 cursor.execute(
                     "SELECT id FROM admin_details WHERE email = %s",
                     [email]
@@ -103,7 +121,7 @@ class HabitroAdminManager:
                 return False
 
             hashed_password = make_password(new_password)
-            with connections['habitro'].cursor() as cursor:
+            with connections['default'].cursor() as cursor:
                 affected = cursor.execute(
                     """
                     UPDATE admin_details 

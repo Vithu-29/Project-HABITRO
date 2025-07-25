@@ -13,14 +13,15 @@ urlpatterns = [
     path('api/', include('analyze_responses.urls')),
     # Frontend app (if needed)
     path('app_frontend/', include('app_frontend.urls')),
+    path('api/', include('app_frontend.urls')),
     
     
     path('quiz/', include('quiz.urls')),
     path('api/', include('rewards.urls')),
     path('game/', include('game.urls')),
     path('achievements/', include('achievements.urls')),
-    path('', include('articles.urls')),
-    path('api/articles/', include('articles.urls')),
+    path('article/', include('articles.urls')),
+    path('profile/', include('profileandchat.urls')),
 ]
 
 if settings.DEBUG:

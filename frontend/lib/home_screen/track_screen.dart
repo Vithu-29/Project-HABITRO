@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import '../services/ai_services.dart';
 import './qustionire_screen.dart';

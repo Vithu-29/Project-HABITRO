@@ -16,3 +16,13 @@ final ThemeData lightTheme = ThemeData(
     secondary: AppColors.secondary,
   ),
 );
+
+final ThemeData darkTheme = ThemeData(
+  brightness: Brightness.dark,
+  scaffoldBackgroundColor: Colors.black,
+  colorScheme: ColorScheme.dark(
+    primary: AppColors.primary,
+    secondary: AppColors.secondary,
+  ),
+  textTheme: const TextTheme(bodyMedium: TextStyle(color: Colors.white)),
+);

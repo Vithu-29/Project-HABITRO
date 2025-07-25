@@ -1,10 +1,15 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, avoid_print
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:frontend/api_config.dart';
-import 'otp_verification_screen.dart'; // Import the OTPVerificationScreen
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'otp_verification_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -14,7 +19,7 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class SignUpScreenState extends State<SignUpScreen> {
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _identifierController = TextEditingController();
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
@@ -23,30 +28,277 @@ class SignUpScreenState extends State<SignUpScreen> {
   bool _isLoading = false;
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: [
+      'email',
+      'profile',
+    ],
+  );
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final storage = FlutterSecureStorage(); // Add this line for token storage
 
-  // Helper function for QAuth click
-  void _onSocialSignIn(String provider) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$provider sign-in clicked')),
-    );
+  // Helper methods for validation
+  bool _isValidEmail(String email) {
+    final emailRegex =
+        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    return emailRegex.hasMatch(email);
+  }
+
+  bool _isValidPhone(String phone) {
+    final phoneRegex = RegExp(r'^(\+947|07)\d{8}$');
+    return phoneRegex.hasMatch(phone);
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Clear any previous sign-in state
+      await _googleSignIn.signOut();
+      await _auth.signOut();
+
+      // Start Google Sign In process
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+      if (googleUser == null) {
+        // User canceled the sign-in
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+        return;
+      }
+
+      // Get authentication details
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      // Validate that we have the required tokens
+      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
+        throw Exception('Failed to get Google authentication tokens');
+      }
+
+      // Create credential for Firebase
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign in to Firebase
+      final UserCredential authResult =
+          await _auth.signInWithCredential(credential);
+      final User? user = authResult.user;
+
+      if (user == null) {
+        throw Exception('Failed to get Firebase user after Google Sign In');
+      }
+
+      // Validate user email
+      if (user.email == null || user.email!.isEmpty) {
+        throw Exception('No email found in Google account');
+      }
+
+      if (!mounted) return;
+
+      // Send user details to your backend
+      final response = await http.post(
+        Uri.parse("${ApiConfig.baseUrl}social-login/"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": user.email,
+          "full_name": user.displayName ?? "Google User",
+          "provider": "google",
+          "provider_id": user.uid,
+        }),
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Extract token from response
+        final data = jsonDecode(response.body);
+        final token = data['token'];
+
+        if (token != null) {
+          // Save token securely in both locations
+          await storage.write(key: 'authToken', value: token);
+
+          // Also save in SharedPreferences for better compatibility
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('authToken', token);
+
+          // Set is_signed_in flag to true
+          await prefs.setBool('is_signed_in', true);
+        } else {
+          print("Warning: No token found in response");
+          // Set is_signed_in flag anyway for compatibility
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('is_signed_in', true);
+        }
+
+        // Navigate to home
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        // Handle backend error
+        String errorMessage = 'Failed to authenticate with server';
+        try {
+          final error = jsonDecode(response.body);
+          errorMessage = error['error'] ?? errorMessage;
+          print("Server error: $errorMessage");
+        } catch (e) {
+          print("Error parsing response: $e");
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      String errorMessage = 'Google sign-in failed';
+      print("Google sign-in error: $e");
+
+      if (e.toString().contains('network_error')) {
+        errorMessage = 'Network error. Please check your connection.';
+      } else if (e.toString().contains('sign_in_canceled') ||
+          e.toString().contains('cancel')) {
+        errorMessage = 'Sign-in was canceled';
+      } else if (e.toString().contains('sign_in_failed')) {
+        errorMessage = 'Google sign-in failed. Please try again.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleFacebookSignIn() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final LoginResult result = await FacebookAuth.instance.login();
+
+      if (result.status == LoginStatus.success) {
+        final userData = await FacebookAuth.instance.getUserData();
+
+        final OAuthCredential credential =
+            FacebookAuthProvider.credential(result.accessToken!.token);
+
+        final userCredential = await _auth.signInWithCredential(credential);
+        final User? user = userCredential.user;
+
+        if (user == null) {
+          throw Exception('Failed to get user data after Facebook Sign In');
+        }
+
+        if (!mounted) return;
+
+        final response = await http.post(
+          Uri.parse("${ApiConfig.baseUrl}social-login/"),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode({
+            "email": userData['email'],
+            "full_name": userData['name'] ?? "Facebook User",
+            "provider": "facebook",
+            "provider_id": user.uid,
+          }),
+        );
+
+        if (!mounted) return;
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          // Extract token from response
+          final data = jsonDecode(response.body);
+          final token = data['token'];
+
+          if (token != null) {
+            // Save token securely in both locations
+            await storage.write(key: 'authToken', value: token);
+
+            // Also save in SharedPreferences for better compatibility
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('authToken', token);
+
+            // Set is_signed_in flag to true
+            await prefs.setBool('is_signed_in', true);
+          } else {
+            print("Warning: No token found in response");
+            // Set is_signed_in flag anyway
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setBool('is_signed_in', true);
+          }
+
+          Navigator.pushReplacementNamed(context, '/home');
+        } else {
+          final error = jsonDecode(response.body);
+          throw Exception(
+              error['error'] ?? 'Failed to authenticate with server');
+        }
+      } else {
+        throw Exception('Facebook sign-in failed');
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      String errorMessage = 'Facebook sign-in failed';
+      if (e.toString().contains('network_error')) {
+        errorMessage = 'Network error. Please check your connection.';
+      } else if (e.toString().contains('cancelled')) {
+        errorMessage = 'Sign-in was canceled';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   Future<void> _register() async {
-    // Validate email format
-    final email = _emailController.text.trim();
-    final emailRegex =
-        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-    if (!emailRegex.hasMatch(email)) {
+    final identifier = _identifierController.text.trim();
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+
+    if (identifier.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid email address')),
+        const SnackBar(
+            content: Text('Please enter your email or phone number')),
       );
       return;
     }
 
-    // Check password
-    final password = _passwordController.text.trim();
+    // Determine if identifier is email or phone
+    final isEmail = _isValidEmail(identifier);
+    final isPhone = _isValidPhone(identifier);
 
-    // 1. First check minimum length (non-negotiable)
+    if (!isEmail && !isPhone) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text(
+                'Please enter a valid email or phone number (+947XXXXXXXX or 07XXXXXXXX)')),
+      );
+      return;
+    }
+
+    if (_fullNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your full name')),
+      );
+      return;
+    }
+
     if (password.length < 8) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Password must be at least 8 characters')),
@@ -54,7 +306,6 @@ class SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
-    // 2. Check character requirements (need at least 3/4)
     final hasUpper = password.contains(RegExp(r'[A-Z]'));
     final hasLower = password.contains(RegExp(r'[a-z]'));
     final hasNumber = password.contains(RegExp(r'[0-9]'));
@@ -73,9 +324,7 @@ class SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
-    // Check if passwords match
-    if (_passwordController.text.trim() !=
-        _confirmPasswordController.text.trim()) {
+    if (password != confirmPassword) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Passwords do not match')),
       );
@@ -85,10 +334,11 @@ class SignUpScreenState extends State<SignUpScreen> {
     setState(() => _isLoading = true);
 
     final body = {
-      "email": _emailController.text.trim(),
+      if (isEmail) "email": identifier,
+      if (isPhone) "phone_number": identifier,
       "full_name": _fullNameController.text.trim(),
-      "password": _passwordController.text.trim(),
-      "confirm_password": _confirmPasswordController.text.trim(),
+      "password": password,
+      "confirm_password": confirmPassword,
     };
 
     try {
@@ -100,16 +350,19 @@ class SignUpScreenState extends State<SignUpScreen> {
 
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('OTP sent to your email')),
+          SnackBar(
+              content: Text(isEmail
+                  ? 'OTP sent to your email'
+                  : 'OTP sent to your phone')),
         );
 
-        // Navigate to OTPVerificationScreen for signup flow
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => OTPVerificationScreen(
-              email: _emailController.text.trim(), // Pass the user's email
-              isForgotPassword: false, // Signup flow
+              email: isEmail ? identifier : '',
+              phone: isPhone ? identifier : '',
+              isForgotPassword: false,
             ),
           ),
         );
@@ -135,6 +388,7 @@ class SignUpScreenState extends State<SignUpScreen> {
     required TextEditingController controller,
     bool isPasswordVisible = false,
     VoidCallback? toggleVisibility,
+    TextInputType? keyboardType,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,6 +402,7 @@ class SignUpScreenState extends State<SignUpScreen> {
         TextField(
           controller: controller,
           obscureText: isPassword ? !isPasswordVisible : false,
+          keyboardType: keyboardType,
           decoration: InputDecoration(
             hintText: placeholder,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -213,13 +468,14 @@ class SignUpScreenState extends State<SignUpScreen> {
                       ),
                       const SizedBox(height: 24),
                       _buildLabeledField(
-                        'Email',
-                        'Enter your email',
-                        controller: _emailController,
+                        'Email/Phone Number',
+                        'Enter your email or phone number',
+                        controller: _identifierController,
+                        keyboardType: TextInputType.emailAddress,
                       ),
                       const SizedBox(height: 12),
                       _buildLabeledField(
-                        'Full Name',
+                        'Full name',
                         'Enter your full name',
                         controller: _fullNameController,
                       ),
@@ -238,8 +494,8 @@ class SignUpScreenState extends State<SignUpScreen> {
                       ),
                       const SizedBox(height: 12),
                       _buildLabeledField(
-                        'Confirm Password',
-                        'Re-enter your password',
+                        'Confirm password',
+                        'Re-Enter your password',
                         isPassword: true,
                         controller: _confirmPasswordController,
                         isPasswordVisible: _isConfirmPasswordVisible,
@@ -279,7 +535,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                           Expanded(child: Divider()),
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 8.0),
-                            child: Text("Sign in with"),
+                            child: Text("Sign up with"),
                           ),
                           Expanded(child: Divider()),
                         ],
@@ -290,17 +546,20 @@ class SignUpScreenState extends State<SignUpScreen> {
                         children: [
                           _socialButton(
                             'assets/images/google.png',
-                            () => _onSocialSignIn("Google"),
+                            _isLoading ? () {} : _handleGoogleSignIn,
                           ),
                           const SizedBox(width: 38),
                           _socialButton(
                             'assets/images/apple.png',
-                            () => _onSocialSignIn("Apple"),
+                            () => ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Apple sign-in clicked')),
+                            ),
                           ),
                           const SizedBox(width: 38),
                           _socialButton(
                             'assets/images/facebook.png',
-                            () => _onSocialSignIn("Facebook"),
+                            _isLoading ? () {} : _handleFacebookSignIn,
                           ),
                         ],
                       ),
@@ -325,8 +584,8 @@ class SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Center(
-                        child: const Text.rich(
+                      const Center(
+                        child: Text.rich(
                           TextSpan(
                             text: 'By signing up you agree to our ',
                             children: [
@@ -363,7 +622,7 @@ class SignUpScreenState extends State<SignUpScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _identifierController.dispose();
     _fullNameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();

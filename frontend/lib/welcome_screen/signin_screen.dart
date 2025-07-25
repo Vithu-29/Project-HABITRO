@@ -1,11 +1,15 @@
-// ignore_for_file: sort_child_properties_last, use_key_in_widget_constructors, library_private_types_in_public_api, use_build_context_synchronously
+// ignore_for_file: sort_child_properties_last, use_key_in_widget_constructors, library_private_types_in_public_api, use_build_context_synchronously, avoid_print, unused_field, unused_element
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:frontend/api_config.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:frontend/services/biometric_auth_service.dart';
 class SignInScreen extends StatefulWidget {
   @override
   _SignInScreenState createState() => _SignInScreenState();
@@ -18,6 +22,153 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _isLoading = false;
   bool _isPasswordVisible = false;
   final storage = FlutterSecureStorage();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: [
+      'email',
+      'profile',
+    ],
+  );
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final LocalAuthentication _localAuth = LocalAuthentication();
+  bool _canCheckBiometrics = false;
+  List<BiometricType> _availableBiometrics = [];
+  bool _isFingerprintAvailable = false;
+  bool _isFaceIdAvailable = false;
+  bool _isBiometricEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometrics();
+  }
+
+  Future<void> _checkBiometrics() async {
+    try {
+      final isAvailable = await BiometricAuthService.isBiometricAvailable();
+      if (isAvailable) {
+        final availableBiometrics =
+            await BiometricAuthService.getAvailableBiometrics();
+        final fingerprintAvailable =
+            await BiometricAuthService.isFingerprintAvailable();
+        final faceIdAvailable = await BiometricAuthService.isFaceIdAvailable();
+        final biometricEnabled =
+            await BiometricAuthService.isBiometricEnabled();
+
+        if (mounted) {
+          setState(() {
+            _canCheckBiometrics = isAvailable;
+            _availableBiometrics = availableBiometrics;
+            _isFingerprintAvailable = fingerprintAvailable;
+            _isFaceIdAvailable = faceIdAvailable;
+            _isBiometricEnabled = biometricEnabled;
+          });
+        }
+        print("Available biometrics: $_availableBiometrics");
+        print("Fingerprint available: $_isFingerprintAvailable");
+        print("Face ID available: $_isFaceIdAvailable");
+        print("Biometric enabled: $_isBiometricEnabled");
+      }
+    } catch (e) {
+      print("Error checking biometrics: $e");
+    }
+  }
+
+  Future<void> _authenticateWithBiometrics(bool isFingerprint) async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    final result = await BiometricAuthService.authenticateWithBiometrics(
+      isFingerprint: isFingerprint,
+      context: context,
+    );
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+
+      if (result.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.message)),
+        );
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/home',
+          (Route<dynamic> route) => false,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message),
+            duration: Duration(seconds: 4),
+          ),
+        );
+
+        if (result.message.contains('expired') ||
+            result.message.contains('invalid')) {
+          await _checkBiometrics();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Please sign in manually with "Remember Me" to refresh biometric authentication.'),
+              duration: Duration(seconds: 6),
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _signInWithCredentials(String email, String password) async {
+    try {
+      // Show loading indicator
+      setState(() => _isLoading = true);
+
+      // Use standard login endpoint without biometric flags
+      final response = await http.post(
+        Uri.parse("${ApiConfig.baseUrl}login/"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": email,
+          "password": password,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final token = data['token'];
+
+        // Save token securely
+        await storage.write(key: 'authToken', value: token);
+
+        // Set is_signed_in flag to true
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('is_signed_in', true);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Biometric login successful')),
+        );
+
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/home',
+          (Route<dynamic> route) => false,
+        );
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? 'Login failed');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error connecting to server: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   Future<void> _signIn() async {
     final email = _emailController.text.trim();
@@ -32,24 +183,57 @@ class _SignInScreenState extends State<SignInScreen> {
 
     setState(() => _isLoading = true);
 
-    final body = {
-      "email": email,
-      "password": password,
-    };
-
     try {
+      final isEmail = email.contains('@');
+
+      final Map<String, dynamic> requestBody = {
+        isEmail ? "email" : "phone_number": email,
+        "password": password,
+      };
+
+      //await storage.deleteAll();
+
       final response = await http.post(
         Uri.parse("${ApiConfig.baseUrl}login/"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode(body),
+        body: jsonEncode(requestBody),
       );
+
+      print('Login response: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final token = data['token'];
 
-        // Save token securely
+        // Save token in multiple locations to ensure availability
+        // 1. In FlutterSecureStorage (secure)
         await storage.write(key: 'authToken', value: token);
+
+        // Save user ID securely for later use
+        final userId = data['user']?['id'];
+        if (userId != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setInt('userId', userId); // Save to SharedPreferences
+          print('Saved user ID to shared preferences: $userId');
+        }
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('authToken', token);
+        await prefs.setString('username', data['user']?['full_name'] ?? "User");
+
+        // Save credentials for biometric auth if remember me is checked
+        if (_rememberMe) {
+          await BiometricAuthService.saveCredentialsForBiometric(
+              email, password);
+
+          await prefs.setString('saved_email', email);
+          await prefs.setString('saved_password', password);
+        }
+
+        await prefs.setBool('is_signed_in', true);
+
+        await _checkBiometrics();
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login successful')),
         );
@@ -73,10 +257,149 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      await _googleSignIn.signOut();
+      await _auth.signOut();
+
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+      if (googleUser == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
+        throw Exception('Failed to get Google authentication tokens');
+      }
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential authResult =
+          await _auth.signInWithCredential(credential);
+      final User? user = authResult.user;
+
+      if (user == null) {
+        throw Exception('Failed to get Firebase user after Google Sign In');
+      }
+
+      if (user.email == null || user.email!.isEmpty) {
+        throw Exception('No email found in Google account');
+      }
+
+      if (!mounted) return;
+
+      final response = await http.post(
+        Uri.parse("${ApiConfig.baseUrl}social-login/"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": user.email,
+          "full_name": user.displayName ?? "Google User",
+          "provider": "google",
+          "provider_id": user.uid,
+        }),
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        final token = data['token'];
+        final userId = data['user']?['id'];
+
+        if (token != null) {
+          await storage.write(key: 'authToken', value: token);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('authToken', token);
+          await prefs.setBool('is_signed_in', true);
+        }
+
+        if (userId != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setInt('userId', int.parse(userId));
+        }
+
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        String errorMessage = 'Failed to authenticate with server';
+        try {
+          final error = jsonDecode(response.body);
+          errorMessage = error['error'] ?? errorMessage;
+          print("Server error response: $error");
+        } catch (e) {
+          print("Error parsing server response: $e");
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      String errorMessage = 'Google sign-in failed';
+      print("Google sign-in error: $e");
+
+      if (e.toString().contains('network_error')) {
+        errorMessage = 'Network error. Please check your connection.';
+      } else if (e.toString().contains('sign_in_canceled') ||
+          e.toString().contains('cancel')) {
+        errorMessage = 'Sign-in was canceled';
+      } else if (e.toString().contains('sign_in_failed')) {
+        errorMessage = 'Google sign-in failed. Please try again.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   void _onSocialSignIn(String provider) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$provider Sign-In pressed (mock logic)')),
-    );
+    if (provider == "Google") {
+      _handleGoogleSignIn();
+    } else if (provider == "Apple") {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Apple Sign-In is not yet implemented')),
+      );
+    } else if (provider == "Facebook") {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Facebook Sign-In is not yet implemented')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$provider Sign-In pressed')),
+      );
+    }
+    if (provider == "Google") {
+      _handleGoogleSignIn();
+    } else if (provider == "Apple") {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Apple Sign-In is not yet implemented')),
+      );
+    } else if (provider == "Facebook") {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Facebook Sign-In is not yet implemented')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$provider Sign-In pressed')),
+      );
+    }
   }
 
   Widget _socialIcon(String assetPath, VoidCallback onTap) {
@@ -170,8 +493,8 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                       const SizedBox(height: 24),
                       _buildLabeledField(
-                        'Email',
-                        'Enter your email',
+                        'Email/Phone Number',
+                        'Enter your email or phone number',
                         controller: _emailController,
                       ),
                       const SizedBox(height: 12),
@@ -253,6 +576,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         ],
                       ),
                       const SizedBox(height: 24),
+                      const SizedBox(height: 16),
                       Row(
                         children: const [
                           Expanded(child: Divider()),
@@ -274,15 +598,32 @@ class _SignInScreenState extends State<SignInScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Image.asset("assets/images/face.png",
-                              height: 50, fit: BoxFit.contain),
-                          const SizedBox(width: 20),
-                          const Text("or"),
-                          const SizedBox(width: 20),
-                          Image.asset("assets/images/finger.png",
-                              height: 50, fit: BoxFit.contain),
+                          GestureDetector(
+                            onTap: _isLoading
+                                ? null
+                                : () => _authenticateWithBiometrics(false),
+                            child: Image.asset(
+                              "assets/images/face.png",
+                              height: 40,
+                              width: 40,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                          const SizedBox(width: 80),
+                          GestureDetector(
+                            onTap: _isLoading
+                                ? null
+                                : () => _authenticateWithBiometrics(true),
+                            child: Image.asset(
+                              "assets/images/finger.png",
+                              height: 40,
+                              width: 40,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
                         ],
                       ),
+
                       const SizedBox(height: 16),
                       Center(
                         child: TextButton(

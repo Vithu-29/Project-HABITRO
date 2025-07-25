@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest.dart' as tz;
-import '../models/reminder.dart';
+import 'package:frontend/home_screen/home_screen.dart';
+import '../services/notification_service.dart';
+import '../services/ai_services.dart';
 
 class ReminderSetupScreen extends StatefulWidget {
   final String habitId;
@@ -10,216 +9,133 @@ class ReminderSetupScreen extends StatefulWidget {
   final int trackingDurationDays;
 
   const ReminderSetupScreen({
+    super.key,
     required this.habitId,
     required this.habitName,
     required this.trackingDurationDays,
-    super.key,
   });
 
   @override
-  _ReminderSetupScreenState createState() => _ReminderSetupScreenState();
+  State<ReminderSetupScreen> createState() => _ReminderSetupScreenState();
 }
 
 class _ReminderSetupScreenState extends State<ReminderSetupScreen> {
-  TimeOfDay _selectedTime = TimeOfDay.now();
-  bool _notificationsEnabled = true;
-  late FlutterLocalNotificationsPlugin _notificationsPlugin;
+  TimeOfDay? selectedTime;
+  bool isSaving = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _notificationsPlugin = FlutterLocalNotificationsPlugin();
-    _initializeNotifications();
-    _checkNotificationPermissions();
-    tz.initializeTimeZones();
-  }
-
-  Future<void> _initializeNotifications() async {
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    
-    final InitializationSettings initializationSettings =
-        InitializationSettings(
-      android: initializationSettingsAndroid,
-    );
-    
-    await _notificationsPlugin.initialize(initializationSettings);
-  }
-
-  Future<void> _checkNotificationPermissions() async {
-    final bool? granted = await _notificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.areNotificationsEnabled();
-    
-    setState(() {
-      _notificationsEnabled = granted ?? false;
-    });
-  }
-
-  Future<void> _selectTime() async {
+  Future<void> _pickTime() async {
+    final TimeOfDay now = TimeOfDay.now();
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: _selectedTime,
+      initialTime: selectedTime ?? now,
     );
-    if (picked != null && picked != _selectedTime) {
+    if (picked != null) {
       setState(() {
-        _selectedTime = picked;
+        selectedTime = picked;
       });
     }
   }
 
-  Future<void> _saveReminder() async {
-    if (!_notificationsEnabled) {
-      await _showNotificationsDisabledWarning();
+  Future<void> _scheduleNotification() async {
+    if (selectedTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a time first')),
+      );
       return;
     }
+    setState(() => isSaving = true);
 
-    final reminder = Reminder(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      habitId: widget.habitId,
-      habitName: widget.habitName,
-      time: _selectedTime,
-      trackingDurationDays: widget.trackingDurationDays,
-    );
-
-    // Save reminder to database
-    // await ReminderService.saveReminder(reminder);
-
-    // Schedule notifications
-    await _scheduleDailyNotification(reminder);
-
-    Navigator.pop(context, true);
-  }
-
-  Future<void> _scheduleDailyNotification(Reminder reminder) async {
-  // Android notification details
-  const AndroidNotificationDetails androidPlatformChannelSpecifics =
-      AndroidNotificationDetails(
-    'habit_reminder_channel',
-    'Habit Reminders',
-    channelDescription: 'Notifications for habit tracking reminders',
-    importance: Importance.high,
-    priority: Priority.high,
-    showWhen: false,
-  );
-
-  // Notification details for all platforms
-  const NotificationDetails platformChannelSpecifics = NotificationDetails(
-    android: androidPlatformChannelSpecifics,
-  );
-
-  // Get local timezone
-  final location = tz.local;
-
-  try {
-    // Schedule notification for each day of the tracking period
-    for (int day = 0; day < reminder.trackingDurationDays; day++) {
-      final scheduledDate = tz.TZDateTime.from(
-        DateTime.now().add(Duration(days: day)),
-        location,
-      ).add(Duration(
-        hours: reminder.time.hour,
-        minutes: reminder.time.minute,
-      ));
-
-      await _notificationsPlugin.zonedSchedule(
-        day, // Unique ID for each notification
-        'Habit Reminder: ${reminder.habitName}',
-        'Time to track your habit progress!',
-        scheduledDate,
-        platformChannelSpecifics,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.time,
+    try {
+      await NotificationService.scheduleNotification(
+        habitId: widget.habitId,
+        habitName: widget.habitName,
+        time: selectedTime!,
       );
+
+      final success = await AIService.updateReminderSettings(
+        habitId: widget.habitId,
+        wantsReminder: true,
+        reminderTime: '${selectedTime!.hour}:${selectedTime!.minute}',
+      );
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Reminder set for ${widget.habitName} at ${selectedTime!.format(context)}',
+            ),
+          ),
+        );
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
+        );
+      } else {
+        await NotificationService.cancelNotification(widget.habitId);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to save reminder settings')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    } finally {
+      setState(() => isSaving = false);
     }
-  } catch (e) {
-    print('Error scheduling notifications: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Failed to schedule notifications'),
-      ),
-    );
-  }
-}
-
-  Future<void> _showNotificationsDisabledWarning() async {
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Notifications Disabled'),
-        content: const Text(
-          'Please enable notifications in your device settings to set reminders.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _openAppSettings();
-            },
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _openAppSettings() async {
-    // This requires the app_settings package
-    // await AppSettings.openAppSettings();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Set Daily Reminder'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Habit: ${widget.habitName}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tracking Duration: ${widget.trackingDurationDays} days',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Daily Reminder Time:',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            ListTile(
-              title: Text(_selectedTime.format(context)),
-              trailing: const Icon(Icons.access_time),
-              onTap: _selectTime,
-            ),
-            const SizedBox(height: 16),
-            if (!_notificationsEnabled)
-              const Text(
-                'Notifications are disabled. Please enable them in your device settings.',
-                style: TextStyle(color: Colors.red),
+      appBar: AppBar(title: const Text('Set Habit Reminder')),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.access_alarm, size: 80, color: Theme.of(context).primaryColor),
+              const SizedBox(height: 24),
+              Text(
+                widget.habitName,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
-            const Spacer(),
-            Center(
-              child: ElevatedButton(
-                onPressed: _saveReminder,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(200, 50),
+              const SizedBox(height: 8),
+              Text(
+                'Tracking for ${widget.trackingDurationDays} days',
+                style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+              ),
+              const SizedBox(height: 32),
+              Text(
+                selectedTime == null
+                    ? 'No time selected'
+                    : 'Selected time: ${selectedTime!.format(context)}',
+                style: const TextStyle(fontSize: 20),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: _pickTime,
+                icon: const Icon(Icons.access_time),
+                label: const Text('Pick Time'),
+              ),
+              const SizedBox(height: 36),
+              if (isSaving)
+                const CircularProgressIndicator()
+              else
+                Column(
+                  children: [
+                    FilledButton.icon(
+                      onPressed: _scheduleNotification,
+                      icon: const Icon(Icons.notifications_active),
+                      label: const Text('Schedule Reminder'),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                 ),
-                child: const Text('Save Daily Reminder'),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -16,6 +16,7 @@ class RewardScreen extends StatefulWidget {
 
 class _RewardScreenState extends State<RewardScreen> {
   Future<Map<String, dynamic>>? _rewardsFuture;
+  int _achievementsRefreshKey = 0;
 
   @override
   void initState() {
@@ -26,6 +27,7 @@ class _RewardScreenState extends State<RewardScreen> {
   void _refreshData() {
     setState(() {
       _rewardsFuture = RewardService.getRewards();
+      _achievementsRefreshKey++;
     });
   }
 
@@ -73,7 +75,10 @@ class _RewardScreenState extends State<RewardScreen> {
                 endIndent: 25,
                 color: AppColors.greyText,
               ),
-              Achievements(),
+              Achievements(
+                key: ValueKey(_achievementsRefreshKey),
+                onRefresh: _refreshData,
+              ),
               Divider(
                 height: 50,
                 indent: 25,
@@ -106,36 +111,30 @@ class __RewardsSectionState extends State<_RewardsSection> {
     final currentCoins = widget.rewards['coins'] as int;
     final formKey = GlobalKey<FormState>();
     int enteredCoins = 0;
-    double calculatedGems = 0;
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
+            double calculatedGems = enteredCoins / 1000;
+
             return AlertDialog(
               content: Form(
                 key: formKey,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text('1000'),
-                        Image.asset(
-                          'assets/icons/coin.png',
-                          width: 24,
-                          height: 24,
-                        ),
-                        Icon(Icons.swap_horiz),
+                        Image.asset('assets/icons/coin.png',
+                            width: 24, height: 24),
+                        const Icon(Icons.swap_horiz),
                         const Text('1'),
-                        Image.asset(
-                          'assets/icons/Diamond.png',
-                          width: 24,
-                          height: 24,
-                        ),
+                        Image.asset('assets/icons/Diamond.png',
+                            width: 24, height: 24),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -159,67 +158,25 @@ class __RewardsSectionState extends State<_RewardsSection> {
                         final coins = int.tryParse(value) ?? 0;
                         setState(() {
                           enteredCoins = coins;
-                          calculatedGems = coins / 1000;
                         });
                       },
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      'Available coins: $currentCoins',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                    ),
+                    Text('Available coins: $currentCoins',
+                        style:
+                            TextStyle(color: Colors.grey[600], fontSize: 12)),
                     const SizedBox(height: 16),
-                    Text(
-                      'You will receive: $calculatedGems gems',
-                      style: const TextStyle(fontSize: 16),
-                    ),
+                    Text('You will receive: $calculatedGems gems',
+                        style: const TextStyle(fontSize: 16)),
                   ],
                 ),
               ),
               actions: [
                 ElevatedButton(
-                  onPressed: () async {
+                  onPressed: () {
                     if (formKey.currentState!.validate()) {
-                      Navigator.pop(context); // Close dialog
-
-                      // Show loading
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (_) =>
-                            const Center(child: CircularProgressIndicator()),
-                      );
-
-                      final result =
-                          await RewardService.convertCoins(enteredCoins);
-                      Navigator.pop(context); // Dismiss loading
-
-                      if (result.containsKey('error')) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(result['error']),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      } else {
-                        // Update parent state
-                        if (mounted) {
-                          setState(() {
-                            widget.rewards['coins'] = result['coins'];
-                            widget.rewards['gems'] = result['gems'];
-                          });
-                        }
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                                'Converted $enteredCoins coins to $calculatedGems gems!'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      }
+                      Navigator.of(dialogContext)
+                          .pop(enteredCoins); // Pass value back
                     }
                   },
                   child: const Text('Convert'),
@@ -229,7 +186,46 @@ class __RewardsSectionState extends State<_RewardsSection> {
           },
         );
       },
-    );
+    ).then((enteredCoins) async {
+      if (enteredCoins == null || enteredCoins == 0) return;
+
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // Call your backend
+      final result = await RewardService.convertCoins(enteredCoins);
+
+      // Dismiss loading
+      Navigator.of(context).pop();
+
+      if (!mounted) return;
+
+      if (result.containsKey('error')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['error']),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else {
+        setState(() {
+          widget.rewards['coins'] = result['coins'];
+          widget.rewards['gems'] = result['gems'];
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Converted $enteredCoins coins to ${enteredCoins / 1000} gems!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -264,8 +260,10 @@ class __RewardsSectionState extends State<_RewardsSection> {
 
   void _showStreakDialog(BuildContext context) {
     final lastClaimed = widget.rewards['last_claim_date'];
+    final cycleDay = widget.rewards['streak_cycle_day'] as int;
     DateTime? lastClaimDate;
     bool isClaimedToday = false;
+    double todayReward = _getTodayReward(cycleDay, lastClaimed);
 
     if (lastClaimed != null) {
       lastClaimDate = DateTime.parse(lastClaimed).toLocal();
@@ -274,46 +272,153 @@ class __RewardsSectionState extends State<_RewardsSection> {
           lastClaimDate.month == now.month &&
           lastClaimDate.day == now.day;
     }
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Daily Streak'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Current Streak: ${widget.rewards['daily_streak']} days'),
-            Text('Max Streak: ${widget.rewards['max_streak']} days'),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: isClaimedToday
-                  ? null // Disable button if already claimed
-                  : () async {
-                      Navigator.pop(context);
-                      final result = await RewardService.claimStreak();
-                      setState(() {
-                        widget.rewards['daily_streak'] = result['daily_streak'];
-                        widget.rewards['max_streak'] = result['max_streak'];
-                        widget.rewards['gems'] = result['gems'];
-                        widget.rewards['last_claim_date'] =
-                            result['last_claim_date'];
-                      });
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isClaimedToday
-                    ? Colors.grey 
-                    : Theme.of(context).primaryColor,
-              ),
-              child: Text(
-                isClaimedToday ? 'Already Claimed' : 'Claim',
+      builder: (context) => Dialog(
+        //backgroundColor: AppColors.secondary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Title
+              Text(
+                'Daily Streak',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.primary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+
+              // Streak Info
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Current Streak:',
+                    style: TextStyle(color: AppColors.blackText),
+                  ),
+                  Text(
+                    '${widget.rewards['daily_streak']} days',
+                    style: TextStyle(color: AppColors.greyText),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Max Streak:',
+                    style: TextStyle(color: AppColors.blackText),
+                  ),
+                  Text(
+                    '${widget.rewards['max_streak']} days',
+                    style: TextStyle(color: AppColors.greyText),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              // Today's Reward
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.secondary,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Column(
+                  children: [
+                    Text(
+                      "Today's Reward",
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset(
+                          'assets/icons/Diamond.png',
+                          width: 24,
+                          height: 24,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '$todayReward',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 20),
+
+              // Claim Button
+              ElevatedButton(
+                onPressed: isClaimedToday
+                    ? null
+                    : () async {
+                        Navigator.pop(context);
+                        final result = await RewardService.claimStreak();
+                        setState(() {
+                          widget.rewards['daily_streak'] =
+                              result['daily_streak'];
+                          widget.rewards['max_streak'] = result['max_streak'];
+                          widget.rewards['gems'] = result['gems'];
+                          widget.rewards['last_claim_date'] =
+                              result['last_claim_date'];
+                          widget.rewards['streak_cycle_day'] =
+                              result['streak_cycle_day'];
+                        });
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      isClaimedToday ? Colors.grey : AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                ),
+                child: Text(
+                  isClaimedToday ? 'Already Claimed' : 'Claim',
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  double _getTodayReward(int cycleDay, String? lastClaimed) {
+    const rewards = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 1.0];
+
+    if (lastClaimed == null) return rewards[0];
+
+    final lastClaimDate = DateTime.parse(lastClaimed).toLocal();
+    final now = DateTime.now().toLocal();
+    final isConsecutive = now.difference(lastClaimDate).inDays == 1;
+
+    return isConsecutive ? rewards[(cycleDay + 1) % 7] : rewards[0];
   }
 
   void _showPopup(BuildContext context, String title, String content) {

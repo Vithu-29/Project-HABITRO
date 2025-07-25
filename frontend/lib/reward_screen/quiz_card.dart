@@ -112,7 +112,7 @@ class QuizCard extends StatelessWidget {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
                             ),
-                            backgroundColor:Colors.red,
+                            backgroundColor:Theme.of(context).colorScheme.primary,
                           ),
                           child: const Text(
                             "Start",

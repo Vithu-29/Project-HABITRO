@@ -127,9 +127,13 @@ class AddCoinsView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
         try:
-            coins = request.data.get('coins')
-            if not coins:
-                return Response({"error": "Coins required"}, status=400)
+            if 'coins' not in request.data:
+                return Response({"error": "Coins field is required."}, status=400)
+
+            try:
+                coins = int(request.data['coins'])
+            except (ValueError, TypeError):
+                return Response({"error": "Coins must be an integer."}, status=400)
 
             reward, _ = Reward.objects.get_or_create(user=request.user)
             reward.coins += int(coins)

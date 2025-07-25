@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/api_services/quiz_service.dart';
+import 'package:frontend/components/standard_app_bar.dart';
 import 'package:frontend/models/quiz_model.dart';
 
 class QuizScreen extends StatefulWidget {
@@ -12,7 +13,7 @@ class QuizScreen extends StatefulWidget {
 class _QuizScreenState extends State<QuizScreen> {
   List<Quiz> quizzes = [];
   int currentQuestionIndex = 0;
-  int index = 0;
+  int index = 0; // global progress index
   bool isLoading = false;
   int coins = 0;
   String selectedAnswer = '';
@@ -39,10 +40,15 @@ class _QuizScreenState extends State<QuizScreen> {
     }
   }
 
+  /// Calculates how many questions have been completed in this session
+  int getCompletedQuestionCount() {
+    return currentQuestionIndex + (isAnswerChecked ? 1 : 0);
+  }
+
   Future<void> updateProgress() async {
     try {
       await QuizApiService.updateProgress(
-        currentQuestionIndex: index + currentQuestionIndex,
+        currentQuestionIndex: index + getCompletedQuestionCount(),
       );
     } catch (e) {
       showError(e.toString());
@@ -71,6 +77,7 @@ class _QuizScreenState extends State<QuizScreen> {
           isAnswerChecked = false;
         });
       } else {
+        // Final question answered
         await updateProgress();
         try {
           await QuizApiService.addCoins(coins: coins);
@@ -101,8 +108,8 @@ class _QuizScreenState extends State<QuizScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop(true);
-              Navigator.of(context).pop(true);
+              Navigator.of(context).pop(true); // close dialog
+              Navigator.of(context).pop(true); // go back
             },
             child: const Text("OK"),
           ),
@@ -132,10 +139,7 @@ class _QuizScreenState extends State<QuizScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Quiz"),
-        automaticallyImplyLeading: false,
-      ),
+      appBar: StandardAppBar(appBarTitle: 'Quiz'),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : quizzes.isEmpty
