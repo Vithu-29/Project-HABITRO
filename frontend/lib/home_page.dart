@@ -84,6 +84,11 @@ class HomePageState extends State<HomePage> {
         _selectedIndex = index;
       });
     }
+    if (!_isOnboardingActive) {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
   }
 
   @override
@@ -96,13 +101,24 @@ class HomePageState extends State<HomePage> {
       );
     }
 
+    if (_pages == null) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
+      body: _pages![_selectedIndex],
       body: _pages![_selectedIndex],
       bottomNavigationBar: CustomNavBar(
         selectedIndex: _selectedIndex,
         onTap: _onNavBarTap,
         isDisabled: _isOnboardingActive,
+        isDisabled: _isOnboardingActive,
       ),
     );
   }
 }
+

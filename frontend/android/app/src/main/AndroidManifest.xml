@@ -49,6 +49,15 @@
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <!-- Flutter embedding -->
+
+        <!-- Google Sign-In Activity -->
+        <activity
+            android:name="com.google.android.gms.auth.api.signin.internal.SignInHubActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- Flutter embedding -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

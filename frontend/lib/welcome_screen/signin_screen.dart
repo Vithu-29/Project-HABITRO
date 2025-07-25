@@ -10,6 +10,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:frontend/services/biometric_auth_service.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:frontend/services/biometric_auth_service.dart';
 
 class SignInScreen extends StatefulWidget {
   @override
@@ -198,6 +203,7 @@ class _SignInScreenState extends State<SignInScreen> {
         Uri.parse("${ApiConfig.baseUrl}login/"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(requestBody),
+        body: jsonEncode(requestBody),
       );
 
       print('Login response: ${response.body}');
@@ -206,7 +212,8 @@ class _SignInScreenState extends State<SignInScreen> {
         final data = jsonDecode(response.body);
         final token = data['token'];
 
-        // Save token securely
+        // Save token in multiple locations to ensure availability
+        // 1. In FlutterSecureStorage (secure)
         await storage.write(key: 'authToken', value: token);
 
         // Save user ID securely for later use
@@ -385,6 +392,21 @@ class _SignInScreenState extends State<SignInScreen> {
         SnackBar(content: Text('$provider Sign-In pressed')),
       );
     }
+    if (provider == "Google") {
+      _handleGoogleSignIn();
+    } else if (provider == "Apple") {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Apple Sign-In is not yet implemented')),
+      );
+    } else if (provider == "Facebook") {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Facebook Sign-In is not yet implemented')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$provider Sign-In pressed')),
+      );
+    }
   }
 
   Widget _socialIcon(String assetPath, VoidCallback onTap) {
@@ -478,6 +500,8 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                       const SizedBox(height: 24),
                       _buildLabeledField(
+                        'Email/Phone Number',
+                        'Enter your email or phone number',
                         'Email/Phone Number',
                         'Enter your email or phone number',
                         controller: _emailController,
@@ -608,6 +632,7 @@ class _SignInScreenState extends State<SignInScreen> {
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 16),
                       Center(
                         child: TextButton(
