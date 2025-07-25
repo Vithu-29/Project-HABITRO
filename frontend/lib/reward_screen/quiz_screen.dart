@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/api_services/quiz_service.dart';
+import 'package:frontend/components/standard_app_bar.dart';
 import 'package:frontend/models/quiz_model.dart';
 
 class QuizScreen extends StatefulWidget {
@@ -138,10 +139,7 @@ class _QuizScreenState extends State<QuizScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Quiz"),
-        automaticallyImplyLeading: false,
-      ),
+      appBar: StandardAppBar(appBarTitle: 'Quiz'),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : quizzes.isEmpty

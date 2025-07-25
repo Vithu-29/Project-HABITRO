@@ -42,6 +42,26 @@ class AchievementService {
     return _handleResponse(response);
   }
 
+  static Future<void> claimAchievement(int achievementId) async {
+  final token = await _getToken();
+  if (token == null) throw Exception('Authentication required');
+  
+  final response = await http.post(
+    Uri.parse('$baseUrl/achievements/claim/$achievementId/'),
+    headers: _headers(token),
+  );
+
+  if (response.statusCode == 401) {
+    throw Exception('Session expired. Please re-login');
+  }
+  
+  if (response.statusCode != 200) {
+    final error = jsonDecode(response.body)['error'] ?? 
+                'Failed to claim achievement (${response.statusCode})';
+    throw Exception(error);
+  }
+}
+
   static List<dynamic> _handleResponse(http.Response response) {
     if (response.statusCode == 401) {
     throw Exception('Session expired. Please re-login');

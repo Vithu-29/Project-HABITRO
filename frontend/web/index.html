@@ -31,6 +31,88 @@
 
   <title>frontend</title>
   <link rel="manifest" href="manifest.json">
+  
+  <!-- WebAuthn polyfill for web biometrics -->
+  <script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
+  
+  <!-- Initialize WebAuthn -->
+  <script>
+    window.onload = function() {
+      // Check if WebAuthn is supported
+      if (window.PublicKeyCredential) {
+        // Check if user verification (biometric) is available
+        PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+          .then(function(available) {
+            window.isWebAuthnAvailable = available;
+            console.log('WebAuthn biometric authentication available:', available);
+            
+            // Try to detect specific biometric capabilities
+            if (available && navigator.credentials && navigator.credentials.preventSilentAccess) {
+              // Attempt to detect fingerprint capabilities
+              try {
+                const fingerprintAvailable = 'fingerprint' in navigator || 
+                                            (window.PublicKeyCredential && 
+                                             window.PublicKeyCredential.prototype.getClientExtensionResults);
+                window.isFingerprintAvailable = fingerprintAvailable;
+                console.log('Fingerprint authentication likely available:', fingerprintAvailable);
+              } catch (e) {
+                window.isFingerprintAvailable = false;
+                console.log('Error detecting fingerprint capability:', e);
+              }
+              
+              // Attempt to detect face recognition capabilities
+              try {
+                const faceIdAvailable = 'face' in navigator || 
+                                       (window.FaceDetector !== undefined) || 
+                                       ('FaceDetector' in window);
+                window.isFaceIdAvailable = faceIdAvailable;
+                console.log('Face authentication likely available:', faceIdAvailable);
+              } catch (e) {
+                window.isFaceIdAvailable = false;
+                console.log('Error detecting face capability:', e);
+              }
+            }
+            
+            // Make this information available to Flutter
+            if (window.flutter_inappwebview) {
+              window.flutter_inappwebview.callHandler('updateBiometricStatus', {
+                isWebAuthnAvailable: available,
+                isFingerprintAvailable: window.isFingerprintAvailable || false,
+                isFaceIdAvailable: window.isFaceIdAvailable || false
+              });
+            }
+          })
+          .catch(function(error) {
+            console.error('Error checking WebAuthn availability:', error);
+            window.isWebAuthnAvailable = false;
+            window.isFingerprintAvailable = false;
+            window.isFaceIdAvailable = false;
+          });
+      } else {
+        window.isWebAuthnAvailable = false;
+        window.isFingerprintAvailable = false;
+        window.isFaceIdAvailable = false;
+        console.log('WebAuthn is not supported in this browser');
+      }
+      
+      // Add helper function for token management that Flutter can call
+      window.storeAuthToken = function(token) {
+        try {
+          localStorage.setItem('authToken', token);
+          sessionStorage.setItem('authToken', token);
+          console.log('Token stored in browser storage');
+          return true;
+        } catch (e) {
+          console.error('Error storing token:', e);
+          return false;
+        }
+      };
+      
+      window.getAuthToken = function() {
+        return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      };
+    };
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

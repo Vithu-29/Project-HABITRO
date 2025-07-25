@@ -2,10 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:frontend/api_services/achievement_service.dart';
-import 'package:http/http.dart' as http;
 
 class AchievementsPage extends StatefulWidget {
-  const AchievementsPage({super.key});
+  final VoidCallback? onAchievementClaimed;
+  const AchievementsPage({super.key, this.onAchievementClaimed});
 
   @override
   State<AchievementsPage> createState() => _AchievementsPageState();
@@ -43,19 +43,22 @@ class _AchievementsPageState extends State<AchievementsPage> {
           ElevatedButton(
             onPressed: () async {
               try {
-                final response = await http.post(
-                  Uri.parse(
-                      '${AchievementService.baseUrl}/achievements/claim/${achievement["id"]}/'),
-                );
-                if (response.statusCode == 200) {
-                  _fetchAllAchievements(); // Refresh the list
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(
-                        content: Text("Reward claimed successfully!")),
-                  );
+                await AchievementService.claimAchievement(achievement["id"]);
+                _fetchAllAchievements(); // Refresh local list
+
+                // Notify parent about claim
+                if (widget.onAchievementClaimed != null) {
+                  widget.onAchievementClaimed!();
                 }
+
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text("Reward claimed successfully!")),
+                );
               } catch (e) {
                 debugPrint("Claim error: $e");
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  SnackBar(content: Text("Failed to claim: $e")),
+                );
               }
               Navigator.pop(ctx);
             },
@@ -133,7 +136,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                                         ? const Icon(Icons.lock_outline,
                                             size: 40, color: Colors.black54)
                                         : Image.network(
-                                            "${AchievementService.baseUrl}${userAchievement["image"]}",
+                                            userAchievement["image"],
                                             fit: BoxFit.cover,
                                             errorBuilder: (context, error,
                                                     stackTrace) =>

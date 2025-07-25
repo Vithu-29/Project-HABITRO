@@ -1,7 +1,8 @@
-
 from rest_framework import serializers
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+from django.db import connections
+from django.contrib.auth.hashers import check_password
 import re
 import logging
 
@@ -38,7 +39,7 @@ class AdminLoginSerializer(serializers.Serializer):
             })
 
         try:
-            with connections['habitro'].cursor() as cursor:
+            with connections['default'].cursor() as cursor:
                 cursor.execute(
                     """
                     SELECT id, email, password, g_active, 
@@ -133,13 +134,15 @@ class ResetPasswordSerializer(serializers.Serializer):
             })
         
         password = data['new_password']
-        if (len(password) < 8 or 
-            not re.search(r'[A-Z]', password) or 
-            not re.search(r'[a-z]', password) or 
-            not re.search(r'[0-9]', password) or 
-            not re.search(r'[^A-Za-z0-9]', password)):
+        has_upper = bool(re.search(r'[A-Z]', password))
+        has_lower = bool(re.search(r'[a-z]', password))
+        has_number = bool(re.search(r'[0-9]', password))
+        has_symbol = bool(re.search(r'[^A-Za-z0-9]', password))
+        fulfilled = sum([has_upper, has_lower, has_number, has_symbol])
+
+        if len(password) < 8 or fulfilled < 3:
             raise serializers.ValidationError({
-                'new_password': ["Password must contain 8+ chars with uppercase, lowercase, number, and special char"]
+                'new_password': ["Password too weak - must include at least 3 of these: uppercase, lowercase, number, or symbol, and be at least 8 characters."]
             })
         
         return data

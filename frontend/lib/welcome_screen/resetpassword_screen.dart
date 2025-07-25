@@ -7,8 +7,13 @@ import 'package:frontend/api_config.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String email; // Email passed from the OTP verification screen
+  final String phone;
 
-  const ResetPasswordScreen({super.key, required this.email});
+  const ResetPasswordScreen({
+    super.key,
+    required this.email,
+    required this.phone,
+  });
 
   @override
   _ResetPasswordScreenState createState() => _ResetPasswordScreenState();
@@ -16,7 +21,8 @@ class ResetPasswordScreen extends StatefulWidget {
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   bool _showPassword = true;
   bool _showConfirmPassword = true;
@@ -62,15 +68,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await http.post(
-        Uri.parse("${ApiConfig.baseUrl}reset-password/"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "email": widget.email,
-          "new_password": newPassword,
-          "confirm_password": confirmPassword,
-        }),
-      );
+    final response = await http.post(
+      Uri.parse("${ApiConfig.baseUrl}reset-password/"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        if (widget.email.isNotEmpty) "email": widget.email,
+        if (widget.phone.isNotEmpty) "phone_number": widget.phone,
+        "new_password": newPassword,
+        "confirm_password": confirmPassword,
+      }),
+    );
 
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -126,7 +133,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     const SizedBox(height: 32),
                     const Text(
                       'Password',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 8),
                     TextField(
@@ -140,15 +148,19 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         filled: true,
                         fillColor: const Color(0xFFE8EFFF),
                         suffixIcon: IconButton(
-                          icon: Icon(_showPassword ? Icons.visibility : Icons.visibility_off),
-                          onPressed: () => setState(() => _showPassword = !_showPassword),
+                          icon: Icon(_showPassword
+                              ? Icons.visibility
+                              : Icons.visibility_off),
+                          onPressed: () =>
+                              setState(() => _showPassword = !_showPassword),
                         ),
                       ),
                     ),
                     const SizedBox(height: 16),
                     const Text(
                       'Confirm Password',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 8),
                     TextField(
@@ -162,8 +174,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         filled: true,
                         fillColor: const Color(0xFFE8EFFF),
                         suffixIcon: IconButton(
-                          icon: Icon(_showConfirmPassword ? Icons.visibility : Icons.visibility_off),
-                          onPressed: () => setState(() => _showConfirmPassword = !_showConfirmPassword),
+                          icon: Icon(_showConfirmPassword
+                              ? Icons.visibility
+                              : Icons.visibility_off),
+                          onPressed: () => setState(() =>
+                              _showConfirmPassword = !_showConfirmPassword),
                         ),
                       ),
                     ),
@@ -180,8 +195,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           ),
                         ),
                         child: _isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text('Reset Password', style: TextStyle(color: Colors.white)),
+                            ? const CircularProgressIndicator(
+                                color: Colors.white)
+                            : const Text('Reset Password',
+                                style: TextStyle(color: Colors.white)),
                       ),
                     ),
                   ],

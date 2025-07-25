@@ -2,7 +2,7 @@ name: frontend
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -30,25 +30,41 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   curved_navigation_bar: ^1.0.3
   flutter_svg: ^2.1.0
-  intl: ^0.18.1
+  intl: ^0.19.0
   smooth_page_indicator: ^1.1.0
-  http: ^1.3.0
+  http: ^1.2.1
+  google_sign_in: ^6.2.1
+  firebase_auth: ^4.19.6
+  firebase_core: ^2.3.1
+  flutter_facebook_auth: ^6.0.4
+  local_auth: ^2.1.7
   flutter_dotenv: ^5.1.0
   shared_preferences: ^2.5.3
   confetti: ^0.8.0
-  vibration: ^1.7.4
+  vibration: ^3.1.3
   flutter_secure_storage: ^9.0.0
+  fl_chart: ^0.70.2
+  flutter_local_notifications: ^19.1.0
+  timezone: 0.10.1
+  crypto: ^3.0.3
+  web_socket_channel: ^2.4.0
+  shimmer: ^3.0.0
+  device_preview: ^1.1.0
+  image_picker: ^1.1.2
+  provider: ^6.1.0
+  permission_handler: ^12.0.1
+
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: "^0.14.4"
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -57,12 +73,16 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
 
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/launch.png"
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
@@ -73,6 +93,7 @@ flutter:
       - assets/icons/
       - assets/images/
       - .env
+   
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

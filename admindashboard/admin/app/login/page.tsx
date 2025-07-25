@@ -1,14 +1,37 @@
-import RegisterForm from './LoginForm'; // Renamed from LoginForm to RegisterForm
+import LoginForm from './LoginForm';
+import Image from 'next/image';
 
 export default function RegisterPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="bg-white p-10 rounded-2xl shadow-xl flex flex-col md:flex-row gap-10 w-full max-w-4xl">
-        <RegisterForm />
-        <div className="hidden md:flex items-center justify-center flex-1">
-          <img src="/dashboard1.png" alt="Welcome" className="max-w-xs" />
-        </div>
+    <div className="min-h-screen bg-gray-100 px-4">
+      {/* Logo at the top-left */}
+      <div className="pt-6 pl-6">
+        <Image
+          src="/habitro_logo.png"
+          alt="HABITRO"
+          width={150}
+          height={50}
+          className="object-contain"
+        />
       </div>
-    </div>
+
+      {/* Main content centered */}
+            <div className="flex items-center justify-center min-h-[calc(100vh-120px)] px-4">
+              <div className="bg-white p-8 rounded-2xl shadow-md w-full max-w-4xl flex flex-col md:flex-row items-center gap-8">
+                <div className="w-full md:w-1/2">
+                  <LoginForm/>
+                </div>
+                <div className="w-full md:w-1/2 hidden md:flex justify-center">
+                  <Image
+                    src="/dashboard1.png"
+                    alt="Password Reset Illustration"
+                    width={500}
+                    height={500}
+                    className="object-contain max-w-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
   );
 }

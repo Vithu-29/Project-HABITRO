@@ -12,6 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='your-default-secret-key')
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS').split(',')
+ASGI_APPLICATION = 'config.asgi.application'
 
 # Application definition
 INSTALLED_APPS = [
@@ -31,7 +32,16 @@ INSTALLED_APPS = [
     'achievements',
     'articles',
     'rest_framework.authtoken',
+    'deepapi',
+    'analyze_responses',
+    'profileandchat',
+    'channels',
+    'cloudinary',
+    'cloudinary_storage',
 ]
+
+CSRF_COOKIE_HTTPONLY = False  #########
+CSRF_COOKIE_SECURE = False    #########
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -70,7 +80,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
-AUTH_USER_MODEL = 'app_frontend.CustomUser'
+AUTH_USER_MODEL = 'app_frontend.CustomUser' ################################
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',  # Default backend
 ]
@@ -85,6 +95,9 @@ DATABASES = {
         'PORT': config('DB_PORT', default='3306'),
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'ssl': {
+                'ca': BASE_DIR.joinpath('certs', 'DigiCertGlobalRootCA.crt.pem').as_posix(),
+            },
         },
     },
 }
@@ -134,6 +147,10 @@ EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 
+# Text.lk SMS Gateway Settings
+TEXT_LK_API_KEY = config('TEXT_LK_API_KEY')
+TEXT_LK_SENDER_ID = config('TEXT_LK_SENDER_ID')
+
 # Session settings
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 1800
@@ -153,3 +170,37 @@ import os
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        'app_frontend': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': config('CLOUDINARY_API_KEY'),
+    'API_SECRET': config('CLOUDINARY_API_SECRET'),
+}
