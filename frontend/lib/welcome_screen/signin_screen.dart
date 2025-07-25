@@ -10,12 +10,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:frontend/services/biometric_auth_service.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:local_auth/local_auth.dart';
-import 'package:frontend/services/biometric_auth_service.dart';
-
 class SignInScreen extends StatefulWidget {
   @override
   _SignInScreenState createState() => _SignInScreenState();
@@ -202,7 +196,6 @@ class _SignInScreenState extends State<SignInScreen> {
       final response = await http.post(
         Uri.parse("${ApiConfig.baseUrl}login/"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode(requestBody),
         body: jsonEncode(requestBody),
       );
 
@@ -500,8 +493,6 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                       const SizedBox(height: 24),
                       _buildLabeledField(
-                        'Email/Phone Number',
-                        'Enter your email or phone number',
                         'Email/Phone Number',
                         'Enter your email or phone number',
                         controller: _emailController,

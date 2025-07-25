@@ -111,11 +111,9 @@ class HomePageState extends State<HomePage> {
 
     return Scaffold(
       body: _pages![_selectedIndex],
-      body: _pages![_selectedIndex],
       bottomNavigationBar: CustomNavBar(
         selectedIndex: _selectedIndex,
         onTap: _onNavBarTap,
-        isDisabled: _isOnboardingActive,
         isDisabled: _isOnboardingActive,
       ),
     );

@@ -85,17 +85,7 @@ AUTH_USER_MODEL = 'app_frontend.CustomUser' ################################
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',  # Default backend
 ]
-# Database
-#DATABASES = {
-#    'default': {
-#       'ENGINE': 'django.db.backends.mysql',
-#        'NAME': config('DB_NAME'),
-#       'USER': config('DB_USER'),
-#       'PASSWORD': config('DB_PASSWORD'),
-#       'HOST': config('DB_HOST', default='localhost'),
-#       'PORT': config('DB_PORT', default='3306'),
-#   }
-#}
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -111,15 +101,6 @@ DATABASES = {
             },
         },
     },
-    'habitro': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='3306'),
-    }
-
 }
 
 # Password validation
