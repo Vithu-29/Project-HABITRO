@@ -22,6 +22,7 @@ urlpatterns = [
     path('achievements/', include('achievements.urls')),
     path('article/', include('articles.urls')),
     path('profile/', include('profileandchat.urls')),
+    path('api/settings/', include('settings.urls')),
 ]
 
 if settings.DEBUG:

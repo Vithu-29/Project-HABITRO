@@ -1,0 +1,2 @@
+C:/Users/HARISHANTH/Desktop/Project/Project-HABITRO/frontend/android/app/.cxx/Debug/3z61h4h1/x86/CMakeFiles/edit_cache.dir
+C:/Users/HARISHANTH/Desktop/Project/Project-HABITRO/frontend/android/app/.cxx/Debug/3z61h4h1/x86/CMakeFiles/rebuild_cache.dir

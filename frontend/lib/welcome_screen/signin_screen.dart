@@ -10,6 +10,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:frontend/services/biometric_auth_service.dart';
+import 'package:frontend/profile_screen/theme_provider.dart';
+import 'package:provider/provider.dart';
+
 class SignInScreen extends StatefulWidget {
   @override
   _SignInScreenState createState() => _SignInScreenState();
@@ -204,6 +207,10 @@ class _SignInScreenState extends State<SignInScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final token = data['token'];
+
+        final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+        themeProvider.setAuthToken(token);
+        await themeProvider.fetchFontSize();
 
         // Save token in multiple locations to ensure availability
         // 1. In FlutterSecureStorage (secure)

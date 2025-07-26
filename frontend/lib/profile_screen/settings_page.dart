@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/components/menu_button.dart';
 import 'package:frontend/profile_screen/appearance_page.dart';
 import 'package:frontend/profile_screen/security_page.dart';
+import 'package:frontend/profile_screen/notifications.dart';
 import 'package:frontend/components/standard_app_bar.dart';
 import 'package:frontend/theme.dart';
 import 'package:frontend/welcome_screen/signin_screen.dart';
@@ -45,10 +46,10 @@ class SettingsPage extends StatelessWidget {
           content: Text(
             'HABITRO is a comprehensive habit management platform designed to help individuals build positive habits, minimize negative ones, and maintain discipline through habit tracking, personalized analytics, and gamification.\n\n'
             'Key Features:\n'
-            '1. **Habit Tracking**: Track your habits and set goals for daily progress.\n'
-            '2. **Gamification**: Earn rewards, badges, and maintain streaks to stay motivated.\n'
-            '3. **Personalized Feedback**: Receive actionable insights to improve your habits.\n'
-            '4. **Admin Portal**: For managing user data and configuring system settings.\n\n'
+            '1. Habit Tracking: Track your habits and set goals for daily progress.\n'
+            '2. Gamification: Earn rewards, badges, and maintain streaks to stay motivated.\n'
+            '3. Personalized Feedback: Receive actionable insights to improve your habits.\n'
+            '4. Admin Portal: For managing user data and configuring system settings.\n\n'
             'Our goal is to empower users to make lasting, positive changes in their lives by bridging the gap between habit intention and action. With real-time insights and engaging elements, HABITRO motivates users to stay consistent and achieve personal growth.',
           ),
           actions: [
@@ -98,7 +99,7 @@ class SettingsPage extends StatelessWidget {
       appBar:
           const StandardAppBar(appBarTitle: 'Settings', showBackButton: true),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 25,vertical: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
         child: Column(
           children: [
             MenuButton(
@@ -107,7 +108,7 @@ class SettingsPage extends StatelessWidget {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => SecurityPage(),
+                  builder: (context) => const SecurityPage(),
                 ),
               ),
             ),
@@ -117,7 +118,7 @@ class SettingsPage extends StatelessWidget {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => AppearancePage(),
+                  builder: (context) => const AppearancePage(),
                 ),
               ),
             ),
@@ -127,7 +128,7 @@ class SettingsPage extends StatelessWidget {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const SettingsPage(),
+                  builder: (context) => const NotificationsPage(),
                 ),
               ),
             ),
@@ -141,13 +142,15 @@ class SettingsPage extends StatelessWidget {
               title: "About",
               onTap: () => _showAboutDialog(context),
             ),
-            
-            Spacer(),
+            const Spacer(),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                icon: const Icon(Icons.logout,color: Colors.redAccent,),
-                label: const Text('Logout',style: TextStyle(color: Colors.redAccent),),
+                icon: const Icon(Icons.logout, color: Colors.redAccent),
+                label: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.redAccent),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.secondary,
                 ),

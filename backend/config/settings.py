@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'channels',
     'cloudinary',
     'cloudinary_storage',
+    'settings',
 ]
 
 CSRF_COOKIE_HTTPONLY = False  #########
@@ -173,8 +174,8 @@ CACHES = {
     
 import os
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+#MEDIA_URL = '/media/'
+#MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 LOGGING = {
     'version': 1,

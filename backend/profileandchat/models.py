@@ -3,6 +3,7 @@ from django.conf import settings
 from cryptography.fernet import Fernet
 import base64
 import os
+from cloudinary_storage.storage import MediaCloudinaryStorage
 
 class UserProfile(models.Model):
     user = models.OneToOneField(
@@ -26,7 +27,7 @@ class UserProfile(models.Model):
         null=True, blank=True
     )
     profile_pic = models.ImageField(
-        upload_to='profile_pics/',
+        storage=MediaCloudinaryStorage(),
         null=True,
         blank=True,
         default='profile_pics/default.png'

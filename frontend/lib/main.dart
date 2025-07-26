@@ -11,18 +11,18 @@ import 'profile_screen/theme_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 
-// Import Device Preview
+// Device Preview
 import 'package:device_preview/device_preview.dart';
 import 'package:provider/provider.dart';
 
-Future<void> main() async{
+Future<void> main() async {
   await dotenv.load(fileName: ".env");
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
   await NotificationService.init();
-  // Wrap your app with DevicePreview
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeProvider(),
@@ -40,14 +40,27 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+
     return MaterialApp(
-      // ignore: deprecated_member_use
-      useInheritedMediaQuery: true, // IMPORTANT: enables responsiveness with Device Preview
-      locale: DevicePreview.locale(context), // to use Device Preview locale
-      builder: DevicePreview.appBuilder, // wraps app for responsiveness & preview
+      useInheritedMediaQuery: true,
+      locale: DevicePreview.locale(context),
       debugShowCheckedModeBanner: false,
       theme: themeProvider.currentTheme,
-      home: SplashScreen(),
+
+      // 🔥 Apply font scaling globally here
+      builder: (context, child) {
+        return DevicePreview.appBuilder(
+          context,
+          MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaleFactor: themeProvider.fontScaleFactor,
+            ),
+            child: child!,
+          ),
+        );
+      },
+
+      home: const SplashScreen(),
       routes: {
         '/welcome': (context) => WelcomeTutorialScreen(),
         '/signup': (context) => SignUpScreen(),
