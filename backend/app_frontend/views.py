@@ -736,35 +736,55 @@ class UpdateChallengeHabitView(generics.GenericAPIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        is_completed = request.data.get('is_completed', False)
-        previous_completed = user_habit.is_completed
+        # Get Sri Lanka time
+        tz = pytz.timezone('Asia/Colombo')
+        now = timezone.now().astimezone(tz)
+        today = now.strftime('%Y-%m-%d')
 
-        user_habit.is_completed = is_completed
-        if is_completed:
-            user_habit.completed_date = timezone.now().date()
-        else:
+        # Update daily status
+        daily_status = user_habit.daily_status.copy()
+        is_completed = request.data.get('is_completed', False)
+        previous_status = daily_status.get(today, False)
+        daily_status[today] = is_completed
+
+        # Calculate completed days
+        completed_days = sum(1 for v in daily_status.values() if v)
+        total_days = user_habit.user_challenge.challenge.duration_days
+        was_completed = user_habit.is_completed
+
+        # Update habit completion status
+        user_habit.is_completed = completed_days >= total_days
+        user_habit.daily_status = daily_status
+
+        if user_habit.is_completed and not was_completed:
+            user_habit.completed_date = now.date()
+        elif not user_habit.is_completed and was_completed:
             user_habit.completed_date = None
+
         user_habit.save()
 
-        # Only update gems if the state changes
+        # Gem logic
         reward, _ = Reward.objects.get_or_create(user=request.user)
         message = None
+        gems_changed = False
 
-        if is_completed and not previous_completed:
-            # Only add gem if habit was not previously completed
+        # Only change gems if the status actually changed
+        if is_completed and not previous_status:
             reward.gems += 1
-            reward.save()
-            message = "Challenge is completed and you gain 1 gem"
-        elif not is_completed and previous_completed:
-            # Only remove gem if habit was previously completed
+            gems_changed = True
+            message = "Habit completed for today! You gain 1 gem."
+        elif not is_completed and previous_status:
             if reward.gems > 0:
                 reward.gems -= 1
-                reward.save()
-            message = "Challenge is not completed and you lose 1 gem"
+                gems_changed = True
+            message = "Habit marked incomplete for today. You lose 1 gem."
+
+        if gems_changed:
+            reward.save()
 
         return Response(
             {
-                "message": message if message else "Habit status updated",
+                "message": message or "Habit status updated",
                 "gems": reward.gems
             },
             status=status.HTTP_200_OK

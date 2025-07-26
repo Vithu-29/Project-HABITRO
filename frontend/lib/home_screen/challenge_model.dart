@@ -86,7 +86,7 @@ class UserChallengeHabit {
   bool isCompleted;
   String? completedDate;
   Map<String, bool> dailyStatus; // key: yyyy-MM-dd, value: completed
-  DateTime lastUpdated; // New field to track last update time
+  DateTime lastUpdated; // Tracks last update time
 
   UserChallengeHabit({
     required this.id,
@@ -94,11 +94,10 @@ class UserChallengeHabit {
     required this.isCompleted,
     this.completedDate,
     Map<String, bool>? dailyStatus,
-    required this.lastUpdated, // Added required parameter
+    required this.lastUpdated,
   }) : dailyStatus = dailyStatus ?? {};
 
   factory UserChallengeHabit.fromJson(Map<String, dynamic> json) {
-    // Parse dailyStatus if present, else empty
     Map<String, bool> dailyMap = {};
     if (json.containsKey('daily_status')) {
       (json['daily_status'] as Map<String, dynamic>).forEach((k, v) {
@@ -106,22 +105,19 @@ class UserChallengeHabit {
       });
     }
     
-    // Get current Sri Lanka time
-    final now = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
-    
     return UserChallengeHabit(
       id: json['id'],
       habit: ChallengeHabit.fromJson(json['habit']),
       isCompleted: json['is_completed'],
       completedDate: json['completed_date'],
       dailyStatus: dailyMap,
-      lastUpdated: now, // Initialize with current time
+      lastUpdated: DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30)),
     );
   }
 
-  // Helper: get today's status (Sri Lanka time)
+  // Get today's status (Sri Lanka time)
   bool getTodayStatus() {
-    resetDailyStatus(); // Reset if needed
+    resetDailyStatus();
     final now = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
     final todayStr = 
         "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
@@ -133,18 +129,15 @@ class UserChallengeHabit {
     final todayStr = 
         "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
     dailyStatus[todayStr] = value;
-    lastUpdated = now; // Update lastUpdated timestamp
+    lastUpdated = now;
   }
   
   // Reset daily status if it's a new day
   void resetDailyStatus() {
     final now = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
-    
-    // Check if last update was on a different day
     if (lastUpdated.day != now.day || 
         lastUpdated.month != now.month || 
         lastUpdated.year != now.year) {
-      isCompleted = false;
       lastUpdated = now;
     }
   }

@@ -84,8 +84,8 @@ class CustomUser(AbstractBaseUser):
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
-    last_login = models.DateTimeField(
-        blank=True, null=True)  # <-- Add this line
+    last_login = models.DateTimeField(blank=True, null=True)  # <-- Add this line
+    
 
     objects = CustomUserManager()
 
@@ -177,6 +177,7 @@ class UserChallengeHabit(models.Model):
     habit = models.ForeignKey(ChallengeHabit, on_delete=models.CASCADE)
     is_completed = models.BooleanField(default=False)
     completed_date = models.DateField(null=True, blank=True)
+    daily_status = models.JSONField(default=dict)  # New field for daily tracking
 
     class Meta:
         unique_together = ('user_challenge', 'habit')

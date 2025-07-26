@@ -138,7 +138,7 @@ class ChallengeService {
       int habitId, bool isCompleted) async {
     final token = await _getAuthToken();
     if (token == null) {
-      return false;
+      throw Exception('Authentication token not found');
     }
 
     try {
@@ -151,16 +151,11 @@ class ChallengeService {
       );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        // If gems and message are present, return them
-        if (data is Map && data.containsKey('gems')) {
-          return data;
-        }
-        return true;
+        return json.decode(response.body); // Always return backend response
       }
-      return false;
+      throw Exception('Failed to update habit status: ${response.statusCode}');
     } catch (e) {
-      return false;
+      throw Exception('Error updating habit status: $e');
     }
   }
 }

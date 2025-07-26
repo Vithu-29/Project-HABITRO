@@ -575,8 +575,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         return Column(
                           children: [
                             ...snapshot.data!
-                                .map((habit) => buildHabitTile(habit))
-                                ,
+                                .map((habit) => buildHabitTile(habit)),
                             // Challenge habits section
                             FutureBuilder<List<UserChallenge>>(
                               future: userChallenges,
@@ -872,22 +871,48 @@ class _HomeScreenState extends State<HomeScreen> {
             Checkbox(
               value: userHabit.isCompleted,
               onChanged: (bool? value) async {
-                await ChallengeService.updateHabitStatus(
-                    userHabit.id, value ?? false);
-                setState(() {
-                  userHabit.isCompleted = value ?? false;
-                });
-                // Show success message for challenge habit
-                if (value == true) {
+                try {
+                  final result = await ChallengeService.updateHabitStatus(
+                      userHabit.id, value ?? false);
+
+                  setState(() {
+                    userHabit.isCompleted = value ?? false;
+                  });
+
+                  // Show gem add/remove message if present
+                  if (result is Map && result.containsKey('message')) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(result['message']),
+                        backgroundColor:
+                            (result['message'].toString().contains('gain'))
+                                ? Colors.green
+                                : Colors.red,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  } else if (value == true) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Habit completed successfully!'),
+                        backgroundColor: Colors.green,
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  }
+
+                  // Optionally update gems in UI if needed (result['gems'])
+                  // You may want to trigger a refresh of the reward screen here
+
+                  _refreshHabits();
+                } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Habit completed successfully!'),
-                      backgroundColor: Colors.green,
-                      duration: Duration(seconds: 1),
+                    SnackBar(
+                      content: Text('Error updating habit: $e'),
+                      backgroundColor: Colors.red,
                     ),
                   );
                 }
-                _refreshHabits();
               },
             ),
             Expanded(

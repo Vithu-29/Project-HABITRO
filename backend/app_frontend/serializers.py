@@ -161,7 +161,7 @@ class UserChallengeHabitSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserChallengeHabit
-        fields = ['id', 'habit', 'is_completed', 'completed_date']
+        fields = ['id', 'habit', 'is_completed', 'completed_date', 'daily_status']
 
 
 class UserChallengeSerializer(serializers.ModelSerializer):

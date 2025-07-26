@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../api_services/challenge_service.dart';
+import '../api_services/reward_service.dart';
 import 'challenge_model.dart';
 
 class MyChallengesScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
   List<UserChallenge> myChallenges = [];
   bool isLoading = true;
   String? error;
+  int currentGems = 0;
 
   // Track selected habits for each challenge
   Map<int, List<int>> selectedHabits = {};
@@ -29,6 +31,7 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _loadChallenges();
+    _loadGems();
   }
 
   Future<String?> _getToken() async {
@@ -192,119 +195,146 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
     setState(() => isLoading = false);
   }
 
-  Future<void> _updateHabitStatus(int habitId, bool isCompleted) async {
+  Future<void> _loadGems() async {
+    try {
+      final rewards = await RewardService.getRewards();
+      setState(() {
+        currentGems = rewards['gems'] ?? 0;
+      });
+    } catch (e) {
+      // ignore error
+    }
+  }
+
+  // Update daily status and show celebration/sad dialogs
+  Future<void> _updateDailyStatus(int habitId, bool isCompleted) async {
+    // Save current gems for possible revert
+    int oldGems = currentGems;
+
+    // Optimistically update UI (optional, can remove if you want only backend value)
+    setState(() {
+      if (isCompleted) {
+        currentGems += 1;
+      } else {
+        if (currentGems > 0) {
+          currentGems -= 1;
+        }
+      }
+    });
+
     try {
       final result =
           await ChallengeService.updateHabitStatus(habitId, isCompleted);
+      // Always use backend gem count for display
+      int backendGems = 0;
+      if (result != null && result is Map && result.containsKey('gems')) {
+        backendGems = result['gems'] is int
+            ? result['gems']
+            : int.tryParse(result['gems'].toString()) ?? currentGems;
+      }
 
-      if (result is Map && result.containsKey('message')) {
-        final msg = result['message'];
-        if (msg.contains("gain 1 gem")) {
-          // Live happy moment: dancing emoji and confetti/tissues
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => Dialog(
-              insetPadding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Positioned.fill(child: _ConfettiTissueAnimation()),
-                  SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(height: 70),
-                        _DancingEmojiAnimation(),
-                        const SizedBox(height: 12),
-                        const Text('🎉 Challenge completed! You gained 1 gem!',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Awesome!'),
-                        ),
-                      ],
-                    ),
+      setState(() {
+        currentGems = backendGems;
+      });
+
+      if (isCompleted) {
+        // Celebration dialog for adding gem
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => Dialog(
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Positioned.fill(child: _ConfettiTissueAnimation()),
+                SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 70),
+                      _DancingEmojiAnimation(),
+                      const SizedBox(height: 12),
+                      Text(
+                        "You get one gem and today's task completed\n(Gems: $backendGems)",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Awesome!'),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          );
-        } else if (msg.contains("lose 1 gem")) {
-          // Live sad moment: animated sad face and fading gray overlay
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => Dialog(
-              insetPadding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Positioned.fill(child: _SadOverlayAnimation()),
-                  SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TweenAnimationBuilder<double>(
-                          tween: Tween<double>(begin: 0, end: 1),
-                          duration: const Duration(seconds: 1),
-                          builder: (context, value, child) {
-                            return Transform.scale(
-                              scale: 0.7 + value * 0.3,
-                              child: Opacity(
-                                opacity: value,
-                                child:
-                                    Text('😔', style: TextStyle(fontSize: 60)),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        const Text('Challenge not completed! You lost 1 gem!',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Okay'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-      } else if (result == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isCompleted
-                ? 'Habit completed!'
-                : 'Habit marked as incomplete'),
-            backgroundColor: isCompleted ? Colors.green : Colors.orange,
-            duration: Duration(seconds: 1),
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to update habit status'),
-            backgroundColor: Colors.red,
+        // Sad dialog for removing gem
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => Dialog(
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Positioned.fill(child: _SadOverlayAnimation()),
+                SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0, end: 1),
+                        duration: const Duration(seconds: 1),
+                        builder: (context, value, child) {
+                          return Transform.scale(
+                            scale: 0.7 + value * 0.3,
+                            child: Opacity(
+                              opacity: value,
+                              child: const Text('😔',
+                                  style: TextStyle(fontSize: 60)),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        "You lost one gem and today's task not completed\n(Gems: $backendGems)",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Okay'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       }
+
       await _loadChallenges(); // Refresh to show updated status
+      await _loadGems(); // Refresh gems after update
     } catch (e) {
+      // Revert on error
+      setState(() {
+        currentGems = oldGems;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error updating habit: ${e.toString()}'),
+          content: Text('Error updating daily status: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -557,7 +587,10 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
     }
 
     return RefreshIndicator(
-      onRefresh: _loadChallenges,
+      onRefresh: () async {
+        await _loadChallenges();
+        await _loadGems();
+      },
       child: ListView.builder(
         padding: EdgeInsets.all(16),
         itemCount: myChallenges.length,
@@ -569,6 +602,15 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
           final totalHabits = userChallenge.habits.length;
           final progress =
               totalHabits > 0 ? completedHabits / totalHabits : 0.0;
+
+          // Calculate overall completion rate for this challenge
+          int totalDays = challenge.durationDays * totalHabits;
+          int completedDays = userChallenge.habits.fold(
+            0,
+            (sum, h) => sum + h.dailyStatus.values.where((v) => v).length,
+          );
+          double completionRate =
+              totalDays > 0 ? completedDays / totalDays : 0.0;
 
           return Card(
             margin: EdgeInsets.only(bottom: 16),
@@ -636,6 +678,16 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
                       fontSize: 12,
                     ),
                   ),
+                  // Show completion rate under heading
+                  SizedBox(height: 4),
+                  Text(
+                    'Completion Rate: ${(completionRate * 100).toStringAsFixed(1)}%',
+                    style: TextStyle(
+                      color: Colors.blueAccent,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   SizedBox(height: 16),
 
                   // Challenge habits with checkboxes to mark completion
@@ -646,53 +698,21 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
                   SizedBox(height: 8),
                   ...userChallenge.habits.map((userHabit) {
                     final habit = userHabit.habit;
-                    
-                    // Daily status indicators
-                    final dailyStatusWidget = SizedBox(
-                      height: 30,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: challenge.durationDays,
-                        itemBuilder: (context, dayIndex) {
-                          final day = dayIndex + 1;
-                          final isCompleted = userHabit.dailyStatus.values
-                              .where((status) => status == true)
-                              .length >= day;
-                              
-                          return Container(
-                            width: 24,
-                            height: 24,
-                            margin: EdgeInsets.symmetric(horizontal: 2),
-                            decoration: BoxDecoration(
-                              color: isCompleted 
-                                  ? Colors.green 
-                                  : Colors.grey[300],
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Text(
-                                '$day',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: isCompleted 
-                                      ? Colors.white 
-                                      : Colors.black,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    );
+                    final completedDays = userHabit.dailyStatus.values
+                        .where((status) => status)
+                        .length;
+                    final isFullyCompleted =
+                        completedDays >= challenge.durationDays;
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            // Frequency moved to left side
+                            // Frequency label
                             Container(
-                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
                                 color: Colors.blue.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
@@ -713,7 +733,7 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
                                 title: Text(
                                   habit.title,
                                   style: TextStyle(
-                                    decoration: userHabit.isCompleted
+                                    decoration: isFullyCompleted
                                         ? TextDecoration.lineThrough
                                         : null,
                                   ),
@@ -724,9 +744,10 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
                                       fontSize: 12, color: Colors.grey[600]),
                                 ),
                                 trailing: Checkbox(
-                                  value: userHabit.isCompleted,
-                                  onChanged: (bool? value) {
-                                    _updateHabitStatus(userHabit.id, value ?? false);
+                                  value: userHabit.getTodayStatus(),
+                                  onChanged: (bool? value) async {
+                                    await _updateDailyStatus(
+                                        userHabit.id, value ?? false);
                                   },
                                 ),
                               ),
@@ -736,12 +757,64 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
                         // Daily status indicators
                         Padding(
                           padding: const EdgeInsets.only(left: 40.0, top: 8),
-                          child: dailyStatusWidget,
+                          child: SizedBox(
+                            height: 30,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: challenge.durationDays,
+                              itemBuilder: (context, dayIndex) {
+                                final day = dayIndex + 1;
+                                final isCompleted = userHabit.dailyStatus.values
+                                        .where((status) => status == true)
+                                        .length >=
+                                    day;
+
+                                return Container(
+                                  width: 24,
+                                  height: 24,
+                                  margin: EdgeInsets.symmetric(horizontal: 2),
+                                  decoration: BoxDecoration(
+                                    color: isCompleted
+                                        ? Colors.green
+                                        : Colors.grey[300],
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '$day',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: isCompleted
+                                            ? Colors.white
+                                            : Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
                         ),
                         SizedBox(height: 8),
                       ],
                     );
                   }),
+                  // Show current gems under the challenge card
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.diamond,
+                          color: Colors.blueAccent, size: 18),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Gems: $currentGems',
+                        style: TextStyle(
+                          color: Colors.blueAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -763,105 +836,6 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
-  }
-}
-
-class _BalloonsAnimation extends StatefulWidget {
-  @override
-  State<_BalloonsAnimation> createState() => _BalloonsAnimationState();
-}
-
-class _BalloonsAnimationState extends State<_BalloonsAnimation>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-  final List<Color> balloonColors = [
-    Colors.red,
-    Colors.blue,
-    Colors.green,
-    Colors.orange,
-    Colors.purple
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    )..forward();
-    _animation = Tween<double>(begin: 1, end: -0.3).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Stack(
-          children: List.generate(balloonColors.length, (i) {
-            return Align(
-              alignment: Alignment(-0.7 + i * 0.35, _animation.value),
-              child:
-                  Icon(Icons.circle, color: balloonColors[i], size: 30 + i * 8),
-            );
-          }),
-        );
-      },
-    );
-  }
-}
-
-class _RainAnimation extends StatefulWidget {
-  @override
-  State<_RainAnimation> createState() => _RainAnimationState();
-}
-
-class _RainAnimationState extends State<_RainAnimation>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-  final int drops = 12;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    )..repeat();
-    _animation = Tween<double>(begin: -0.8, end: 0.8).animate(_controller);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Stack(
-          children: List.generate(drops, (i) {
-            return Align(
-              alignment: Alignment(-0.8 + i * 0.13, _animation.value),
-              child: Icon(Icons.water_drop, color: Colors.blueAccent, size: 18),
-            );
-          }),
-        );
-      },
-    );
   }
 }
 
@@ -921,61 +895,6 @@ class _ConfettiTissueAnimationState extends State<_ConfettiTissueAnimation>
                   size: 14 + (i % 3) * 4,
                 ),
               ),
-            );
-          }),
-        );
-      },
-    );
-  }
-}
-
-class _SplashBalloonsAnimation extends StatefulWidget {
-  @override
-  State<_SplashBalloonsAnimation> createState() =>
-      _SplashBalloonsAnimationState();
-}
-
-class _SplashBalloonsAnimationState extends State<_SplashBalloonsAnimation>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-  final List<Color> balloonColors = [
-    Colors.redAccent,
-    Colors.blueAccent,
-    Colors.greenAccent,
-    Colors.orangeAccent,
-    Colors.purpleAccent
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    )..forward();
-    _animation = Tween<double>(begin: 1, end: -0.3).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Stack(
-          children: List.generate(balloonColors.length, (i) {
-            return Align(
-              alignment: Alignment(-0.7 + i * 0.35, _animation.value),
-              child: Icon(Icons.emoji_events,
-                  color: balloonColors[i], size: 32 + i * 10),
             );
           }),
         );
