@@ -6,6 +6,7 @@ from rest_framework import status
 from django.core.mail import send_mail
 from django.conf import settings
 import logging
+import secrets 
 from .models import HabitroAdminManager
 from .serializers import (
     ForgotPasswordSerializer,
@@ -33,10 +34,16 @@ class AdminLoginView(APIView):
                 request.session['admin_id'] = admin_id
                 logger.info(f"Successful login for admin ID: {admin_id}")
 
+                # Generate a unique token for this login session (not stored in DB)
+                session_token = secrets.token_hex(32)
+                print(
+                    f"[ADMIN LOGIN TOKEN] Admin: {email}, Token: {session_token}")
+
                 response = Response({
                     "status": "success",
                     "email": email,
-                    "redirect": "/dashboard"
+                    "redirect": "/dashboard",
+                    "token": session_token  # <-- Return token to frontend
                 }, status=status.HTTP_200_OK)
 
                 response.set_cookie('sessionid', request.session.session_key)
@@ -118,10 +125,10 @@ class ForgotPasswordView(APIView):
 
 class VerifyOTPView(APIView):
     def post(self, request):
-        
+
         # Debug logging
         logger.info(f"Session data: {dict(request.session)}")
-        
+
         serializer = VerifyOTPSerializer(data=request.data)
         if not serializer.is_valid():
             logger.error(f"Serializer errors: {serializer.errors}")
@@ -135,10 +142,10 @@ class VerifyOTPView(APIView):
             if not request.session.get('reset_otp'):
                 logger.error("No OTP found in session")
                 return Response(
-                    {"error": "OTP session expired or invalid"}, 
+                    {"error": "OTP session expired or invalid"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             if HabitroAdminManager.verify_otp(request, otp):
                 # Ensure session is saved
                 request.session['otp_verified'] = True
@@ -176,7 +183,8 @@ class ResetPasswordView(APIView):
                 {"error": "Failed to reset password"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        
+
+
 class GetCSRFToken(APIView):
     def get(self, request):
         return Response({'csrfToken': get_token(request)})

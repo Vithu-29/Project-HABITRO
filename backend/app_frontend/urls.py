@@ -4,6 +4,7 @@ from .views import (
     ForgotPasswordView, VerifyForgotPasswordOTPView,
     ResetPasswordView, TestSMSView, ResendOTPView, social_login, ChallengeListView,UserChallengeListView,JoinChallengeView,UpdateChallengeHabitView
 )
+from .views import LogoutView
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),

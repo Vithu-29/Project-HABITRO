@@ -95,7 +95,9 @@ TEMPLATES = [
 
 
 # Allow all origins for development (adjust for production)
-CORS_ALLOWED_ORIGINS = ["http://localhost:3000"]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000", 
+]
 CORS_ALLOW_CREDENTIALS = True
 
 ALLOWED_HOSTS = ['*']
@@ -140,10 +142,10 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # CORS Settings (Updated for both mobile app and Next.js)
-CORS_ALLOWED_ORIGINS = []
 
 
-CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
+
+CSRF_TRUSTED_ORIGINS = ["http://localhost:3000"]
 CORS_ALLOW_CREDENTIALS = True
 #CORS_ALLOW_ALL_ORIGINS = True
 

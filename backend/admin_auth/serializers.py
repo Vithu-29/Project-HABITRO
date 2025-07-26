@@ -1,10 +1,10 @@
 from rest_framework import serializers
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
-from django.db import connections
-from django.contrib.auth.hashers import check_password
 import re
 import logging
+from django.db import connections
+from django.contrib.auth.hashers import check_password
 
 logger = logging.getLogger(__name__)
 

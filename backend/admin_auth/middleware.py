@@ -8,6 +8,7 @@ class AdminAuthMiddleware(MiddlewareMixin):
         '/admin_auth/forgot-password/',
         '/admin_auth/verify-otp/',
         '/admin_auth/reset-password/',
+        '/admin_auth/logout/',
         '/static/',
         '/media/',
     ]
