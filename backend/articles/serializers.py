@@ -9,5 +9,5 @@ class ArticleSerializer(serializers.ModelSerializer):
     
     def get_image(self, obj):
         if obj.image:
-            return str(obj.image)  # This gives full Cloudinary URL
+            return obj.image.url  # This gives full Cloudinary URL
         return None

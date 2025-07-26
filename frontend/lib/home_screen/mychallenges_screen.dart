@@ -646,56 +646,100 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
                   SizedBox(height: 8),
                   ...userChallenge.habits.map((userHabit) {
                     final habit = userHabit.habit;
-
-                    return CheckboxListTile(
-                      title: Text(
-                        habit.title,
-                        style: TextStyle(
-                          decoration: userHabit.isCompleted
-                              ? TextDecoration.lineThrough
-                              : null,
-                        ),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            habit.description,
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey[600]),
-                          ),
-                          if (userHabit.completedDate != null)
-                            Text(
-                              'Completed: ${_formatDate(userHabit.completedDate!)}',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.green,
+                    
+                    // Daily status indicators
+                    final dailyStatusWidget = SizedBox(
+                      height: 30,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: challenge.durationDays,
+                        itemBuilder: (context, dayIndex) {
+                          final day = dayIndex + 1;
+                          final isCompleted = userHabit.dailyStatus.values
+                              .where((status) => status == true)
+                              .length >= day;
+                              
+                          return Container(
+                            width: 24,
+                            height: 24,
+                            margin: EdgeInsets.symmetric(horizontal: 2),
+                            decoration: BoxDecoration(
+                              color: isCompleted 
+                                  ? Colors.green 
+                                  : Colors.grey[300],
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(
+                                '$day',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: isCompleted 
+                                      ? Colors.white 
+                                      : Colors.black,
+                                ),
                               ),
                             ),
-                        ],
+                          );
+                        },
                       ),
-                      value: userHabit.isCompleted,
-                      onChanged: (bool? value) {
-                        _updateHabitStatus(userHabit.id, value ?? false);
-                      },
-                      secondary: Container(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+                    );
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            // Frequency moved to left side
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                habit.frequency,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(
+                                  habit.title,
+                                  style: TextStyle(
+                                    decoration: userHabit.isCompleted
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  habit.description,
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.grey[600]),
+                                ),
+                                trailing: Checkbox(
+                                  value: userHabit.isCompleted,
+                                  onChanged: (bool? value) {
+                                    _updateHabitStatus(userHabit.id, value ?? false);
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        child: Text(
-                          habit.frequency,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.blue,
-                          ),
+                        // Daily status indicators
+                        Padding(
+                          padding: const EdgeInsets.only(left: 40.0, top: 8),
+                          child: dailyStatusWidget,
                         ),
-                      ),
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
+                        SizedBox(height: 8),
+                      ],
                     );
                   }),
                 ],
