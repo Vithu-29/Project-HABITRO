@@ -1,10 +1,11 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from cloudinary_storage.storage import MediaCloudinaryStorage
 
 class Achievement(models.Model):
     title = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    image = models.ImageField(upload_to='achievements/', blank=True)
+    image = models.ImageField(storage=MediaCloudinaryStorage(), blank=True)
     unlock_condition = models.CharField(max_length=50, blank=True)
 
     def __str__(self):

@@ -1,3 +1,5 @@
+// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import '../services/ai_services.dart';
 import 'quit_screen.dart';
@@ -89,7 +91,7 @@ class _HabitInputScreenState extends State<HabitInputScreen> {
         ),
       );
     } else {
-      print(classification);
+      debugPrint(classification);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Error analyzing habit.")));

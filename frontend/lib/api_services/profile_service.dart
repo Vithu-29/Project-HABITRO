@@ -1,6 +1,7 @@
 // lib/services/profile_service.dart
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -20,7 +21,7 @@ class ProfileService {
     );
 
     if (response.statusCode == 200) {
-      print(response.body);
+      debugPrint(response.body);
       return json.decode(response.body);
     } else {
       throw Exception('Failed to load profile data');
