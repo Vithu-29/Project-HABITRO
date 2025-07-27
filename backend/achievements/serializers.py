@@ -9,7 +9,7 @@ class AchievementSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'description', 'image']
 
     def get_image(self, obj):
-        return str(obj.image) if obj.image else ""
+        return obj.image.url if obj.image else ""
 
 class UserAchievementSerializer(serializers.ModelSerializer):
     achievement = AchievementSerializer()  # nested achievement details

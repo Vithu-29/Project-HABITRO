@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:frontend/api_services/friend_chat_service.dart';
+import 'package:frontend/theme.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:intl/intl.dart';
 
@@ -69,7 +70,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     try {
       final pastMessages = await FriendChatService.fetchMessages(
           widget.chatRoomId.replaceFirst('chat_', ''));
-      print(pastMessages);
       setState(() {
         messages = pastMessages;
         _isLoading = false;
@@ -301,7 +301,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: isMe ? const Color(0xFF128C7E) : Colors.white,
+              color: isMe ? AppColors.primary : Colors.white,
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(16),
                 topRight: const Radius.circular(16),
@@ -371,12 +371,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         : widget.receiverProfilePic;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE5DDD5),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF128C7E),
+        backgroundColor: Colors.white,
         elevation: 2,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
@@ -394,7 +393,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               child: Text(
                 widget.receiverName,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: Colors.black,
                   fontSize: 18,
                   fontWeight: FontWeight.w500,
                 ),
@@ -403,29 +402,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.videocam, color: Colors.white),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.call, color: Colors.white),
-            onPressed: () {},
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onSelected: (value) {},
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'info', child: Text('Contact info')),
-              const PopupMenuItem(
-                  value: 'media', child: Text('Media, links, and docs')),
-              const PopupMenuItem(value: 'search', child: Text('Search')),
-              const PopupMenuItem(
-                  value: 'mute', child: Text('Mute notifications')),
-              const PopupMenuItem(value: 'clear', child: Text('Clear chat')),
-            ],
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -519,11 +495,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       ),
                       child: Row(
                         children: [
-                          IconButton(
-                            icon: Icon(Icons.emoji_emotions_outlined,
-                                color: Colors.grey[600]),
-                            onPressed: () {},
-                          ),
                           Expanded(
                             child: TextField(
                               controller: _controller,
@@ -537,16 +508,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                               ),
                               onSubmitted: (_) => _sendMessage(),
                             ),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.attach_file,
-                                color: Colors.grey[600]),
-                            onPressed: () {},
-                          ),
-                          IconButton(
-                            icon:
-                                Icon(Icons.camera_alt, color: Colors.grey[600]),
-                            onPressed: () {},
                           ),
                         ],
                       ),
@@ -579,19 +540,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           ),
         ],
       ),
-      floatingActionButton: _showScrollToBottom
-          ? ScaleTransition(
-              scale: _fabAnimationController,
-              child: FloatingActionButton.small(
-                backgroundColor: const Color(0xFF128C7E),
-                onPressed: () => _scrollToBottom(),
-                child: const Icon(
-                  Icons.keyboard_arrow_down,
-                  color: Colors.white,
-                ),
-              ),
-            )
-          : null,
     );
   }
 }

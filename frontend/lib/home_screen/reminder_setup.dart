@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:frontend/home_screen/home_screen.dart';
 import '../services/notification_service.dart';

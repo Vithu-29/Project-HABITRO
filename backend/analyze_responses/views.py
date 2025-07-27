@@ -469,7 +469,7 @@ def get_profile_stats(request):
         
         return Response({
             'full_name': profile.full_name,
-            'profile_pic_url': str(profile.profile_pic) if profile.profile_pic else None,
+            'profile_pic_url': profile.profile_pic.url if profile.profile_pic else None,
             'habit_following_count': habit_count,
             'completion_rate': completion_rate
         })
