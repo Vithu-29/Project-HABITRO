@@ -22,7 +22,7 @@ export default function BlogManagement() {
 
   const fetchArticles = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/articles/list/");
+      const res = await fetch("http://localhost:8000/api/articles/");
       const data = await res.json();
       setArticles(data);
     } catch (error) {

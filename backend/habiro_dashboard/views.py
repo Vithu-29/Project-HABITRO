@@ -138,36 +138,42 @@ def used_devices_data(request):
     return Response(device_data)
 
 #Recent Users(Homepage)
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from app_frontend.models import CustomUser, UserChallengeHabit
+from datetime import datetime
+
 
 @api_view(['GET'])
 def recent_users(request):
-    users = create_user.objects.order_by('-join_date')[:6]  # Last 6 users joined
+    users = CustomUser.objects.order_by('-date_joined')[:6]  # Get last 6 users
 
     data = []
 
     for user in users:
-        # Get the first habit the user is trying to overcome (good habit)
-        user_habit = UserHabit.objects.filter(user=user, status='in_progress').first()
-        added_habit_name = user_habit.habit.habit_name if user_habit else 'No Habit Added'
+        # Get one in-progress (not completed) habit via related models
+        user_habit = UserChallengeHabit.objects.filter(
+            user_challenge__user=user,
+            is_completed=False
+        ).select_related('habit').first()
 
-        # Handling profile picture full URL
-        if user.profile_picture:
-            if user.profile_picture.startswith("/media/"):
-                avatar_url = request.build_absolute_uri(user.profile_picture)
-            else:
-                avatar_url = user.profile_picture
-        else:
-            avatar_url = f"https://api.dicebear.com/7.x/initials/svg?seed={user.full_name.replace(' ', '+')}"
+        added_habit_name = user_habit.habit.title if user_habit else "No Habit Added"
+
+        # Avatar generation (DiceBear API based on name)
+        avatar_url = f"https://api.dicebear.com/7.x/initials/svg?seed={user.full_name.replace(' ', '+')}"
 
         data.append({
             "name": user.full_name,
             "email": user.email,
-            "joined": user.join_date.strftime("%Y-%m-%d %I:%M %p"),
+            "joined": user.date_joined.strftime("%Y-%m-%d %I:%M %p"),
             "habit": added_habit_name,
             "avatar": avatar_url,
         })
 
     return Response(data)
+
+
+
 
 # user_management_list(User Management)
 from django.db.models import Count, Q

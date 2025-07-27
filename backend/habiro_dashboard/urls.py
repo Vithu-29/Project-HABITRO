@@ -20,7 +20,6 @@ urlpatterns = [
     path('dashboard-overview/', dashboard_overview, name='dashboard-overview'),
     path('active-users-chart/', active_users_chart, name='active-users-chart'), 
     path('used-devices-data/', used_devices_data, name='used-devices-data'),
-    path('recent-users/', recent_users, name='recent-users'),
     path('user-management/', user_management_list, name='user-management'),
     path('send-email/', send_email_to_user),  
     path('suspend-user/', suspend_user),
@@ -33,6 +32,7 @@ urlpatterns = [
     path('good-habit-analytics/<int:habit_id>/users/', views.habit_completed_users),
     path('create-article/', create_article, name='create-article'),
     path('articles/', ArticleListCreateView.as_view(), name='article-list-create'),
+    path('recent-users/', recent_users, name='recent-users'),
 
     path('api/', include(router.urls)),
     
