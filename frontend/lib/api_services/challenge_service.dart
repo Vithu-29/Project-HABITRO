@@ -7,7 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ChallengeService {
   // Update this URL to match your backend server
-  static const String baseUrl = 'http://10.10.42.63:8000';
+  static const String baseUrl = 'http://192.168.8.179:8000';
 
   // Get authentication token from storage
   static Future<String?> _getAuthToken() async {
