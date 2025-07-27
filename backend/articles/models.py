@@ -1,4 +1,5 @@
 from django.db import models
+from cloudinary_storage.storage import MediaCloudinaryStorage
 
 class Article(models.Model):
     category_choices = [
@@ -14,7 +15,7 @@ class Article(models.Model):
     content = models.TextField()
     date = models.DateField(auto_now_add=True)
     views = models.IntegerField(default=0)
-    image = models.ImageField(upload_to='articles/', null=True, blank=True)
+    image = models.ImageField(storage=MediaCloudinaryStorage(), null=True, blank=True)
 
     def __str__(self):
         return self.title

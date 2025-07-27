@@ -73,7 +73,7 @@ def list_friends(request):
         data.append({
             'id': friend.id,
             'name': friend.full_name,
-            'profile_pic': str(friend.profile.profile_pic) if friend.profile.profile_pic else None,
+            'profile_pic': friend.profile.profile_pic.url if friend.profile.profile_pic else None,
             'last_message': last_msg.text if last_msg else None,
             'last_sender_id': last_msg.sender.id if last_msg else None,
             'timestamp': last_msg.timestamp.isoformat() if last_msg else None,
@@ -273,7 +273,7 @@ def leaderboard_view(request):
         user_profile_url = None
         try:
             if hasattr(user, 'profile') and user.profile.profile_pic:
-                user_profile_url = str(user.profile.profile_pic)
+                user_profile_url = user.profile.profile_pic.url
         except UserProfile.DoesNotExist:
             pass
 
