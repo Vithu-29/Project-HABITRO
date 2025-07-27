@@ -1,11 +1,15 @@
 from rest_framework.views import APIView
-from django.middleware.csrf import get_token
-from rest_framework.views import APIView
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from django.middleware.csrf import get_token
 from django.core.mail import send_mail
 from django.conf import settings
+from django.contrib.auth import authenticate
+from django.views.decorators.csrf import csrf_exempt
 import logging
+
 from .models import HabitroAdminManager
 from .serializers import (
     ForgotPasswordSerializer,
@@ -58,7 +62,6 @@ class AdminLoginView(APIView):
 
 class ForgotPasswordView(APIView):
     def post(self, request):
-        # Ensure session exists before proceeding
         if not request.session.session_key:
             request.session.create()
 
@@ -70,7 +73,6 @@ class ForgotPasswordView(APIView):
         logger.info(f"Password reset requested for: {email}")
 
         try:
-            # Store email in session immediately
             request.session['reset_email'] = email
             request.session.modified = True
 
@@ -81,7 +83,6 @@ class ForgotPasswordView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-            # Force session save and set cookie headers
             request.session.save()
 
             send_mail(
@@ -94,7 +95,6 @@ class ForgotPasswordView(APIView):
 
             response = Response({"message": "OTP sent to your email"})
 
-            # Explicitly set session cookie in response
             response.set_cookie(
                 settings.SESSION_COOKIE_NAME,
                 request.session.session_key,
@@ -118,35 +118,32 @@ class ForgotPasswordView(APIView):
 
 class VerifyOTPView(APIView):
     def post(self, request):
-        
-        # Debug logging
         logger.info(f"Session data: {dict(request.session)}")
-        
+
         serializer = VerifyOTPSerializer(data=request.data)
         if not serializer.is_valid():
             logger.error(f"Serializer errors: {serializer.errors}")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         otp = serializer.validated_data['otp']
-        logger.info(
-            f"Verifying OTP: {otp} for session {request.session.session_key}")
+        logger.info(f"Verifying OTP: {otp} for session {request.session.session_key}")
 
         try:
             if not request.session.get('reset_otp'):
                 logger.error("No OTP found in session")
                 return Response(
-                    {"error": "OTP session expired or invalid"}, 
+                    {"error": "OTP session expired or invalid"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             if HabitroAdminManager.verify_otp(request, otp):
-                # Ensure session is saved
                 request.session['otp_verified'] = True
                 request.session.save()
                 return Response({
                     "message": "OTP verified successfully",
                     "verified": True
                 })
+
             return Response(
                 {"error": "Invalid or expired OTP", "verified": False},
                 status=status.HTTP_400_BAD_REQUEST
@@ -176,7 +173,32 @@ class ResetPasswordView(APIView):
                 {"error": "Failed to reset password"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        
+
+
 class GetCSRFToken(APIView):
     def get(self, request):
         return Response({'csrfToken': get_token(request)})
+
+
+# ✅ Change password view with CSRF exempted for token-auth clients
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    user = request.user
+    old_password = request.data.get('old_password')
+    new_password = request.data.get('new_password')
+
+    if not old_password or not new_password:
+        return Response({'error': 'Both old and new passwords are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not user.check_password(old_password):
+        return Response({'error': 'Incorrect current password'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if len(new_password) < 8:
+        return Response({'error': 'New password must be at least 8 characters long'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.set_password(new_password)
+    user.save()
+
+    return Response({'detail': 'Password changed successfully'}, status=status.HTTP_200_OK)

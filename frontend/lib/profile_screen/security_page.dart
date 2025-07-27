@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:frontend/components/standard_app_bar.dart';
 import 'package:frontend/theme.dart';
 import 'package:frontend/welcome_screen/signin_screen.dart';
+import 'package:frontend/profile_screen/change_password_page.dart';
 
 class SecurityPage extends StatelessWidget {
   const SecurityPage({super.key});
 
-  // Confirmation dialog for the "Delete Account" action
   void _confirmDeleteAccount(BuildContext context) {
     showDialog(
       context: context,
@@ -23,7 +23,6 @@ class SecurityPage extends StatelessWidget {
             onPressed: () {
               Navigator.of(ctx).pop();
               // TODO: Add actual account deletion logic here
-              // For now, navigate back to sign-in screen after deletion
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (_) => SignInScreen()),
@@ -43,8 +42,10 @@ class SecurityPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: StandardAppBar(
-          appBarTitle: 'Account & Security', showBackButton: true),
+      appBar: const StandardAppBar(
+        appBarTitle: 'Account & Security',
+        showBackButton: true,
+      ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
         child: Column(
@@ -52,20 +53,22 @@ class SecurityPage extends StatelessWidget {
             // Biometric ID option
             ListTile(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(10),
+              ),
               tileColor: AppColors.secondary,
               leading: const Icon(Icons.fingerprint),
               title: const Text('Biometric ID'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 20),
               onTap: () {
-                // TODO: Implement Biometric ID settings (e.g., enable/disable biometrics)
+                // TODO: Implement Biometric ID settings
               },
             ),
             const SizedBox(height: 15),
             // Face ID option
             ListTile(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(10),
+              ),
               tileColor: AppColors.secondary,
               leading: const Icon(Icons.face),
               title: const Text('Face ID'),
@@ -78,20 +81,27 @@ class SecurityPage extends StatelessWidget {
             // Change Password option
             ListTile(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(10),
+              ),
               tileColor: AppColors.secondary,
               leading: const Icon(Icons.lock_reset),
               title: const Text('Change Password'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 20),
               onTap: () {
-                // TODO: Navigate to Change Password screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ChangePasswordPage(),
+                  ),
+                );
               },
             ),
             const SizedBox(height: 15),
-            // Delete Account option (destructive action)
+            // Delete Account option
             ListTile(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(10),
+              ),
               tileColor: AppColors.secondary,
               leading: const Icon(Icons.person_remove, color: Colors.redAccent),
               title: const Text(

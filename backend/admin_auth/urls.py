@@ -3,7 +3,8 @@ from .views import (
     AdminLoginView,
     ForgotPasswordView,
     VerifyOTPView,
-    ResetPasswordView
+    ResetPasswordView,
+    change_password
 )
 
 urlpatterns = [
@@ -11,5 +12,5 @@ urlpatterns = [
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
     path('verify-otp/', VerifyOTPView.as_view(), name='verify-otp'),
     path('reset-password/', ResetPasswordView.as_view(), name='reset-password'),
+    path('change-password/', change_password, name='change-password'),  # ✅ Correct path
 ]
-
