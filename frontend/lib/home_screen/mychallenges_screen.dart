@@ -807,7 +807,8 @@ class _MyChallengesScreenState extends State<MyChallengesScreen>
                           color: Colors.blueAccent, size: 18),
                       const SizedBox(width: 4),
                       Text(
-                        'Gems: $currentGems',
+                        // Show total green circles (completed days) for all habits in this challenge
+                        'Gems: ${userChallenge.habits.fold<int>(0, (sum, h) => sum + h.dailyStatus.values.where((v) => v).length)}',
                         style: TextStyle(
                           color: Colors.blueAccent,
                           fontWeight: FontWeight.bold,

@@ -72,20 +72,6 @@ class _IntroScreenState extends State<IntroScreen> {
     Future.delayed(Duration(seconds: 2), () {
       if (mounted) setState(() => startCircleAnimation = true,);
     });
-
-    Future.delayed(Duration(milliseconds: 3000), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder:(context, animation, secondaryAnimation) => 
-              WelcomeTutorialScreen(),
-              transitionsBuilder:(context, animation, secondaryAnimation, child) {
-                return FadeTransition(opacity: animation, child: child,);
-              },
-          )
-        );
-      }
-    });
   }
 
   @override
@@ -115,7 +101,18 @@ class _IntroScreenState extends State<IntroScreen> {
               ),
               ),
           ),
-          if (startCircleAnimation) AnimatedCircleTransition(),
+          if (startCircleAnimation)
+            AnimatedCircleTransition(
+              onAnimationComplete: () {
+                if (mounted) {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => WelcomeTutorialScreen(),
+                    ),
+                  );
+                }
+              },
+            ),
         ],
       ),
     );
@@ -123,7 +120,12 @@ class _IntroScreenState extends State<IntroScreen> {
 }
 
 class AnimatedCircleTransition extends StatefulWidget {
-  const AnimatedCircleTransition({super.key});
+  final VoidCallback onAnimationComplete;
+
+  const AnimatedCircleTransition({
+    super.key, 
+    required this.onAnimationComplete
+  });
 
   @override
   State<AnimatedCircleTransition> createState() => _AnimatedCircleTransitionState();
@@ -149,6 +151,7 @@ class _AnimatedCircleTransitionState extends State<AnimatedCircleTransition> {
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0, end: radius),
       duration: Duration(seconds: 1),
+      onEnd: widget.onAnimationComplete,
       builder: (context, value, child) {
         return ClipPath(
           clipper: CircleClipper(value),
@@ -181,4 +184,3 @@ class CircleClipper extends CustomClipper<Path> {
     return oldClipper.radius != radius;
   }
 }
- //for check

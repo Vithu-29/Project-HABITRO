@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 class WelcomeTutorialScreen extends StatefulWidget {
   const WelcomeTutorialScreen({super.key});
 
@@ -69,6 +68,7 @@ class WelcomeTutorialScreenState extends State<WelcomeTutorialScreen> {
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Stack(
           children: [
