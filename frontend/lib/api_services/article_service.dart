@@ -31,7 +31,7 @@ class ArticleService {
 
   Future<List<dynamic>> getArticles({String? category, String? search}) async {
     try {
-      final uri = Uri.parse('$baseUrl/article/').replace(
+      final uri = Uri.parse('$baseUrl/articles/').replace(
         queryParameters: {
           if (category != null && category != 'All') 'category': category,
           if (search != null && search.isNotEmpty) 'search': search,
@@ -52,7 +52,7 @@ class ArticleService {
   Future<Map<String, dynamic>> getArticleDetails(int id) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/article/$id/'),
+        Uri.parse('$baseUrl/articles/$id/'),
         headers: await _getHeaders(),
       );
 
@@ -65,7 +65,7 @@ class ArticleService {
   Future<List<String>> getCategories() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/article/categories/'),
+        Uri.parse('$baseUrl/articles/categories/'),
         headers: await _getHeaders(),
       );
       final data = _handleResponse(response);

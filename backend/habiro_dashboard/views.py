@@ -160,7 +160,7 @@ def recent_users(request):
         added_habit_name = user_habit.habit.title if user_habit else "No Habit Added"
 
         # Avatar generation (DiceBear API based on name)
-        avatar_url = f"https://api.dicebear.com/7.x/initials/svg?seed={user.full_name.replace(' ', '+')}"
+        avatar_url = f"https://api.dicebear.com/7.x/initials/png?seed={user.full_name.replace(' ', '+')}"
 
         data.append({
             "name": user.full_name,

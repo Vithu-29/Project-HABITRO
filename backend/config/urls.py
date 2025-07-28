@@ -7,20 +7,21 @@ urlpatterns = [
     path('admin/', admin.site.urls),  # Django admin interface
     
     # API endpoints
+    path('api/', include('deepapi.urls')), 
+    path('api/', include('analyze_responses.urls')),
+    path('quiz/', include('quiz.urls')),
+    path('api/', include('rewards.urls')),
+    path('', include('articles.urls')),
     path('admin_auth/', include('admin_auth.urls')), 
     path('api/', include('habiro_dashboard.urls')),
-    path('api/', include('deepapi.urls')),
-    path('api/', include('analyze_responses.urls')),
+    
     # Frontend app (if needed)
     path('app_frontend/', include('app_frontend.urls')),
     path('api/', include('app_frontend.urls')),
     
     
-    path('quiz/', include('quiz.urls')),
-    path('api/', include('rewards.urls')),
     path('game/', include('game.urls')),
     path('achievements/', include('achievements.urls')),
-    path('article/', include('articles.urls')),
     path('profile/', include('profileandchat.urls')),
     
     
