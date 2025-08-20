@@ -25,11 +25,11 @@ const EmailEditor: React.FC<Props> = ({ onClose, email }) => {
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white p-6 rounded shadow w-1/2">
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50  dark:bg-gray-dark">
+      <div className="bg-white p-6 rounded shadow w-1/2 dark:bg-gray-800">
         <h2 className="text-lg font-semibold">Send Email</h2>
         <textarea
-          className="w-full border p-2 mt-2"
+          className="w-full border p-2 mt-2 "
           rows={6}
           placeholder="Write your message..."
           value={message}

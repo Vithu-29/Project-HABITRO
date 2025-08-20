@@ -21,7 +21,7 @@ const UserTable: React.FC<UserTableProps> = ({ users, onSelectUser }) => {
         <input
           type="text"
           placeholder="Search users..."
-          className="border  p-2 mb-4 w-full bg-gray-100"
+          className="border  p-2 mb-4 w-full bg-gray-100  dark:bg-gray-dark"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />

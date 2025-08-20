@@ -46,9 +46,9 @@ def dashboard_overview(request):
     yesterday = today - timedelta(days=1)
 
     # Total Users
-    total_users_all = CustomUser.objects.count()
-    new_users_today = CustomUser.objects.filter(date_joined__date=today).count()
-    new_users_yesterday = CustomUser.objects.filter(date_joined__date=yesterday).count()
+    total_users_all = create_user.objects.count()
+    new_users_today = create_user.objects.filter(join_date__date=today).count()
+    new_users_yesterday = create_user.objects.filter(join_date__date=yesterday).count()
     user_growth_rate = calculate_growth_rate(new_users_today, new_users_yesterday)
 
 
